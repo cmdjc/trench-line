@@ -80,18 +80,18 @@ tests/
 
 ## Task 1: toolchain + shell
 
-- [ ] `package.json`: `"type":"module"`, engines node ≥22.12, scripts `dev/build/preview/test/lint/e2e/check/stats/bot`; devDeps: `vite 8.3.5, vitest 4.1.12, @eslint/js 10.0.1, eslint 10.13.0, globals 17.13.0, jsdom 30.1.3, esbuild ^0.25` (esbuild explicit — codex blocker; vite may not install it for itself).
-- [ ] `vite.config.js`: `base:"./"`, test include `tests/unit/**/*.test.js`, env node.
-- [ ] `eslint.config.js` (port landfall's, adjusted paths).
-- [ ] `index.html`: ported markup (source lines 120–227) minus inline style/script, plus `<script type="module" src="/src/main.js">`; credits line in start overlay: `<p class="credits">A game by M K · built with the AI agents Claude and GLM.</p>`.
-- [ ] `src/styles.css` = ported CSS (lines 8–117) + `.credits{margin:14px 0 0;font-size:12.5px;color:var(--muted)}`.
-- [ ] `src/main.js` stub: `import './styles.css'` only.
-- [ ] `npm install`; trivial `tests/unit/sanity.test.js`; `npm run check` green.
-- [ ] Commit: `chore: vite + vitest + eslint shell`.
+- [x] `package.json`: `"type":"module"`, engines node ≥22.12, scripts `dev/build/preview/test/lint/e2e/check/stats/bot`; devDeps: `vite 8.3.5, vitest 4.1.12, @eslint/js 10.0.1, eslint 10.13.0, globals 17.13.0, jsdom 30.1.3, esbuild ^0.25` (esbuild explicit — codex blocker; vite may not install it for itself).
+- [x] `vite.config.js`: `base:"./"`, test include `tests/unit/**/*.test.js`, env node.
+- [x] `eslint.config.js` (port landfall's, adjusted paths).
+- [x] `index.html`: ported markup (source lines 120–227) minus inline style/script, plus `<script type="module" src="/src/main.js">`; credits line in start overlay: `<p class="credits">A game by M K · built with the AI agents Claude and GLM.</p>`.
+- [x] `src/styles.css` = ported CSS (lines 8–117) + `.credits{margin:14px 0 0;font-size:12.5px;color:var(--muted)}`.
+- [x] `src/main.js` stub: `import './styles.css'` only.
+- [x] `npm install`; trivial `tests/unit/sanity.test.js`; `npm run check` green.
+- [x] Commit: `chore: vite + vitest + eslint shell`.
 
 ## Task 2: core — rng + events (TDD)
 
-- [ ] **Failing tests** `tests/unit/rng.test.js`:
+- [x] **Failing tests** `tests/unit/rng.test.js`:
 ```js
 import { describe, expect, it } from 'vitest';
 import { makeRng, rng } from '../../src/core/rng.js';
@@ -121,11 +121,11 @@ describe('shared rng', () => {
   });
 });
 ```
-- [ ] Run `npx vitest run tests/unit/rng.test.js` → FAIL (module missing).
-- [ ] Implement `src/core/rng.js`: `makeRng(seed)` (mulberry32, returns `()=>[0,1)`); shared `rng = { seed: <number>, reseed(n), float(), range(a,b), int(n), pick(arr) }` — `seed` is a **data property**, `reseed` the mutator (codex blocker: no dual-purpose name).
-- [ ] Tests pass. Commit: `feat: seeded rng`.
+- [x] Run `npx vitest run tests/unit/rng.test.js` → FAIL (module missing).
+- [x] Implement `src/core/rng.js`: `makeRng(seed)` (mulberry32, returns `()=>[0,1)`); shared `rng = { seed: <number>, reseed(n), float(), range(a,b), int(n), pick(arr) }` — `seed` is a **data property**, `reseed` the mutator (codex blocker: no dual-purpose name).
+- [x] Tests pass. Commit: `feat: seeded rng`.
 
-- [ ] **Failing test** `tests/unit/events.test.js` (on/emit payload, off, emit with no listeners does not throw, late on after emit is not called retroactively). Implement `src/core/events.js` (`export const bus = { on(ev,fn), off(ev,fn), emit(ev,...args) }`). Pass. Commit: `feat: sim↔ui event bus`.
+- [x] **Failing test** `tests/unit/events.test.js` (on/emit payload, off, emit with no listeners does not throw, late on after emit is not called retroactively). Implement `src/core/events.js` (`export const bus = { on(ev,fn), off(ev,fn), emit(ev,...args) }`). Pass. Commit: `feat: sim↔ui event bus`.
 
 ## Task 3: data modules
 
@@ -184,7 +184,7 @@ it('each nation has a superweapon; maps cover the four keys', () => {
 
 - [x] Implement `src/storage.js`: availability probe; `storage.get(key)` → `localStorage.getItem` wrapped → `{value:<string>} | null`; `storage.set(key,val)` → true | null; `storage` is `null` when localStorage unusable.
 - [x] Implement `src/sim/meta.js` (port lines 558–622): `META` (`{points,tech,runs,wins,rev}`), `SAVE_KEYS`, `saveOk`, `parseSave`, `loadMeta()`, `saveMeta()`, `has()`, `makeCode()`, `readCode()`, `codeCheck()`. `saveState()` DOM text moves to UI. `store` ← storage adapter.
-- [ ] **Failing tests** `tests/unit/meta.test.js` (jsdom env for localStorage; also fake-storage injection for write failures):
+- [x] **Failing tests** `tests/unit/meta.test.js` (jsdom env for localStorage; also fake-storage injection for write failures):
 ```js
 import { beforeEach, describe, expect, it } from 'vitest';
 import { META, makeCode, readCode, codeCheck, loadMeta, saveMeta } from '../../src/sim/meta.js';
@@ -393,9 +393,9 @@ if (best && bd <= T.range) {
 
 ## Task 14: headless smoke + merge parity suites
 
-- [ ] **Failing test** `tests/unit/smoke.test.js` — port of `legacy/tests/smoke.js` without jsdom: every nation vs de and de vs each on `open`; `aq/it` on `river`; `ru/fr` both ways on `plain`; `gb/aq`, `de/it` on `march`. Drive `tick(0.04)` to 240 s; auto-take first offered card (`takeCard(G.offer.ids[0])`); top up supplies/HQ like the original; assert no NaN in unit fields, armour caps respected, no exceptions.
-- [ ] **Failing test** `tests/unit/merge.test.js` — port of `legacy/tests/merge.js`: Russia `tkList('ru')==='tank,tkH'`, tank card needed, `NAT.ru.tanks===10`, SW kind `tsar`; `useSW` once then blocked; hedgehog halt/pass at exact x positions; 5 emplacements at double trench 14; income `+4.0` (base 3 + DBL_RATE 1) shown via `incomeNow()`.
-- [ ] These are the parity gates: failures mean port bugs — fix sim, not tests. Commit: `test: headless smoke + merge parity suites`.
+- [x] **Failing test** `tests/unit/smoke.test.js` — port of `legacy/tests/smoke.js` without jsdom: every nation vs de and de vs each on `open`; `aq/it` on `river`; `ru/fr` both ways on `plain`; `gb/aq`, `de/it` on `march`. Drive `tick(0.04)` to 240 s; auto-take first offered card (`takeCard(G.offer.ids[0])`); top up supplies/HQ like the original; assert no NaN in unit fields, armour caps respected, no exceptions.
+- [x] **Failing test** `tests/unit/merge.test.js` — port of `legacy/tests/merge.js`: Russia `tkList('ru')==='tank,tkH'`, tank card needed, `NAT.ru.tanks===10`, SW kind `tsar`; `useSW` once then blocked; hedgehog halt/pass at exact x positions; 5 emplacements at double trench 14; income `+4.0` (base 3 + DBL_RATE 1) shown via `incomeNow()`.
+- [x] These are the parity gates: failures mean port bugs — fix sim, not tests. Commit: `test: headless smoke + merge parity suites`.
 
 ## Task 15: UI layer
 
@@ -434,10 +434,10 @@ if (best && bd <= T.range) {
 
 ## Task 19: final review + verification
 
-- [ ] `npm run check` and `npm run e2e` green from clean `node_modules`.
-- [ ] Determinism audit: two bot runs same seed → identical summary; `grep -n 'Math.random' src/sim src/data` → zero hits.
-- [ ] Cross-model review (codex) of the finished repo — fold in findings (user-requested final review).
-- [ ] Manual play sanity on `npm run preview` (start→battle→win/lose→research→save code round-trip→credits visible).
+- [x] `npm run check` and `npm run e2e` green from clean `node_modules`.
+- [x] Determinism audit: two bot runs same seed → identical summary; `grep -n 'Math.random' src/sim src/data` → zero hits.
+- [x] Cross-model review (codex) of the finished repo — fold in findings (user-requested final review).
+- [x] Manual play sanity on `npm run preview` (start→battle→win/lose→research→save code round-trip→credits visible).
 
 ## Task 20: publish
 
