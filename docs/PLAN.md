@@ -297,7 +297,7 @@ it('applyTech applies exactly the owned nodes', () => {
 
 ## Task 7: sim combat — damage rules
 
-- [ ] **Failing tests** `tests/unit/combat-damage.test.js` — pin every row of the tables via direct `hurt` calls (spawn attacker/victim with `newGame('gb','de','open',1)`, place victims by setting `x/y/line/settled`):
+- [x] **Failing tests** `tests/unit/combat-damage.test.js` — pin every row of the tables via direct `hurt` calls (spawn attacker/victim with `newGame('gb','de','open',1)`, place victims by setting `x/y/line/settled`):
 ```js
 // helper: mk(side,type,L,settled) → unit; hurtU(e, dmg, atk, attacker?, cov?, area?)
 it('settled rifleman in unfortified trench takes 25% (COV.rifle)', …);      // hp -0.25×dmg
@@ -311,8 +311,8 @@ it('bunker shelter: direct hits redirect to the bunker; splash does not reach sh
 it('double trench ×0.55 on top of cover; Italy ×0.85 nation cover', …);
 it('die(): enemy death pays 0.25×cost bounty, bumps kills/cardKills, card at need threshold; armour death adds wreck+scorch', …);
 ```
-- [ ] Implement `src/sim/combat.js` part 1: `hurt` (762–777), `HQG/accVs` (778–779), `die` (780–790), `hurtBase` (791–794), effect pushers `puff/boom/tracer` (795–797) writing to `G.smoke/G.booms/G.tracers`. Export for tests.
-- [ ] Pass, commit: `feat: damage model + die/bounty`.
+- [x] Implement `src/sim/combat.js` part 1: `hurt` (762–777), `HQG/accVs` (778–779), `die` (780–790), `hurtBase` (791–794), effect pushers `puff/boom/tracer` (795–797) writing to `G.smoke/G.booms/G.tracers`. Export for tests.
+- [x] Pass, commit: `feat: damage model + die/bounty`.
 
 ## Task 8: sim fortify (before stepUnits — codex blocker)
 
