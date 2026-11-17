@@ -1,0 +1,7 @@
+{
+  "name": "trench-line-tools",
+  "private": true,
+  "description": "Headless scripted player for Trench Line",
+  "scripts": { "bot": "node bot.js gb 2.5 de open" },
+  "dependencies": { "jsdom": "*", "canvas": "*" }
+}
