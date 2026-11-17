@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { META, makeCode, readCode, codeCheck, loadMeta, saveMeta } from '../../src/sim/meta.js';
+import { META, makeCode, readCode, codeCheck, loadMeta, saveMeta, saveOk } from '../../src/sim/meta.js';
 
 beforeEach(() => { localStorage.clear(); META.points = 0; META.tech = {}; META.runs = 0; META.wins = 0; META.rev = 0; });
 
@@ -36,21 +36,60 @@ describe('two-slot recovery', () => {
     await loadMeta();
     expect(META.points).toBe(20); expect(META.rev).toBeGreaterThanOrEqual(9);   // resaved both slots
   });
-  it('equal revs: newer timestamp wins; corrupt slot repaired; legacy JSON shape loads', async () => {
-    META.points = 7; META.tech = { marks: 1 }; META.runs = 2; META.wins = 0; META.rev = 3;
+  it('equal revs: the newer timestamp wins regardless of which slot holds it', async () => {
+    META.points = 21; META.tech = {}; META.runs = 1; META.wins = 0; META.rev = 3;
+    const older = makeCode();                     // points 21, ts 1
+    META.points = 7; META.tech = { marks: 1 };
+    const newer = makeCode();                     // points 7, ts 999
+    localStorage.setItem('trenchline-meta', JSON.stringify({ code: older, rev: 3, ts: 1 }));
+    localStorage.setItem('trenchline-meta-b', JSON.stringify({ code: newer, rev: 3, ts: 999 }));
+    await loadMeta();
+    expect(META.points).toBe(7);
+    expect(META.tech).toEqual({ marks: 1 });
+    localStorage.setItem('trenchline-meta', JSON.stringify({ code: newer, rev: 3, ts: 999 }));
+    localStorage.setItem('trenchline-meta-b', JSON.stringify({ code: older, rev: 3, ts: 1 }));
+    await loadMeta();
+    expect(META.points).toBe(7);                  // same winner from the other slot
+  });
+  it('a corrupt slot is repaired from the healthy one', async () => {
+    META.points = 12; META.tech = {}; META.runs = 2; META.wins = 1; META.rev = 3;
     const code = makeCode();
-    localStorage.setItem('trenchline-meta', JSON.stringify({ code, rev: 3, ts: 999 }));
-    localStorage.setItem('trenchline-meta-b', JSON.stringify({ code, rev: 3, ts: 1 }));
-    await loadMeta(); expect(META.points).toBe(7);
     localStorage.setItem('trenchline-meta', 'garbage');
-    await loadMeta(); expect(META.points).toBe(7); expect(localStorage.getItem('trenchline-meta')).not.toBe('garbage');
+    localStorage.setItem('trenchline-meta-b', JSON.stringify({ code, rev: 3, ts: 50 }));
+    await loadMeta();
+    expect(META.points).toBe(12);
+    expect(META.rev).toBe(4);                     // repair resaves both slots
+    const a = JSON.parse(localStorage.getItem('trenchline-meta'));
+    const b = JSON.parse(localStorage.getItem('trenchline-meta-b'));
+    expect(a.rev).toBe(4);
+    expect(b.rev).toBe(4);
+    expect(readCode(a.code).points).toBe(12);
+  });
+  it('legacy direct-object saves load', async () => {
     localStorage.clear();
-    localStorage.setItem('trenchline-meta', JSON.stringify({ points: 31, tech: { marks: 1 }, runs: 4, wins: 2 })); // legacy direct object
-    await loadMeta(); expect(META.points).toBe(31); expect(META.tech).toEqual({ marks: 1 });
+    localStorage.setItem('trenchline-meta', JSON.stringify({ points: 31, tech: { marks: 1 }, runs: 4, wins: 2 }));
+    await loadMeta();
+    expect(META.points).toBe(31);
+    expect(META.tech).toEqual({ marks: 1 });
   });
   it('both slots invalid → defaults; failed writes reported via saveOk', async () => {
     localStorage.setItem('trenchline-meta', 'x'); localStorage.setItem('trenchline-meta-b', 'y');
     await loadMeta(); expect(META.points).toBe(0);
     await saveMeta(); expect(META.rev).toBe(1);        // both writes succeed in jsdom
+  });
+  it('partial and total write failures surface through saveOk', async () => {
+    await saveMeta(); expect(saveOk).toBe(2);
+    const proto = Storage.prototype; const orig = proto.setItem;
+    proto.setItem = function (k, v) { if (k === 'trenchline-meta-b') throw new Error('quota'); return orig.call(this, k, v); };
+    try {
+      const rev = META.rev;
+      await saveMeta();
+      expect(saveOk).toBe(1);                          // one slot written
+      expect(META.rev).toBe(rev + 1);
+      expect(JSON.parse(localStorage.getItem('trenchline-meta')).rev).toBe(rev + 1);
+      proto.setItem = function () { throw new Error('quota'); };
+      await saveMeta();
+      expect(saveOk).toBe(0);                          // both slots failed
+    } finally { proto.setItem = orig; }
   });
 });
