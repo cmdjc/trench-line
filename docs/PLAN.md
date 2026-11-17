@@ -417,11 +417,11 @@ if (best && bd <= T.range) {
 
 ## Task 17: e2e — real page in jsdom
 
-- [ ] `tests/e2e/game.e2e.test.js` + `tests/e2e/vitest.config.js` (like landfall: node env, 120 s timeouts, fileParallelism false):
+- [x] `tests/e2e/game.e2e.test.js` + `tests/e2e/vitest.config.js` (like landfall: node env, 120 s timeouts, fileParallelism false):
   - Build page: read `index.html`; bundle `src/main.js` with `esbuild.buildSync({ entryPoints:['src/main.js'], bundle:true, format:'iife', write:false, loader:{'.css':'empty'} })` (esbuild is a direct devDep; CSS stripped — codex blocker); inline the IIFE into the HTML.
   - `new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'https://trench.local/?e2e=1', beforeParse(w){ w.HTMLCanvasElement.prototype.getContext=()=>stubCtx; w.HTMLCanvasElement.prototype.getBoundingClientRect=()=>({width:900,height:300,...}); w.addEventListener('error',…) } })` — stubs installed **before** any script runs.
   - **Playthrough:** pick gb vs de on `open` via real button clicks; grant supplies via hook; buy riflemen; `advance`; double-tap fortify; take a card; fire the Messines mine (gb SW) and let it detonate; rig enemy HQ hp to 1, win; assert end overlay "Victory", earned points, save code parses with `readCode`; "Start a new run" returns to start overlay; replay picks work; zero page errors.
-- [ ] `npm run e2e` green. Commit: `test: jsdom e2e playthrough`.
+- [x] `npm run e2e` green. Commit: `test: jsdom e2e playthrough`.
 
 ## Task 18: scripts, README, license, workflow
 

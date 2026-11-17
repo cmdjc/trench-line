@@ -1,6 +1,7 @@
 // Entry point: wires the sim's bus events to the UI, boots the HUD and the
 // frame loop, and arms the debug hook on ?debug / ?e2e URLs.
 
+import './styles.css';
 import { bus } from './core/events.js';
 import { rng } from './core/rng.js';
 import { G } from './sim/state.js';
@@ -48,6 +49,10 @@ export function boot() {
       }),
       seed: () => rng.seed, ut: k => ut(0, k), tkList: () => tkList(G.nation[0]),
       tanks: () => tanks(0), full: k => full(0, k),
+      // test-only levers for the e2e playthrough
+      give(n) { G.S.supplies += n; bus.emit('hud'); },
+      hq(i, hp) { if (hp === undefined) return G.bases[i].hp; G.bases[i].hp = hp; },
+      pend() { G.S.pending++; },
     };
   }
 }
