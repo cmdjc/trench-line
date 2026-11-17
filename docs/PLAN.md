@@ -369,8 +369,8 @@ if (best && bd <= T.range) {
 
 ## Task 11: sim AI
 
-- [ ] **Failing tests** `tests/unit/ai.test.js`: income ramp `AI_INCOME·(1+t/360)` with us (`min(1.8, 0.75+t/400)`) and aq (`min(2, 0.6+t/300)`) modifiers, +depots+super+dbl; buy loop within armour and inf caps (`full()` respected); `want` state machine: fort/def/nest when holding F past 60 s; sw past 240 s (60%-cost rule for ≥1500); `aiThink` gathers at F, advances on the source's power-ratio rules (deterministic under seed; assert `ai.F` transitions and `lastAdv` pacing); toast on attack.
-- [ ] Implement `src/sim/ai.js` (1197–1261). Pass, commit: `feat: enemy commander`.
+- [x] **Failing tests** `tests/unit/ai.test.js`: income ramp `AI_INCOME·(1+t/360)` with us (`min(1.8, 0.75+t/400)`) and aq (`min(2, 0.6+t/300)`) modifiers, +depots+super+dbl; buy loop within armour and inf caps (`full()` respected); `want` state machine: fort/def/nest when holding F past 60 s; sw past 240 s (60%-cost rule for ≥1500); `aiThink` gathers at F, advances on the source's power-ratio rules (deterministic under seed; assert `ai.F` transitions and `lastAdv` pacing); toast on attack.
+- [x] Implement `src/sim/ai.js` (1197–1261). Pass, commit: `feat: enemy commander`.
 
 ## Task 12: sim cards (offer state machine — codex important)
 
