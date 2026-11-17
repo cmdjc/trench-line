@@ -182,8 +182,8 @@ it('each nation has a superweapon; maps cover the four keys', () => {
 
 ## Task 4: storage + meta (rewrites the lost tests)
 
-- [ ] Implement `src/storage.js`: availability probe; `storage.get(key)` → `localStorage.getItem` wrapped → `{value:<string>} | null`; `storage.set(key,val)` → true | null; `storage` is `null` when localStorage unusable.
-- [ ] Implement `src/sim/meta.js` (port lines 558–622): `META` (`{points,tech,runs,wins,rev}`), `SAVE_KEYS`, `saveOk`, `parseSave`, `loadMeta()`, `saveMeta()`, `has()`, `makeCode()`, `readCode()`, `codeCheck()`. `saveState()` DOM text moves to UI. `store` ← storage adapter.
+- [x] Implement `src/storage.js`: availability probe; `storage.get(key)` → `localStorage.getItem` wrapped → `{value:<string>} | null`; `storage.set(key,val)` → true | null; `storage` is `null` when localStorage unusable.
+- [x] Implement `src/sim/meta.js` (port lines 558–622): `META` (`{points,tech,runs,wins,rev}`), `SAVE_KEYS`, `saveOk`, `parseSave`, `loadMeta()`, `saveMeta()`, `has()`, `makeCode()`, `readCode()`, `codeCheck()`. `saveState()` DOM text moves to UI. `store` ← storage adapter.
 - [ ] **Failing tests** `tests/unit/meta.test.js` (jsdom env for localStorage; also fake-storage injection for write failures):
 ```js
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -238,7 +238,7 @@ it('both slots invalid → defaults; failed writes reported via saveOk', async (
   await saveMeta(); expect(META.rev).toBe(1);        // both writes succeed in jsdom
 });
 ```
-- [ ] Pass, commit: `feat: storage adapter + save codes (lost tests rewritten)`.
+- [x] Pass, commit: `feat: storage adapter + save codes (lost tests rewritten)`.
 
 ## Task 5: sim state container (no newGame yet — codex blocker)
 
