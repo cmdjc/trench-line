@@ -328,7 +328,7 @@ it('die(): enemy death pays 0.25×cost bounty, bumps kills/cardKills, card at ne
 
 ## Task 9: sim combat — stepUnits (+ the bug fix)
 
-- [ ] **Failing tests** `tests/unit/combat-step.test.js` (fixed `dt` driving):
+- [x] **Failing tests** `tests/unit/combat-step.test.js` (fixed `dt` driving):
   - movement toward `posX` target; blocked halt when enemy within 40 px (not same trench); `moveFire` gating; min range respected.
   - rivers: non-big units funnel to nearest bridge band `b±BW`, hold at river edge until aligned; big units cross straight.
   - **hedgehogs** (port of legacy merge test): enemy holds double trench 14 → player tank halts at `LX[14]-(94+len+8)`, tsar (`big`) passes; once player infantry hold 14 the tank passes.
@@ -341,7 +341,7 @@ it('die(): enemy death pays 0.25×cost bounty, bumps kills/cardKills, card at ne
   - AH garrison: ≥3 settled own non-armour troops accrue `garr[L]`; at `GARR_T[fort]` fort++ and reset.
   - bunkers via `stepBunkers`: settled troops walk in ≤6, fire at full effect from ~30 px behind; bunker death exposes survivors; side/line change releases.
   - barrage card: with `M[0].barrage=3`, every 10 s spawns 3 shells on the frontmost settled enemy (test injects state).
-- [ ] Implement `stepUnits` (799–987) in `sim/combat.js`, calling `stepFields/stepBunkers/stepJobs` from fortify (function-body imports). Replace the firing block at 885–891 with:
+- [x] Implement `stepUnits` (799–987) in `sim/combat.js`, calling `stepFields/stepBunkers/stepJobs` from fortify (function-body imports). Replace the firing block at 885–891 with:
 ```js
 if (best && bd <= T.range) {
   u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
@@ -353,7 +353,7 @@ if (best && bd <= T.range) {
 }
 ```
   (the original fired the faint miss tracer unconditionally for non-magazine weapons — DESIGN.md "Known quirks" #3).
-- [ ] Pass, commit: `feat: stepUnits — movement, rivers, hedgehogs, fixed miss tracer`.
+- [x] Pass, commit: `feat: stepUnits — movement, rivers, hedgehogs, fixed miss tracer`.
 
 ## Task 10: sim superweapons
 
