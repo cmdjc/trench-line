@@ -374,14 +374,14 @@ if (best && bd <= T.range) {
 
 ## Task 12: sim cards (offer state machine — codex important)
 
-- [ ] **Failing tests** `tests/unit/cards.test.js`:
+- [x] **Failing tests** `tests/unit/cards.test.js`:
   - pool filters: `once` taken, `canId` failing (`plate` without any unlocked tank), redundant `u_tank` when unlocked, `u_tk*` with unmet prerequisites; `corps` tech forces `u_tank` into the first offer; `intel` → 4 offers.
   - **controlled-rng weight boundaries** (codex important): inject a fake rng object into `buildOffer(rngLike)` returning fixed floats — 0 selects the first (highest cumulative) card, `w_first/total−ε` vs `w_first/total+ε` straddle the boundary; selection is without replacement; every offered id is valid for the pool.
   - `takeCard`: `u_raider` unlocks + spawns 2 raiders at `sel`; `bonds` +1.5 income; `helmet` buffs existing troops (`hp/max ×1.2`); `barrage` 3 then +2; `plate` requires unlocked tank; unlock cards emit `dirty:buy`; `S.taken` counts, `S.pending` decrements, re-offer when more pending.
   - **offer state machine**: repeated `tick`s with `pending>0` produce exactly ONE `cards:offer` event until `takeCard` runs; multiple pending → sequential offers (codex important).
   - `relabelCards` per nation: gb 'Trench raiders' vs de 'Stormtroopers'; ah 'Siege gun: Škoda 30.5 cm'; aq tank text names the Weddell.
-- [ ] Implement `src/sim/cards.js`: `CAN` predicates, `buildOffer()` (pure, takes rng) → sets `G.offer={ids}` once, `takeCard(id)` (effects ported from 1264–1286), `pendingOffer()` helper for tick. `relabelCards` stays in state.js (Task 5).
-- [ ] Pass, commit: `feat: cards with sim-side offer state`.
+- [x] Implement `src/sim/cards.js`: `CAN` predicates, `buildOffer()` (pure, takes rng) → sets `G.offer={ids}` once, `takeCard(id)` (effects ported from 1264–1286), `pendingOffer()` helper for tick. `relabelCards` stays in state.js (Task 5).
+- [x] Pass, commit: `feat: cards with sim-side offer state`.
 
 ## Task 13: sim commands + tick
 
