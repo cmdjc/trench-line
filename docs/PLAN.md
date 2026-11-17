@@ -411,9 +411,9 @@ if (best && bd <= T.range) {
 
 ## Task 16: renderer
 
-- [ ] Port drawing (1574–2227) into `src/ui/draw/`: `helpers.js` (ctx transforms, circle/oval/line/at, palette), `terrain.js` (ground, patches, craters, rivers+bridges, `drawTrench`/`drawSuper`, HQ bases, flags, wire/mines/hedgehogs, job ghosts, `makeDecor` with `decor(seed)`), `men.js` (soldier styles per nation, nests/pillboxes/pits/bunkers, carriers), `tanks.js` (`drawTankGen` parts renderer, per-country fallbacks, tsar/char2c/colossus, wrecks), `effects.js` (smoke, tracers, booms, shells incl. Paris warning circle, planes, floats, aim reticle), `index.js` (`draw()` with camera transform + `vis()` culling).
-- [ ] **Test** `tests/unit/draw.test.js`: Proxy no-op ctx (legacy `tools/bot.js` pattern); for each nation and map spawn one of every fielded type + nests/bunkers/jobs/wrecks, run `draw()` — no exceptions; `vis()` culls far-camera entities.
-- [ ] Manual check via `npm run dev` (desktop + narrow viewport). Commit: `feat: canvas renderer`.
+- [x] Port drawing (1574–2227) into `src/ui/draw/`: `helpers.js` (ctx transforms, circle/oval/line/at, palette), `terrain.js` (ground, patches, craters, rivers+bridges, `drawTrench`/`drawSuper`, HQ bases, flags, wire/mines/hedgehogs, job ghosts, `makeDecor` with `decor(seed)`), `men.js` (soldier styles per nation, nests/pillboxes/pits/bunkers, carriers), `tanks.js` (`drawTankGen` parts renderer, per-country fallbacks, tsar/char2c/colossus, wrecks), `effects.js` (smoke, tracers, booms, shells incl. Paris warning circle, planes, floats, aim reticle), `index.js` (`draw()` with camera transform + `vis()` culling).
+- [x] **Test** `tests/unit/draw.test.js`: Proxy no-op ctx (legacy `tools/bot.js` pattern); for each nation and map spawn one of every fielded type + nests/bunkers/jobs/wrecks, run `draw()` — no exceptions; `vis()` culls far-camera entities.
+- [x] Manual check via `npm run dev` (desktop + narrow viewport). Commit: `feat: canvas renderer`.
 
 ## Task 17: e2e — real page in jsdom
 
