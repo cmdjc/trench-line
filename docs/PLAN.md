@@ -282,18 +282,18 @@ it('applyTech applies exactly the owned nodes', () => {
 
 ## Task 6: sim geometry + newGame
 
-- [ ] **Failing tests** `tests/unit/geometry.test.js`:
+- [x] **Failing tests** `tests/unit/geometry.test.js`:
   - `posX` derived from source: for a trench line both sides use the same zigzag: `posX(0,L,y,0) === posX(1,L,y,0) === trenchX(LX[L],y)` = `cx±6` alternating per `SEG` band (y/SEG floor parity); double trench offsets ±14 via the `y*0.61` parity. Own-HQ line: player `LX[0]+55` (foot) / `+52+tank` (vehicle park); enemy mirrored `-85/-72`. Attacking the foe HQ from the west: `LX[HQI]-85`.
   - `startX`: `open` → `LX[0]-14`; `march` → `LX[L-1]-14` for player sending to L (clamped to own HQ), mirrored for enemy.
   - `spawn(0,'rifle',3,true)` settled at `posX`, full hp, `cd` randomised by rng; unplaced spawns at `startX` unsettled.
   - `tanks()` sums `T.w` skipping `T.sup`; `full()` respects `NAT.gb.tanks=8` / `inf=40` caps (spawn to the cap, expect block).
   - `frontLine()`, `countAt`, `power`, `cost` with modifiers.
-- [ ] **Failing tests** appended to `tests/unit/geometry.test.js` — `newGame`:
+- [x] **Failing tests** appended to `tests/unit/geometry.test.js` — `newGame`:
   - spawns opening infantry both sides (gb: `Math.round(120/20)=6` riflemen; `vets` tech → worth 80 more), sets `owner[0]=0, owner[NT]=1, owner[HQI]=1`, `sel=1`, `running=true`, `sw` reset, `aim=null`, `G.tracers/shells/...` cleared.
   - nation traits applied: gb `cd.rifle ×0.85`, it `cover ×0.85`, us income 2.3/growth 0.4, aq 2/0.7, aq starts 15 supplies else 40.
   - **determinism**: `newGame('de','fr','river',99)` twice → identical `[type,x*10,y*10]` snapshots; different seeds differ.
-- [ ] Implement `src/sim/geometry.js` (lines 719–760: `trenchX, posX, isTrench, pickLane(rng), startX, spawn, count, tanks, anyTank, tkCan, full, countAt, power, cost, frontLine`; re-export `ut(side,k)=utOf(G.nation[side],k)`) and complete `newGame(mine,theirs,map,seed)` in `sim/state.js` (694–717 minus DOM: emit `game:start`, `dirty:map`, `dirty:buy`, `hud`; `cam/camT` stay UI-side; `rng.reseed(seed ?? defaultSeed())` first thing).
-- [ ] Pass, commit: `feat: geometry, spawn, seeded newGame`.
+- [x] Implement `src/sim/geometry.js` (lines 719–760: `trenchX, posX, isTrench, pickLane(rng), startX, spawn, count, tanks, anyTank, tkCan, full, countAt, power, cost, frontLine`; re-export `ut(side,k)=utOf(G.nation[side],k)`) and complete `newGame(mine,theirs,map,seed)` in `sim/state.js` (694–717 minus DOM: emit `game:start`, `dirty:map`, `dirty:buy`, `hud`; `cam/camT` stay UI-side; `rng.reseed(seed ?? defaultSeed())` first thing).
+- [x] Pass, commit: `feat: geometry, spawn, seeded newGame`.
 
 ## Task 7: sim combat — damage rules
 

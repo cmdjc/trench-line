@@ -4,12 +4,14 @@
 // DOM), 653–693 (minus newGame/DOM). newGame arrives with geometry (Task 6).
 
 import { MAPS } from '../data/maps.js';
-import { NAT } from '../data/nations.js';
+import { NAT, AI_START } from '../data/nations.js';
 import { CARDS, CARDTXT } from '../data/cards.js';
-import { ORDER, TK, utOf } from '../data/units.js';
+import { ORDER, TK, utOf, BASE_HP } from '../data/units.js';
 import { DEPOT_RATE, DBL_RATE, SUPER_INC } from '../data/units.js';
+import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 import { has } from './meta.js';
+import { spawn, ut } from './geometry.js';
 
 export const G = {
   /* layout (setLayout fills these in) */
@@ -93,3 +95,28 @@ export function relabelCards() {
 
 /* sim→UI event shorthand used all over the port (prototype called toast()/refresh()/… directly) */
 export const toast = msg => bus.emit('toast', msg);
+
+/* Start a battle. Deterministic when `seed` is given (plan Task 6). */
+export function newGame(mine, theirs, map, seed) {
+  rng.reseed(seed);                       // undefined → random default seed
+  G.nation = [mine, theirs]; G.MAP = MAPS[map] ? map : 'open'; setLayout(G.MAP); G.RIV = MAPS[G.MAP].rivers;
+  G.S = { t: 0, score: 0, supplies: mine === 'aq' ? 15 : 40, kills: 0, losses: 0, cardKills: 0, need: 4, pending: 0, taken: {}, cards: 0, unlocked: { rifle: true, mg: true }, barrageT: 6, warnT: 0, superOwner: -1, superCard: false, superT: 0 };
+  G.sw = [{ cd: 0, tunnel: null }, { cd: 0, tunnel: null }];
+  G.M = [mods(), mods()];
+  for (let s = 0; s < 2; s++) { if (G.nation[s] === 'gb') G.M[s].cd.rifle = 0.85; if (G.nation[s] === 'it') G.M[s].cover *= 0.85; }
+  if (G.nation[0] === 'us') { G.M[0].income = 2.3; G.M[0].growth = 0.4; }
+  if (G.nation[0] === 'aq') { G.M[0].income = 2; G.M[0].growth = 0.7; }
+  relabelCards();
+  G.units = []; G.aim = null; G.planes = []; G.tracers = []; G.shells = []; G.booms = []; G.floats = []; G.scorch = []; G.smoke = []; G.wrecks = [];
+  G.bases = [{ x: G.LX[0], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }, { x: G.LX[G.HQI], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }];
+  G.ai = { money: 40, buyT: 1, thinkT: 3, lastAdv: 0, aggr: 2, want: null, F: G.NT };
+  G.fort = new Array(G.HQI + 1).fill(0); G.jobs = []; G.fields = []; G.garr = new Array(G.HQI + 1).fill(0);
+  G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
+  G.sel = 1; G.offer = null;
+  applyTech();
+  for (let i = 0, n = Math.round((120 + (has('vets') ? 80 : 0)) / ut(0, 'rifle').cost); i < n; i++) spawn(0, 'rifle', 1, true);
+  for (let i = 0, n = Math.round(AI_START * 20 / ut(1, 'rifle').cost); i < n; i++) spawn(1, 'rifle', G.NT, true);
+  G.running = true; G.userPaused = false;
+  bus.emit('game:start'); bus.emit('dirty:map'); bus.emit('dirty:buy'); bus.emit('hud');
+  toast('Drag the field sideways to look around. Press Advance to take the next trench.');
+}
