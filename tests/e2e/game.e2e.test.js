@@ -176,10 +176,18 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   expect(st.tunnel).toBeTruthy();
   expect(st.tunnel.t).toBe(25);
   const kills0 = T.info().kills;
+  // Seed-robust kill count: on ~2/7 of seeds the AI's first weighted buy
+  // draw picks the (unaffordable) 65-cost MG 08 team, and its `want` then
+  // blocks rifle buys until past t=8 s — so the mine may only catch the
+  // 6 starters. That is genuine prototype AI behaviour, not a bug. What
+  // MUST hold on every seed: every enemy inside the 70 px blast band dies.
+  const blast = T.lx()[9];
+  const near9 = T.units().filter(u => u.side === 1 && Math.abs(u.x - blast) <= 70).length;
   st.tunnel.t = 0.04;
   step(0.2);
   expect(T.sw()[0].tunnel).toBe(null); // detonated
-  expect(T.info().kills).toBeGreaterThanOrEqual(kills0 + 7); // the garrison died
+  expect(T.info().kills).toBeGreaterThanOrEqual(kills0 + 6); // the garrison died
+  expect(T.info().kills).toBeGreaterThanOrEqual(kills0 + near9); // the whole blast band died
   expect(T.info().cards).toBeGreaterThanOrEqual(2); // kills earned another card
 
   // -- rig the enemy HQ and take the win through the real end screen

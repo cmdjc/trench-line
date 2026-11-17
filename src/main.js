@@ -36,7 +36,7 @@ export function boot() {
 
   if (typeof location !== 'undefined' && /debug|e2e/.test(location.search)) {
     window.__trench = {
-      units: () => G.units, sw: () => G.sw, fields: () => G.fields,
+      units: () => G.units, sw: () => G.sw, fields: () => G.fields, lx: () => G.LX,
       fort: () => G.fort, jobs: () => G.jobs, offer: () => G.offer,
       step(sec) { for (let t = 0; t < sec && G.running && document.getElementById('cardOv').hidden; t += 0.04) tick(0.04); },
       info: () => ({
