@@ -399,15 +399,15 @@ if (best && bd <= T.range) {
 
 ## Task 15: UI layer
 
-- [ ] `src/ui/hud.js`: `toast` (bus→element, 3.6 s), `refresh()` (1408–1446), `buildMap()` (1387–1392) + strip clicks → `commands.select(L)` + `focusLine` (cam here); listens `hud/toast/dirty:*`.
-- [ ] `src/ui/buy.js`: `buildBuy()` (1398–1401) + clicks → `commands.buyUnit(k)`.
-- [ ] `src/ui/cards.js`: overlay on `cards:offer` (renders `G.offer.ids` via relabeled CARDS), clicks → `commands`-level `takeCard`, re-offer while pending.
-- [ ] `src/ui/overlays.js`: start screen (1519–1537), end screen (1538–1550 + earned points + save code), research overlay incl. node tree, code copy/load, save-state text (1449–1500).
-- [ ] `src/ui/input.js`: pointer drag / tap-select / double-tap-fortify (`fortifyAt`), arrow keys, Paris aiming taps (2228–2255).
-- [ ] `src/ui/loop.js`: `frame` port (2259–2268) with **exact substep semantics** (codex important): per frame compute `paused` once from overlay visibility, `dt=clamp((now-last)/1000, 0, 0.1)`, `left=dt·speed`, `while(left>0){ const d=Math.min(0.04,left); tick(d); left-=d }`; shake decay; cam easing; 4 Hz refresh; also sets `G.reduceMotion` from `matchMedia` at boot.
-- [ ] `src/main.js`: wire bus→UI, `loadMeta()`, `requestAnimationFrame(frame)`; debug hook `window.__trench={units,sw,fields,fort,jobs,step,info,seed,ut,tkList,tanks,full,offer}` armed **only when `location.search` contains `debug` or `e2e`**.
-- [ ] **Tests** `tests/unit/ui.test.js` (jsdom env, canvas getContext Proxy stub, rAF stubbed): map strip renders `HQI+1` buttons; `refresh()` updates supplies/rate/army/aria-pressed; buy disabled when short; advance/fallback/gather via commands; pause/speed toggles; card overlay lists offer and picking applies + closes; research overlay renders 4 branches, research spends points, code round-trips through the input; end overlay shows Victory + parseable save code; **loop timing** (controlled clocks: 0.1 clamp, remainder substep, speed ×2, pause when overlay visible, offer-opened-mid-frame pauses next frame).
-- [ ] Commit: `feat: ui layer`.
+- [x] `src/ui/hud.js`: `toast` (bus→element, 3.6 s), `refresh()` (1408–1446), `buildMap()` (1387–1392) + strip clicks → `commands.select(L)` + `focusLine` (cam here); listens `hud/toast/dirty:*`.
+- [x] `src/ui/buy.js`: `buildBuy()` (1398–1401) + clicks → `commands.buyUnit(k)`.
+- [x] `src/ui/cards.js`: overlay on `cards:offer` (renders `G.offer.ids` via relabeled CARDS), clicks → `commands`-level `takeCard`, re-offer while pending.
+- [x] `src/ui/overlays.js`: start screen (1519–1537), end screen (1538–1550 + earned points + save code), research overlay incl. node tree, code copy/load, save-state text (1449–1500).
+- [x] `src/ui/input.js`: pointer drag / tap-select / double-tap-fortify (`fortifyAt`), arrow keys, Paris aiming taps (2228–2255).
+- [x] `src/ui/loop.js`: `frame` port (2259–2268) with **exact substep semantics** (codex important): per frame compute `paused` once from overlay visibility, `dt=clamp((now-last)/1000, 0, 0.1)`, `left=dt·speed`, `while(left>0){ const d=Math.min(0.04,left); tick(d); left-=d }`; shake decay; cam easing; 4 Hz refresh; also sets `G.reduceMotion` from `matchMedia` at boot.
+- [x] `src/main.js`: wire bus→UI, `loadMeta()`, `requestAnimationFrame(frame)`; debug hook `window.__trench={units,sw,fields,fort,jobs,step,info,seed,ut,tkList,tanks,full,offer}` armed **only when `location.search` contains `debug` or `e2e`**.
+- [x] **Tests** `tests/unit/ui.test.js` (jsdom env, canvas getContext Proxy stub, rAF stubbed): map strip renders `HQI+1` buttons; `refresh()` updates supplies/rate/army/aria-pressed; buy disabled when short; advance/fallback/gather via commands; pause/speed toggles; card overlay lists offer and picking applies + closes; research overlay renders 4 branches, research spends points, code round-trips through the input; end overlay shows Victory + parseable save code; **loop timing** (controlled clocks: 0.1 clamp, remainder substep, speed ×2, pause when overlay visible, offer-opened-mid-frame pauses next frame).
+- [x] Commit: `feat: ui layer`.
 
 ## Task 16: renderer
 
