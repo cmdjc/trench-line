@@ -242,7 +242,7 @@ it('both slots invalid → defaults; failed writes reported via saveOk', async (
 
 ## Task 5: sim state container (no newGame yet — codex blocker)
 
-- [ ] **Failing tests** `tests/unit/state.test.js` (node env, **no localStorage/browser globals** — proves DOM freedom):
+- [x] **Failing tests** `tests/unit/state.test.js` (node env, **no localStorage/browser globals** — proves DOM freedom):
 ```js
 import { describe, expect, it } from 'vitest';
 import { G, mods, setLayout, applyTech } from '../../src/sim/state.js';
@@ -277,8 +277,8 @@ it('applyTech applies exactly the owned nodes', () => {
   expect(G.S.unlocked.tkS).toBe(true);
 });
 ```
-- [ ] Implement `src/sim/state.js`: `G` (all fields from Porting rules + `reduceMotion:false`), `mods()` (689–693), `setLayout` (665–676), `fmt`, `lineName(L)` (needs `G.HQI`), `applyTech` (623–639), `relabelCards` (1307–1320 — lives here: needs only data + `G.nation`, avoiding a state→cards cycle at module level). `newGame` is NOT here yet (Task 6).
-- [ ] Pass, commit: `feat: sim state container`.
+- [x] Implement `src/sim/state.js`: `G` (all fields from Porting rules + `reduceMotion:false`), `mods()` (689–693), `setLayout` (665–676), `fmt`, `lineName(L)` (needs `G.HQI`), `applyTech` (623–639), `relabelCards` (1307–1320 — lives here: needs only data + `G.nation`, avoiding a state→cards cycle at module level). `newGame` is NOT here yet (Task 6).
+- [x] Pass, commit: `feat: sim state container`.
 
 ## Task 6: sim geometry + newGame
 
