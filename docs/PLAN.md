@@ -441,10 +441,10 @@ if (best && bd <= T.range) {
 
 ## Task 20: publish
 
-- [ ] `gh repo create cmdjc/trench-line --public --source . --remote origin --description "A top-down First World War trench-battle game"`; `git push -u origin main`.
-- [ ] Enable Pages from Actions: `gh api -X POST repos/cmdjc/trench-line/pages -f build_type=workflow` (fall back to `source.branch=main` shape if the API rejects).
-- [ ] `gh run watch`; verify `https://cmdjc.github.io/trench-line/` serves the built game (fetch: expect `Trench Line` title + built asset references).
-- [ ] Update PLAN.md checkboxes; final summary to owner.
+- [x] `gh repo create cmdjc/trench-line --public --source . --remote origin --description "A top-down First World War trench-battle game"`; `git push -u origin main`.
+- [x] Enable Pages from Actions: `gh api -X POST repos/cmdjc/trench-line/pages -f build_type=workflow` (fall back to `source.branch=main` shape if the API rejects).
+- [x] `gh run watch`; verify `https://cmdjc.github.io/trench-line/` serves the built game (fetch: expect `Trench Line` title + built asset references).
+- [x] Update PLAN.md checkboxes; final summary to owner.
 
 ---
 
