@@ -1,0 +1,1844 @@
+Reading prompt from stdin...
+OpenAI Codex v0.169.0
+--------
+workdir: /home/v/Documents/Dev/Max/trench-line
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a1eb25-74d3-7a01-8c3e-a46b333d10b1
+--------
+user
+You are reviewing an implementation plan for turning a 2,276-line single-file HTML/JS game prototype into a proper Vite + Vitest + ESLint project. You did not write it and have no stake in it.
+
+## Context you cannot infer
+
+- The prototype is `legacy/trench-line.html` (one IIFE, sections marked `/* ---------- name ---------- */`). `docs/HANDOFF.md` is the authoritative code map; `docs/DESIGN.md` records intended behaviour and known quirks.
+- Owner decisions already settled (do not relitigate): behaviour parity plus only the "stray miss tracer" bug fix and rewriting lost save-code tests; seeded RNG in the simulation; localStorage with two save slots; vanilla JS ES modules (no TS, no frameworks); no runtime dependencies; GitHub user cmdjc with GitHub Pages deploy via Actions, matching sibling repos (landfall, wobblers).
+- The plan is `docs/PLAN.md`. It will be executed inline, task by task, TDD, commit per task.
+- jsdom cannot execute `<script type="module">`, which is why the e2e strategy wraps the real entry with esbuild into an IIFE and loads it in jsdom (pattern proven by legacy/tests/harness.js).
+
+## What to scrutinise hardest
+
+1. Architecture: is the `G` single-state-object + event-bus boundary between `src/sim` and `src/ui` sound and actually sufficient to keep the sim DOM-free, given the sim currently calls toast()/refresh()/buildBuy() directly? Any circular-import traps between sim modules (combat↔fortify↔superweapons↔state) under ES modules?
+2. Port fidelity risks: which prototype behaviours are most likely to break in the port and are they covered by a planned test? Look for gaps (e.g. save-code edge cases, AI determinism, card offer weights, maps/rivers coupling, tick sub-stepping).
+3. Test strategy: are the unit/e2e choices workable in CI (GitHub Actions, no browser)? Is the jsdom+esbuild-IIFE e2e sound?
+4. Task ordering and commit hygiene: missing prerequisites, tasks too large, hidden serialisation that breaks "test after each task"?
+
+## Material
+
+- docs/PLAN.md (the plan under review)
+- docs/HANDOFF.md, docs/DESIGN.md (context)
+- legacy/trench-line.html (source of truth; sections listed in PLAN.md's source map)
+- legacy/tests/*.js (tests being ported)
+
+## Output format
+
+VERDICT: APPROVE | APPROVE WITH CHANGES | REJECT
+
+- SEVERITY (BLOCKER | IMPORTANT | MINOR) - file:line - concrete failure - specific fix
+
+Omit praise, summaries, and unsupported speculation.
+
+## Assumptions and gaps
+State what could not be verified rather than guessing.
+
+hook: SessionStart
+hook: SessionStart Completed
+codex
+I will compare the plan with the prototype and legacy tests, focusing on module boundaries, behavior coverage, and task order.
+
+exec
+/usr/bin/zsh -lc 'cat /home/v/.agents/skills/superpowers/using-superpowers/SKILL.md' in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, skip this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## Instruction Priority
+
+Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:
+
+1. **User's explicit instructions** (CLAUDE.md, GEMINI.md, AGENTS.md, direct requests) — highest priority
+2. **Superpowers skills** — override default system behavior where they conflict
+3. **Default system prompt** — lowest priority
+
+If CLAUDE.md, GEMINI.md, or AGENTS.md says "don't use TDD" and a skill says "always use TDD," follow the user's instructions. The user is in control.
+
+## How to Access Skills
+
+**In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to you—follow it directly. Never use the Read tool on skill files.
+
+**In Copilot CLI:** Use the `skill` tool. Skills are auto-discovered from installed plugins. The `skill` tool works the same as Claude Code's `Skill` tool.
+
+**In Gemini CLI:** Skills activate via the `activate_skill` tool. Gemini loads skill metadata at session start and activates the full content on demand.
+
+**In other environments:** Check your platform's documentation for how skills are loaded.
+
+## Platform Adaptation
+
+Skills use Claude Code tool names. Non-CC platforms: see `references/copilot-tools.md` (Copilot CLI), `references/codex-tools.md` (Codex) for tool equivalents. Gemini CLI users get the tool mapping loaded automatically via GEMINI.md.
+
+# Using Skills
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
+
+```dot
+digraph skill_flow {
+    "User message received" [shape=doublecircle];
+    "About to EnterPlanMode?" [shape=doublecircle];
+    "Already brainstormed?" [shape=diamond];
+    "Invoke brainstorming skill" [shape=box];
+    "Might any skill apply?" [shape=diamond];
+    "Invoke Skill tool" [shape=box];
+    "Announce: 'Using [skill] to [purpose]'" [shape=box];
+    "Has checklist?" [shape=diamond];
+    "Create TodoWrite todo per item" [shape=box];
+    "Follow skill exactly" [shape=box];
+    "Respond (including clarifications)" [shape=doublecircle];
+
+    "About to EnterPlanMode?" -> "Already brainstormed?";
+    "Already brainstormed?" -> "Invoke brainstorming skill" [label="no"];
+    "Already brainstormed?" -> "Might any skill apply?" [label="yes"];
+    "Invoke brainstorming skill" -> "Might any skill apply?";
+
+    "User message received" -> "Might any skill apply?";
+    "Might any skill apply?" -> "Invoke Skill tool" [label="yes, even 1%"];
+    "Might any skill apply?" -> "Respond (including clarifications)" [label="definitely not"];
+    "Invoke Skill tool" -> "Announce: 'Using [skill] to [purpose]'";
+    "Announce: 'Using [skill] to [purpose]'" -> "Has checklist?";
+    "Has checklist?" -> "Create TodoWrite todo per item" [label="yes"];
+    "Has checklist?" -> "Follow skill exactly" [label="no"];
+    "Create TodoWrite todo per item" -> "Follow skill exactly";
+}
+```
+
+## Red Flags
+
+These thoughts mean STOP—you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
+| "Let me gather information first" | Skills tell you HOW to gather information. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "This doesn't count as a task" | Action = task. Check for skills. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
+| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+
+## Skill Priority
+
+When multiple skills could apply, use this order:
+
+1. **Process skills first** (brainstorming, debugging) - these determine HOW to approach the task
+2. **Implementation skills second** (frontend-design, mcp-builder) - these guide execution
+
+"Let's build X" → brainstorming first, then implementation skills.
+"Fix this bug" → debugging first, then domain-specific skills.
+
+## Skill Types
+
+**Rigid** (TDD, debugging): Follow exactly. Don't adapt away discipline.
+
+**Flexible** (patterns): Adapt principles to context.
+
+The skill itself tells you which.
+
+## User Instructions
+
+Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows.
+
+exec
+/usr/bin/zsh -lc "rg -n 'trench-line' /home/v/.codex/memories/MEMORY.md; pwd; rg --files -g 'AGENTS.md' -g 'PLAN.md' -g 'HANDOFF.md' -g 'DESIGN.md' -g '*.js' legacy docs" in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+/home/v/Documents/Dev/Max/trench-line
+legacy/tests/harness.js
+legacy/tests/merge.js
+legacy/tests/smoke.js
+legacy/tests/gen-stats.js
+docs/PLAN.md
+docs/DESIGN.md
+docs/HANDOFF.md
+legacy/tools/bot.js
+
+exec
+/usr/bin/zsh -lc 'nl -ba docs/PLAN.md' in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+     1	# Trench Line: proper project — implementation plan
+     2	
+     3	> **For agentic workers:** This plan is executed inline (executing-plans). Tasks use `- [ ]` checkboxes and are updated as they complete. Commit after every task.
+     4	
+     5	**Goal:** Turn the single-file prototype `trench-line.html` (2,276 lines) into a clean, tested Vite JS project, behaviour-identical except for agreed bug fixes, published to `github.com/cmdjc/trench-line` and deployed to GitHub Pages.
+     6	
+     7	**Architecture:** Vanilla JS ES modules. A DOM-free simulation (`src/sim/`) holds all mutable state in one exported `G` object and talks to the UI only through a tiny event emitter. Data (units, nations, tech, cards, maps, superweapons) lives in plain modules under `src/data/`. UI modules (`src/ui/`) own the DOM and canvas; the renderer is split from game logic. A seeded RNG makes battles reproducible; tests drive the simulation directly (no jsdom for unit tests). E2E loads the real bundle in jsdom (esbuild IIFE wrapper).
+     8	
+     9	**Tech stack:** Vite 8, Vitest 4, ESLint (flat config), jsdom (dev/test only), Node ≥ 22.12, GitHub Actions for Pages deploy. No runtime dependencies.
+    10	
+    11	**Decisions (confirmed by owner):**
+    12	1. **Parity + obvious bug fixes.** Same balance and behaviour; fix only clear bugs: the stray "miss" tracer fired even on hits/shells (source line 891), and rewrite the lost save-code / two-slot recovery tests. The 9 open questions in DESIGN.md stay open.
+    13	2. **Seeded RNG** replaces `Math.random()` everywhere inside the simulation (HANDOFF suggestion 5).
+    14	3. **localStorage, 2 slots** (`trenchline-meta`, `trenchline-meta-b`, newest valid wins) — HANDOFF storage choice.
+    15	4. Credits: "M K" (author) and AI agents Claude and GLM — in README, and a credits line on the start screen.
+    16	5. Sister-folder conventions (landfall/wobblers): `package.json` scripts (`dev/build/preview/test/lint/e2e/check`), ESLint flat config, Apache-2.0 LICENSE, `.github/workflows/pages.yml` deploying `dist/`, Vite `base:"./"`.
+    17	
+    18	**Source map** (line ranges in `legacy/trench-line.html` after move; same numbers as the original file):
+    19	
+    20	| Section | Lines |
+    21	|---|---|
+    22	| HTML + CSS | 1–232 |
+    23	| constants | 233–296 |
+    24	| tank variants / STATS / SPECIAL / NAT / AI_* | 297–533 |
+    25	| permanent research (TECH, save codes) | 534–640 |
+    26	| state (SW, MAPS, setLayout, mods, newGame) | 641–718 |
+    27	| geometry | 719–760 |
+    28	| combat (hurt, die, stepUnits) | 761–988 |
+    29	| fortifying and MG nests | 989–1111 |
+    30	| superweapons | 1112–1196 |
+    31	| enemy commander | 1197–1261 |
+    32	| cards | 1262–1343 |
+    33	| orders, interface | 1344–1551 |
+    34	| simulation tick | 1552–1573 |
+    35	| drawing | 1574–2227 |
+    36	| camera input | 2228–2256 |
+    37	| loop + test hook | 2257–2276 |
+    38	
+    39	**Porting rules (apply to every task):**
+    40	- Copy function bodies nearly verbatim. Rename closure globals to `G.` fields: `units→G.units, S→G.S, M→G.M, owner→G.owner, fort→G.fort, fields→G.fields, jobs→G.jobs, garr→G.garr, bases→G.bases, ai→G.ai, sel→G.sel, nation→G.nation, LX→G.LX, WW/NT/HQI/SUPER/DBL→G.WW/G.NT/G.HQI/G.SUPER/G.DBL, MAP/RIV→G.MAP/G.RIV, sw/shake→G.sw/G.shake, aim/planes/tracers/shells/booms/floats/scorch/smoke/wrecks→G.*`, `running→G.running, uid→G.uid`.
+    41	- `Math.random()` in simulation code → `rng.float()`. Keep the decor generator `rnd(seed)` (line 1578) as-is (already seeded).
+    42	- DOM calls from sim (`toast`, `refresh`, `buildBuy`, `buildMap`, `makeDecor`, `focusLine`, `$('cardOv')`) become events on `bus`: `toast`, `hud`, `dirty:buy`, `dirty:map`, `cards:offer`, `game:end`, `game:start`. UI listens; sim never imports DOM.
+    43	- `window.storage` → `src/storage.js` localStorage adapter with the same async shape (`get(k)` → `{value}` | null, `set(k,v)` → truthy | null).
+    44	- Damage tables are keyed by `T.atk || u.type`; any new unit key must be added to `mods()` (unchanged rule).
+    45	
+    46	**File map (final layout):**
+    47	
+    48	```
+    49	index.html                     # shell: ported markup, loads /src/main.js
+    50	package.json  vite.config.js  eslint.config.js  .gitignore  LICENSE  README.md
+    51	.github/workflows/pages.yml
+    52	legacy/                        # prototype + old tests/tools, moved verbatim
+    53	  trench-line.html  tests/{harness,smoke,merge}.js  tools/{bot.js,make-artifact.py,package.json}
+    54	docs/                          # DESIGN.md HANDOFF.md STATS.md PLAN.md (this file)
+    55	scripts/
+    56	  gen-stats.mjs                # regenerates docs/STATS.md from src/data
+    57	  bot.mjs                      # headless scripted player (deterministic)
+    58	src/
+    59	  main.js                      # bootstrap: storage→meta→UI wiring→loop
+    60	  styles.css                   # extracted CSS (unchanged rules)
+    61	  storage.js                   # localStorage adapter
+    62	  core/{events.js,rng.js}
+    63	  data/{units.js,nations.js,superweapons.js,tech.js,cards.js,maps.js}
+    64	  sim/{state.js,geometry.js,combat.js,fortify.js,superweapons.js,ai.js,cards.js,tick.js,meta.js}
+    65	  ui/{hud.js,buy.js,cards.js,overlays.js,input.js,loop.js}
+    66	  ui/draw/{index.js,helpers.js,terrain.js,men.js,tanks.js,effects.js}
+    67	tests/
+    68	  unit/*.test.js               # node env, direct sim imports
+    69	  e2e/game.e2e.test.js         # jsdom + esbuild IIFE bundle of the real page
+    70	```
+    71	
+    72	---
+    73	
+    74	## Task 0: repo init
+    75	
+    76	- [ ] `git init`; local config `user.name Commander`, `user.email cmdjc@jcent.com` (matches sister repos).
+    77	- [ ] Move `trench-line.html` → `legacy/trench-line.html`, `tests/{harness,smoke,merge}.js` → `legacy/tests/`, `tools/*` → `legacy/tools/`. Delete `artifact/` (generated copy; the generator stays in `legacy/tools/`). Keep `docs/`, `README.md` at root.
+    78	- [ ] Write `.gitignore` (node_modules/, dist/, coverage/, *.png shots).
+    79	- [ ] Commit: `init: prototype handoff as received` then `chore: move prototype to legacy/`.
+    80	
+    81	## Task 1: toolchain + shell
+    82	
+    83	- [ ] `package.json` mirroring landfall: `"type":"module"`, engines node ≥22.12, scripts `dev/build/preview/test/lint/e2e/check`; devDeps `vite, vitest, @eslint/js, eslint, globals, jsdom` (versions from landfall's lock: vite 8.3.5, vitest 4.1.12, eslint 10.13.0, @eslint/js 10.0.1, globals 17.13.0, jsdom 30.1.3).
+    84	- [ ] `vite.config.js`: `base:"./"`, test include `tests/unit/**/*.test.js`, env node.
+    85	- [ ] `eslint.config.js` (copy landfall's, adjusted paths).
+    86	- [ ] `index.html`: ported markup (source lines 120–227) minus inline style/script, plus `<script type="module" src="/src/main.js">`; credits line added to start overlay: `<p class="credits">A game by M K · built with the AI agents Claude and GLM.</p>` (+ CSS rule `footer/credits` styling, muted, small).
+    87	- [ ] `src/styles.css` = ported CSS (lines 8–117) + credits rule.
+    88	- [ ] `src/main.js` stub: `import './styles.css'` only.
+    89	- [ ] `npm install`; add trivial `tests/unit/sanity.test.js` (`expect(1+1).toBe(2)`); `npm run check` green.
+    90	- [ ] Commit: `chore: vite + vitest + eslint shell`.
+    91	
+    92	## Task 2: core — rng + events (TDD)
+    93	
+    94	- [ ] **Failing tests** `tests/unit/rng.test.js`:
+    95	```js
+    96	import { describe, expect, it } from 'vitest';
+    97	import { makeRng, rng } from '../../src/core/rng.js';
+    98	
+    99	describe('makeRng (mulberry32)', () => {
+   100	  it('reproduces the same sequence for the same seed', () => {
+   101	    const a = makeRng(1234), b = makeRng(1234);
+   102	    const sa = [a(), a(), a()], sb = [b(), b(), b()];
+   103	    expect(sa).toEqual(sb);
+   104	  });
+   105	  it('stays in [0,1) and differs across seeds', () => {
+   106	    const a = makeRng(1), b = makeRng(2);
+   107	    const seq = Array.from({ length: 200 }, () => a());
+   108	    expect(seq.every(v => v >= 0 && v < 1)).toBe(true);
+   109	    expect(seq.slice(0, 5)).nottoEqual(Array.from({ length: 5 }, () => b()));
+   110	  });
+   111	});
+   112	
+   113	describe('shared rng', () => {
+   114	  it('can be reseeded and reports its seed', () => {
+   115	    rng.seed(42); const first = rng.float();
+   116	    rng.seed(42); expect(rng.float()).toBe(first);
+   117	    expect(rng.seed).toBe(42);
+   118	  });
+   119	  it('range(a,b) stays within bounds', () => {
+   120	    rng.seed(7);
+   121	    for (let i = 0; i < 100; i++) { const v = rng.range(3, 9); expect(v).toBeGreaterThanOrEqual(3); expect(v).toBeLessThanOrEqual(9); }
+   122	  });
+   123	});
+   124	```
+   125	- [ ] Run `npx vitest run tests/unit/rng.test.js` → FAIL (module missing).
+   126	- [ ] Implement `src/core/rng.js`: `makeRng(seed)` mulberry32 returning `()=>…[0,1)`; shared `rng` object `{seed, float(), range(a,b), int(n), pick(arr)}` where `float()` etc. call a reseedable inner generator. Also export `decor(seed)` = ported `rnd()` (line 1578).
+   127	- [ ] Tests pass. Commit: `feat: seeded rng`.
+   128	
+   129	- [ ] **Failing test** `tests/unit/events.test.js` (on/emit payload, off, no listener → no throw). Implement `src/core/events.js` (`export const bus={on,ev,off,emit}` — ~15 lines). Tests pass. Commit: `feat: sim↔ui event bus`.
+   130	
+   131	## Task 3: data modules
+   132	
+   133	Port lines 233–533, 642–652 (SW), 535–557 (TECH), 1263–1306 (CARDS/CARDTXT), 656–664 (MAPS) into `src/data/`. Pure data + tiny pure helpers; **no imports from sim/ui**.
+   134	
+   135	- `data/units.js`: `UT, INF, TK, ORDER, TKB, tkv(), NU (assembled: gb/de/fr/us/ru/it/aq/ah + tank variants incl. AQ_TANKS), SPECIAL, STATS, tkList(), tkPrev(), utFactory(nationGetter)` — `ut(side,k)` needs `G.nation`, so export `utOf(nation,k)` and let sim re-export `ut(side,k)`. Cover tables `COV, ARM, NESTCOV`, `FORT_COST, FORTD, FORTA, SLOTS, SLOTS5, maxFortOf(superL,L)`, `HEDGE, DBL_COV, DBL_RATE, BUNKER_CAP, BUNKER_MAX, GARR_T, DEPOT_RATE, SUPER_INC, SUPER_CARD_T, BASE_HP`.
+   136	- `data/nations.js`: `NAT` (with the `blurb += ' Superweapon: …'` merge done here), `AI_UNLOCK, AI_INCOME, AI_RAMP, AI_START, AI_W, BW, WH, SEG`.
+   137	- `data/superweapons.js`: `SW` map.
+   138	- `data/tech.js`: `TECH`, `TECH_IDS()`.
+   139	- `data/cards.js`: `CARDS` (data only: `{id,w,once?,name,text}`) + `CARDTXT`. Effect bodies live in `sim/cards.js` (source lines 1264–1286 `take()` bodies).
+   140	- `data/maps.js`: `MAPS` with rivers as **precomputed literal numbers** (they embed the default 9-trench LX math from lines 658–659; keep exact values).
+   141	- [ ] **Failing tests** `tests/unit/data.test.js`, then implement, then pass:
+   142	```js
+   143	import { describe, expect, it } from 'vitest';
+   144	import { NATS } from '../../src/data/nations.js';
+   145	import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
+   146	import { CARDS, CARDTXT } from '../../src/data/cards.js';
+   147	import { TECH } from '../../src/data/tech.js';
+   148	import { MAPS } from '../../src/data/maps.js';
+   149	import { SW } from '../../src/data/superweapons.js';
+   150	
+   151	it('every nation has rifle, mg and at least one armour slot', () => {
+   152	  for (const n of NATS) {
+   153	    expect(STATS[n].rifle?.cost, n).toBeGreaterThan(0);
+   154	    expect(STATS[n].mg?.cost, n).toBeGreaterThan(0);
+   155	    expect(tkList(n).length, n).toBeGreaterThan(0);
+   156	  }
+   157	});
+   158	it('tkList is cheapest-first and entries exist in STATS', () => {
+   159	  for (const n of NATS) { const l = tkList(n); for (let i = 1; i < l.length; i++) expect(STATS[n][l[i - 1]].cost).toBeLessThanOrEqual(STATS[n][l[i]].cost); }
+   160	});
+   161	it('card ids are unique; CARDTXT keys are card ids; TECH ids unique', () => {
+   162	  const ids = CARDS.map(c => c.id);
+   163	  expect(new Set(ids).size).toBe(ids.length);
+   164	  for (const n in CARDTXT) for (const id in CARDTXT[n]) expect(ids).toContain(id);
+   165	  const tids = TECH.flatMap(b => b.nodes.map(n => n.id));
+   166	  expect(new Set(tids).size).toBe(tids.length);
+   167	});
+   168	it('every non-base unit type declares atk or is a base type', () => {
+   169	  const base = new Set(Object.keys(UT));
+   170	  for (const n of NATS) for (const k in STATS[n]) { const T = STATS[n][k]; if (T?.dmg && !base.has(k)) expect(typeof T.atk, `${n}:${k}`).toBe('string'); }
+   171	  for (const k in SPECIAL) { const T = SPECIAL[k]; if (T.dmg && !base.has(k)) expect(typeof T.atk, k).toBe('string'); }
+   172	});
+   173	it('each nation has a superweapon and a map for every key', () => {
+   174	  for (const n of NATS) expect(SW[n], n).toBeTruthy();
+   175	  expect(Object.keys(MAPS).sort()).toEqual(['march', 'open', 'plain', 'river']);
+   176	});
+   177	it('save-critical order: TECH declaration order is stable (mask compat)', () => {
+   178	  expect(TECH.flatMap(b => b.nodes.map(n => n.id)).slice(0, 5)).toEqual(['marks', 'kit', 'craft', 'vets', 'deep']);
+   179	});
+   180	```
+   181	- [ ] Commit: `feat: data modules (units, nations, tech, cards, maps, sw)`.
+   182	
+   183	## Task 4: sim state
+   184	
+   185	- [ ] **Failing tests** `tests/unit/state.test.js`:
+   186	```js
+   187	import { describe, expect, it, beforeEach } from 'vitest';
+   188	import { G, newGame, mods } from '../../src/sim/state.js';
+   189	import { MAPS } from '../../src/data/maps.js';
+   190	
+   191	beforeEach(() => { localStorage.clear?.(); });
+   192	
+   193	it('setLayout per map: open=9 trenches, plain=17, march=45', () => {
+   194	  for (const [map, n] of [['open', 9], ['plain', 17], ['march', 45]]) {
+   195	    newGame('gb', 'de', map, 1);
+   196	    expect(G.NT, map).toBe(n);
+   197	    expect(G.LX.length).toBe(n + 2);
+   198	    expect(G.HQI).toBe(n + 1);
+   199	    expect(G.WW).toBeGreaterThan(G.LX[G.HQI]);
+   200	  }
+   201	});
+   202	it('march marks the super trench at the middle line; plain marks two double trenches', () => {
+   203	  newGame('gb', 'de', 'march', 1); expect(G.SUPER).toBe(23); expect(G.DBL).toEqual([]);
+   204	  newGame('gb', 'de', 'plain', 1); expect(G.SUPER).toBe(-1); expect(G.DBL).toEqual([4, 14]);
+   205	});
+   206	it('newGame spawns starting infantry for both sides and sets owners', () => {
+   207	  newGame('gb', 'de', 'open', 1);
+   208	  expect(G.units.filter(u => u.side === 0).length).toBeGreaterThan(0);
+   209	  expect(G.units.filter(u => u.side === 1).length).toBeGreaterThan(0);
+   210	  expect(G.owner[0]).toBe(0); expect(G.owner[G.HQI]).toBe(1);
+   211	  expect(G.running).toBe(true);
+   212	});
+   213	it('mods() covers every ORDER key plus specials', () => {
+   214	  const m = mods();
+   215	  for (const k of ['rifle', 'mg', 'raider', 'sniper', 'mortar', 'tank', 'tkL', 'tkM', 'tkH', 'tkS', 'bunker', 'colossus', 'tsar', 'char2c', 'nest', 'depot', 'pit75', 'pit65']) {
+   216	    expect(m.dmg[k], k).toBe(1); expect(m.cost[k], k).toBe(1);
+   217	  }
+   218	});
+   219	it('same seed ⇒ identical opening state', () => {
+   220	  newGame('de', 'fr', 'river', 99); const a = JSON.stringify(snapshot());
+   221	  newGame('de', 'fr', 'river', 99); const b = JSON.stringify(snapshot());
+   222	  expect(a).toBe(b);
+   223	  function snapshot() { return G.units.map(u => [u.type, Math.round(u.x * 10), Math.round(u.y * 10)]); }
+   224	});
+   225	```
+   226	- [ ] Implement `src/sim/state.js`: `G` object with every field from Porting rules; `mods()`, `setLayout(key)` (lines 665–676), `newGame(mine, theirs, map, seed)` (lines 694–717) minus DOM (`relabelCards` imported from sim/cards, `makeDecor/buildMap/buildBuy/refresh` → `bus.emit('dirty:map')`, `bus.emit('dirty:buy')`, `bus.emit('hud')`, toast via bus; `cam/camT` stay UI-side so drop), `applyTech()` (623–639, uses META from sim/meta), `fmt`, `lineName`. RNG seeded here: `rng.seed(seed ?? defaultSeed())`.
+   227	- [ ] Pass, commit: `feat: sim state + newGame (seeded)`.
+   228	
+   229	## Task 5: sim geometry
+   230	
+   231	- [ ] **Failing tests** `tests/unit/geometry.test.js` (use `newGame` to set up):
+   232	  - `posX`: player at trench L sits left of `LX[L]` by 6 (zigzag `trenchX`), enemy mirrored; own HQ offset +55/−52 tank; enemy HQ attack offset 85/72.
+   233	  - `startX`: on `open` reinforcements spawn at `LX[0]-14`; on `march` sending to L spawns at `LX[L-1]-14` (clamped).
+   234	  - `spawn(0,'rifle',3,true)` creates settled unit at `posX(0,3,y,0)` with full hp; `spawn` without placed starts unsettled at startX.
+   235	  - `tanks()` sums `T.w` and skips `T.sup`; `full()` blocks at `NAT.tanks`/`inf` caps (spawn rifles up to cap for gb=40; tanks: buy 8×w1 for gb).
+   236	  - `frontLine()` returns max player line; `countAt/power` per line.
+   237	- [ ] Implement `src/sim/geometry.js` porting lines 719–760 (`trenchX, posX, isTrench, pickLane(rng), startX, spawn, count, tanks, anyTank, tkCan, full, countAt, power, cost, frontLine`). `ut(side,k)` re-exported here via `utOf(G.nation[side],k)`.
+   238	- [ ] Pass, commit: `feat: sim geometry + spawn`.
+   239	
+   240	## Task 6: sim combat — damage rules
+   241	
+   242	- [ ] **Failing tests** `tests/unit/combat-damage.test.js` — pin every row of the cover/armour tables using a tiny harness that spawns attacker/victim directly and calls `hurt`:
+   243	```js
+   244	// helper: hurt(e, dmg, atk, attacker, cov, area) — ported signature
+   245	it('settled rifleman in trench 0-fort takes 25% (COV.rifle)', …);          // dmg 8 → hp -2
+   246	it('each fort level deepens cover (FORTD 1→0.5)', …);
+   247	it('raiders ignore trench cover; same-trench attackers ignore it', …);
+   248	it('sniper cover 0.5; mortar 0.7; tank 0.6; base line 0.3; HQ 0.5', …);
+   249	it('armour table ARM: rifle 0.1, mg 0.15, mortar/tank 1; thin doubles small arms (<0.5)', …);
+   250	it('Maxim shield multiplies rifle/mg/sniper/base by 0.55 only', …);
+   251	it('nests use NESTCOV; pillbox/bunker use their own ncov; soft units take 0.6', …);
+   252	it('bunker shelter redirects direct hits to the bunker and blocks splash for sheltered troops', …);
+   253	it('double trench multiplies by 0.55 on top; Italy cover ×0.85 nation trait', …);
+   254	it('die() pays bounty, advances card kills, spawns wreck/scorch for armour', …);
+   255	```
+   256	- [ ] Implement `src/sim/combat.js` part 1: port `hurt` (762–777), `HQG/accVs` (778–779), `die` (780–790), `hurtBase` (791–794), effect pushers `puff/boom/tracer` (795–797) writing into `G.smoke/G.booms/G.tracers`. Export them for tests.
+   257	- [ ] Pass, commit: `feat: damage model + die/bounty`.
+   258	
+   259	## Task 7: sim combat — stepUnits
+   260	
+   261	- [ ] **Failing tests** `tests/unit/combat-step.test.js` (drive with fixed `dt`):
+   262	  - movement toward `posX` target; `wireSlow` 0.3 for infantry, tanks delete wire; river units funnel to nearest bridge band; big units ignore rivers.
+   263	  - **hedgehogs** (port of legacy merge test): enemy holds double trench 14 → player tank halts at `LX[14]-94-len-8`, tsar (`big`) passes; when player infantry hold 14, tank passes.
+   264	  - firing: cooldowns randomised ±15% via rng; magazine (BAR: 20 shots then reload cd); jam (Chauchat); `moveFire` gating; min range respected; shell push with `atk` type, splash, cov, arc.
+   265	  - **regression for the stray tracer bug**: with `acc:1` rifleman fires → exactly one tracer (hit), no miss tracer; with `acc:0` → exactly one faint miss tracer; shell weapons draw no tracer either way.
+   266	  - HQ guns fire only within 270; shells land: splash damages units in radius only, `base:true` shells hit HQ; siege shells can strip fort levels; huge (Paris) shell razes forts in `rz`, shakes.
+   267	  - ownership: only-attacker-settled line flips `owner`; empty trench keeps owner.
+   268	  - nest capture flips side when enemies hold its line alone; AH garrison fortifies lines with ≥3 settled after GARR_T.
+   269	  - bunkers: settled troops walk in (≤6), keep firing; on bunker death troops exposed; `stepBunkers` releases on side change.
+   270	  - barrage card: every 10 s spawns M[0].barrage shells at frontmost enemy.
+   271	- [ ] Implement stepUnits (799–987) + `stepFields`/`wireSlow` moved to `fortify.js` (imported); replace the tracer block at 885–891 with:
+   272	```js
+   273	if (best && bd <= T.range) {
+   274	  u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
+   275	  if (T.shell) shells.push({ /* unchanged fields */ });
+   276	  else if (rng.float() < T.acc * accVs(u, best)) { tracer(u.x + dir * 9, u.y, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
+   277	  else tracer(u.x + dir * 9, u.y, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
+   278	  if (T.jam && rng.float() < T.jam) u.cd = 2.4;
+   279	  if (T.mag) { u.shots = (u.shots || 0) + 1; if (u.shots >= T.mag) { u.shots = 0; u.cd = T.reload; } }
+   280	}
+   281	```
+   282	(the original fired the faint miss tracer unconditionally for non-magazine weapons — DESIGN.md "Known quirks" #3).
+   283	- [ ] Pass, commit: `feat: stepUnits with hedgehogs, rivers, fixed miss tracer`.
+   284	
+   285	## Task 8: sim fortify
+   286	
+   287	- [ ] **Failing tests** `tests/unit/fortify.test.js`:
+   288	  - `freeSlot`: 3 slots normal trench, 5 in double; occupied by nests and pending jobs.
+   289	  - `buildNest` spawns sapper job; `stepJobs` stage 0→1→2 spawns gun carrier after 4 s, completes after 3 more + arrival, replaces with nest at slot; killed sapper abandons (toast).
+   290	  - `buildDef` per nation: gb wire field object at LX+54; ru 10 mines spread; fr/us/it pit & depot (US depot adds income via DEPOT_RATE; duplicate depot per trench blocked); aq bunker via slots and ≤2 per trench.
+   291	  - `buildSuper`: first capture spawns pillbox/pit75/pillbox fixed, hp ×1.6, slots 0/1/2.
+   292	  - `fortify` costs FORT_COST levels, owner-gated, max level 3 (4 on SUPER), supply-gated.
+   293	- [ ] Implement `src/sim/fortify.js` (port lines 989–1110). Pass, commit: `feat: fortification, nests, bunkers, fields`.
+   294	
+   295	## Task 9: sim superweapons
+   296	
+   297	- [ ] **Failing tests** `tests/unit/superweapons.test.js` per kind (`swBlock` strings, one-at-a-time, cost/cd set):
+   298	  - de Paris: `useSW(0,{x,y})` pushes huge shell (dmg 700, splash 90, dur 4.5, rz 80); aiming clamps to field.
+   299	  - gb Messines: tunnel 25 s against targetFor trench, then `detonate` kills occupants within 70 px, razes forts if not owner, mine toast.
+   300	  - fr char2c / ru tsar / aq colossus: spawn one, blocked while alive, `T.sup` doesn't count to armour.
+   301	  - us bugs: 4 shells, flight capped `min(7, max(1.5, dx/230))`.
+   302	  - it caproni: plane crosses field in (WH+100)/110 s, 8 bombs along the trench column.
+   303	  - ah skoda42: 3 big razing shells, staggered −1.3 s.
+   304	  - enemy AI aiming uses richest cluster (`aimPoint`).
+   305	- [ ] Implement `src/sim/superweapons.js` (1112–1196). Pass, commit: `feat: superweapons`.
+   306	
+   307	## Task 10: sim AI
+   308	
+   309	- [ ] **Failing tests** `tests/unit/ai.test.js`: income ramp formula incl. us/aq modifiers, depots, super/dbl income; buy loop respects armour cap and inf cap; `aiThink` gathers at F, advances on power ratios (seeded, deterministic); wants sw only past 240 s and 60% cost for ≥1500.
+   310	- [ ] Implement `src/sim/ai.js` (1197–1261). Pass, commit: `feat: enemy commander`.
+   311	
+   312	## Task 11: sim cards
+   313	
+   314	- [ ] **Failing tests** `tests/unit/cards.test.js`:
+   315	  - pool excludes `once` already taken, failing `can`, redundant `u_tank` when unlocked; corps tech forces u_tank in first offer; intel offers 4.
+   316	  - seeded pick: same seed → same offer; weights respected statistically (χ²-lite: each of 2 cards appears across 200 seeds).
+   317	  - `takeCard('u_raider')` unlocks + spawns 2 at sel; bonds +1.5 income; helmet heals and buffs existing troops; barrage stacks +2.
+   318	  - `relabelCards` per nation text (gb raiders vs de stormtroopers; ah "Siege gun: Škoda 30.5 cm"; aq Weddell tank text).
+   319	- [ ] Implement `src/sim/cards.js`: `CARDS` effects map, `relabelCards()`, `buildOffer()` (pure — returns ids), `takeCard(id)` (1263–1342 logic minus DOM; emits `dirty:buy` when unlock).
+   320	- [ ] Pass, commit: `feat: cards`.
+   321	
+   322	## Task 12: sim tick + meta/storage (rewrites the lost tests)
+   323	
+   324	- [ ] **Failing tests** `tests/unit/meta.test.js` (localStorage fake or real via jsdom env — use `@vitest/environment jsdom` per-file):
+   325	```js
+   326	it('makeCode/readCode round-trip points, tech mask, runs, wins', () => {
+   327	  META.points = 123; META.tech = { marks: 1, kit: 1 }; META.runs = 7; META.wins = 3;
+   328	  const d = readCode(makeCode());
+   329	  expect(d.points).toBe(123); expect(d.tech).toEqual({ marks: 1, kit: 1 }); expect(d.runs).toBe(7); expect(d.wins).toBe(3);
+   330	});
+   331	it('rejects bad checksum, wrong prefix, junk, negative numbers', () => {
+   332	  expect(readCode('TL1-0-0-0-0-ZZ')).toBeNull();
+   333	  expect(readCode('TL2-0-0-0-0-' + 'TL1-0-0-0-0-'.slice(0))).toBeNull();
+   334	  expect(readCode('hello')).toBeNull();
+   335	  const c = makeCode(); expect(readCode(c.replace(/-([0-9A-Z]+)$/, '-AAAA'))).toBeNull();
+   336	});
+   337	it('prunes tech whose predecessor is missing (order enforcement)', () => {
+   338	  // craft code with kit but not marks via mask bit 1 only
+   339	  const body = 'TL1-5-1-0-0'; const code = body + '-' + codeCheck(body);
+   340	  expect(readCode(code).tech).toEqual({}); // kit requires marks
+   341	});
+   342	it('two-slot recovery: newest valid wins, corrupt slot repaired', async () => {
+   343	  localStorage.setItem('trenchline-meta', JSON.stringify({ code: makeCode(), rev: 5, ts: 100 }));
+   344	  localStorage.setItem('trenchline-meta-b', 'garbage');
+   345	  await loadMeta();
+   346	  expect(META.rev).toBeGreaterThanOrEqual(6);            // resaved, both slots valid now
+   347	  expect(localStorage.getItem('trenchline-meta-b')).not.toBe('garbage');
+   348	});
+   349	it('saveMeta writes both slots and bumps rev', async () => { … });
+   350	it('applyTech applies exactly the owned nodes to a fresh game', () => { … // e.g. marks → dmg.rifle 1.1, walls → +400 hp });
+   351	```
+   352	- [ ] **Failing tests** `tests/unit/tick.test.js`: supplies accrue at `incomeNow`; super-trench card every SUPER_CARD_T while held; fallback orders when a selected trench is lost (tick block 1564–1569); end detection emits `game:end` with earned points; `cards:offer` when pending; effects arrays decay.
+   353	- [ ] Implement `src/storage.js`, `src/sim/meta.js` (534–639 minus `saveState` DOM — move save-state text to UI), `src/sim/tick.js` (1552–1573; `endGame` becomes event emit + `metaAward()` call).
+   354	- [ ] Pass, commit: `feat: tick + meta persistence (lost tests rewritten)`.
+   355	
+   356	## Task 13: headless smoke + merge suites (ports of legacy tests)
+   357	
+   358	- [ ] **Failing test** `tests/unit/smoke.test.js` — port of `legacy/tests/smoke.js` without jsdom: every nation as player vs de (and de vs each), plus aq/it river, ru/fr plain both ways, gb/aq + de/it march. Drive `tick(0.04)` to 240 s; auto-take first card via `takeCard(offer[0])`; keep supplies/HQ topped like the original; assert: no NaN in unit fields, armour caps respected, no exceptions, game still runs.
+   359	- [ ] **Failing test** `tests/unit/merge.test.js` — port of `legacy/tests/merge.js`: Russia lineup `tkList('ru')==='tank,tkH'`, tank card needed, limit 10, tsar is SW; superweapon use once; hedgehog halt/pass exact positions; 5 emplacements at double trench; `+4.0 a second` income display value (`incomeNow()` ≈ base+1).
+   360	- [ ] Tune until green (these are the real parity gates; failures mean port bugs — fix sim, not tests). Commit: `test: headless smoke + merge parity suites`.
+   361	
+   362	## Task 14: UI — hud, buy, overlays, input, loop
+   363	
+   364	- [ ] `src/ui/hud.js`: `toast(msg)` (bus `toast` → element), `refresh()` (1408–1446) reading sim state, `buildMap()` (1387–1392) + line-strip click → `select(L,true)`; `select`/`focusLine` (1345–1350; cam lives here).
+   365	- [ ] `src/ui/buy.js`: `buildBuy()` (1398–1401) + buy clicks → `spawn` via sim exports (1402–1407).
+   366	- [ ] `src/ui/cards.js`: offer overlay rendering + `takeCard` wiring (1321–1342 UI half).
+   367	- [ ] `src/ui/overlays.js`: start screen (1519–1537), end screen (1538–1550), research overlay incl. code copy/load + save-state text (1449–1500).
+   368	- [ ] `src/ui/input.js`: pointer drag/tap/double-tap fortify, arrow keys, Paris aim taps (2228–2255).
+   369	- [ ] `src/ui/loop.js`: `frame` with fixed 0.04 sub-steps, pause on overlays, speed toggle, 4 Hz refresh (2257–2271); `resize`; `makeDecor` + decor arrays live in draw/terrain.
+   370	- [ ] `src/main.js`: wire everything; `loadMeta().then(...)`; expose debug hook `window.__trench = { … }` **only when `location.search` includes `debug` or `e2e`** (units/sw/fields/fort/jobs/step/info/seed/ut/tkList/tanks/full/buildBuy/offer equivalents used by e2e).
+   371	- [ ] **Tests** `tests/unit/ui.test.js` (jsdom env, canvas stubbed): start a game via hook; assert: map strip renders `HQI+1` buttons; `refresh()` updates supplies/rate/army text and aria-pressed; buy button disabled when short of supplies; advance moves sel; pause/speed toggle; card overlay shows and picking applies; tech overlay renders 4 branches × nodes and research button spends points; end overlay shows victory and a valid save code. Commit: `feat: ui layer`.
+   372	
+   373	## Task 15: renderer
+   374	
+   375	- [ ] Port drawing (1574–2227) into `src/ui/draw/`: `helpers.js` (circle/oval/line/at/colors, ctx setup), `terrain.js` (ground, patches, craters, rivers+bridges, drawTrench/drawSuper, HQ bases, flags, wire/mines/hedgehogs, job ghosts, decor + `makeDecor` using `decor(seed)`), `men.js` (soldier styles per nation, nests/pillboxes/pits/bunkers, carriers, wreck infantry bits), `tanks.js` (`drawTankGen` parts renderer + per-country fallbacks + tsar/char2c/colossus + wrecks), `effects.js` (smoke, tracers, booms, shells incl. Paris warning circle, planes, floats, aim reticle), `index.js` (`draw()` with camera transform, `vis()`, HUD-ish canvas bits).
+   376	- [ ] **Test** `tests/unit/draw.test.js`: no-op Proxy ctx (like legacy `tools/bot.js` stub); spawn one of every unit type for gb/de/fr/ru/us/ah/it/aq on each map, run `draw()` — no exceptions; `vis()` culls off-camera.
+   377	- [ ] Manual check via `npm run dev` on desktop + narrow viewport; commit: `feat: canvas renderer`.
+   378	
+   379	## Task 16: e2e — real page in jsdom
+   380	
+   381	- [ ] `tests/e2e/game.e2e.test.js` + `tests/e2e/vitest.config.js` (like landfall: include e2e, node env, 120 s timeouts, fileParallelism false; jsdom imported manually, not as vitest env).
+   382	  - Build page: read `index.html`, inline `src/styles.css` `<link>`→skip, replace module script with esbuild IIFE bundle of `src/main.js` (`esbuild.buildSync({entryPoints:['src/main.js'], bundle:true, format:'iife', write:false})` — esbuild is already in node_modules via vite).
+   383	  - `new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'https://trench.local/?e2e=1'})` + canvas getContext Proxy stub + getBoundingClientRect stub (legacy harness lines 4–12 pattern).
+   384	  - **Playthrough:** pick gb vs de on open via real button clicks; give player supplies via hook; buy riflemen, advance, fortify on double-tap; take a card; fire a superweapon (gb mine); rig enemy HQ hp to 1 and win; assert end overlay title "Victory", save code parses with `readCode`, research points awarded, replay → start overlay; console has zero page errors.
+   385	- [ ] `npm run e2e` green. Commit: `test: jsdom e2e playthrough`.
+   386	
+   387	## Task 17: scripts, README, license, workflow
+   388	
+   389	- [ ] `scripts/bot.mjs`: headless scripted player driving sim directly (port `legacy/tools/bot.js` logic; seeded; args: me foe map seed; prints summary line; `--json` for balance runs; `--shot out.png` optional via `@napi-rs/canvas` if installed — optionalDependency, skip in CI).
+   390	- [ ] `scripts/gen-stats.mjs`: regen `docs/STATS.md` from `src/data` (port `legacy/tests/gen-stats.js`); `npm run stats`; run it, commit refreshed STATS.md.
+   391	- [ ] `README.md`: title, one-paragraph pitch, play link, screenshot (from bot if easy, else skip), dev commands, architecture map, **credits: "Designed and authored by M K. Built with the help of the AI agents Claude (Anthropic) and GLM (Z.ai)."**, Apache-2.0.
+   392	- [ ] `LICENSE` Apache-2.0 (copy from landfall, copyright "2026 M K").
+   393	- [ ] `.github/workflows/pages.yml` (copy landfall's exactly: on push main, npm ci, `npm run check`, upload dist, deploy-pages).
+   394	- [ ] `package.json` `author: "M K"`, `license: "Apache-2.0"`, homepage/bugs URLs.
+   395	- [ ] Commit: `docs: readme, credits, license, pages workflow`.
+   396	
+   397	## Task 18: final review + verification
+   398	
+   399	- [ ] `npm run check` (lint + unit + build) and `npm run e2e` green.
+   400	- [ ] Determinism audit: two bot runs same seed → identical summary.
+   401	- [ ] Cross-check `docs/STATS.md` regenerated matches committed.
+   402	- [ ] Cross-model review (codex) of the finished repo — fold in findings (user requested a final review).
+   403	- [ ] Manual play sanity on the preview server (start→battle→win/lose→research→save code round-trip).
+   404	
+   405	## Task 19: publish
+   406	
+   407	- [ ] `gh repo create cmdjc/trench-line --public --source . --remote origin --description "A top-down First World War trench-battle game" ` then `git push -u origin main` (branch `main`).
+   408	- [ ] Enable Pages from Actions: `gh api -X POST repos/cmdjc/trench-line/pages -f build_type=workflow` (or `source[branch]=main` fallback if API shape differs).
+   409	- [ ] Wait for the workflow (`gh run watch`), verify `https://cmdjc.github.io/trench-line/` loads (webfetch: expect `<title>Trench Line</title>` and built asset).
+   410	- [ ] Final commit of any fix-ups; update PLAN.md checkboxes to done; summary to owner.
+   411	
+   412	---
+   413	
+   414	## Risks / notes
+   415	
+   416	- **LX coupling in maps.js**: river bridge coordinates were computed from the default 9-trench layout at load time; freezing them as literals preserves behaviour (river map is only played on 9 trenches).
+   417	- **`fort` array sizing**: rebuilt per map (`HQI+1`); never hard-code 9/10.
+   418	- **Determinism**: any `Math.random()` left in sim breaks replay — audit with `grep -n 'Math.random' src/sim src/data` (expect zero; drawing/UI may keep it only for pure visuals, prefer decor rng).
+   419	- **Save-code compat**: `TECH` order is frozen; append-only or bump `TL1` prefix.
+   420	- Balance quirks from DESIGN.md are intentionally preserved (bunker slot sharing, plain-map walk-from-HQ, Paris price, etc.).
+
+exec
+/usr/bin/zsh -lc 'cat docs/HANDOFF.md docs/DESIGN.md' in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+# Trench Line: handoff
+
+A top-down First World War trench battle game: one HTML file, vanilla JS, a single `<canvas>`, no build step and no runtime dependencies. This document is the code map for whoever turns it into a proper JS/HTML project. What the game contains and why is in `DESIGN.md`; every number is in `STATS.md`.
+
+## Files
+
+| Path | What it is |
+|---|---|
+| `trench-line.html` | **Source of truth.** The complete game (about 2,280 lines, 149 KB). |
+| `artifact/trench-line.html` | The copy published as a claude.ai Artifact. Generated by `tools/make-artifact.py`; do not edit by hand. |
+| `tests/harness.js` | Loads the game in jsdom and widens the `window.__trench` test hook. |
+| `tests/smoke.js` | Every nation as player and enemy, all four maps; fails on page errors, NaN or armour-limit violations. |
+| `tests/merge.js` | Wide open plain, hedgehogs, five-slot double trenches, Russia's line-up. |
+| `tests/gen-stats.js` | Regenerates `docs/STATS.md` from the game data. |
+| `tools/bot.js` | Scripted player that fights whole battles. Needs `jsdom` and `canvas`. |
+
+Install once with `npm install jsdom @napi-rs/canvas canvas`.
+
+## Code map
+
+Everything is inside one IIFE in a single `<script>`. Sections are marked `/* ---------- name ---------- */`, in this order:
+
+| Section | Key contents |
+|---|---|
+| constants | `UT` (base unit stats), `NU` (per-country overrides), `INF`, `TK`, `ORDER`, `DBL`/`isDbl`, `HEDGE` |
+| tank variants | `TKB`, `tkv()`, one `Object.assign(NU.xx,{...})` per country, `STATS`, `tkList`, `tkPrev`, `SPECIAL`, `ut(side,k)`, `COV`, `ARM`, `NESTCOV`, `NAT`, `AI_*` |
+| permanent research | `TECH`, `META`, `loadMeta`/`saveMeta`, `makeCode`/`readCode`, `applyTech` |
+| state | `SW`, `MAPS`, `setLayout(key)`, `mods()`, `newGame(mine,theirs,map)` |
+| geometry | `posX`, `trenchX`, `startX`, `spawn`, `count`, `tanks`, `full`, `countAt`, `power`, `frontLine` |
+| combat | `hurt`, `accVs`, `die`, `stepUnits` (movement, bridges, hedgehogs, firing, shells, ownership, garrison, super trench) |
+| fortifying and MG nests | `freeSlot`, `wireSlow`, `stepFields`, `buildDef`, `buildNest`, `stepJobs`, `fortify`, bunkers |
+| superweapons | `targetFor`, `swBlock`, `useSW`, `detonate`, `stepSW`, Paris Gun aiming |
+| enemy commander | `aiStep`, `aiThink` |
+| cards | `CARDS`, `CARDTXT`, `relabelCards`, `offerCards` |
+| orders, interface | `select`, `buildMap`, `buildBuy`, `refresh`, research and save-code UI, `renderStart`, `endGame` |
+| simulation tick | `tick(dt)` |
+| drawing | `draw`, `drawTankGen` (parts-list renderer), one `draw*` per hand-drawn unit and structure |
+| camera input, loop | drag scrolling, `frame` |
+
+## Conventions
+
+- **Sides:** `0` is the player (left), `1` the enemy (right). `nation[side]` is the country code.
+- **Lines:** `0` is the player's HQ, `1..NT` are trenches, `HQI` (= `NT+1`) is the enemy HQ. `LX[L]` is the x of line `L`. `setLayout` rebuilds `LX`, `NT`, `HQI`, `WW` per map; never hard-code 9 or 10.
+- **Special trenches:** `SUPER` is one line index (the Long March's neutral super trench, or `-1`). `DBL` is a list of double trenches (Wide open plain). They have different rules; see `DESIGN.md`.
+- **Unit:** `{side,type,T,line,x,y,ly,hp,max,cd,settled,moving,fixed,park,...}`. `T` is the resolved stat object; read stats from `u.T`. `fixed` marks units that ignore orders (emplacements, sappers). `ly` is the home lane; `y` wanders only to cross bridges.
+- **Armour:** `T.armor` marks vehicles. `T.w` is how much of the nation's armour limit one uses. `T.sup` marks superweapon vehicles, which do not count. `T.big` marks giants that ford rivers and roll over hedgehogs. `T.draw` is a parts list for `drawTankGen`; without it `drawTank` falls back to a hand-drawn function chosen by country.
+- **Attack type:** damage tables are keyed by `T.atk || u.type`. Anything that is not one of the six base types must set `atk`, or lookups return `undefined` and damage becomes `NaN`.
+- **Modifiers:** `M[side]` from `mods()` holds multipliers changed by traits, cards and research. Any new unit type key must be added to the list in `mods()`.
+- **World size:** 300 units high; `K` scales it to the canvas. `cam` is the left edge in world units.
+- **Test hook:** `window.__trench` exposes `units() fort() fields() jobs() sw() step(sec) draw() info()`; `tests/harness.js` injects more. Keep it, or an equivalent, behind a debug flag.
+- **Storage:** the source uses `window.storage` (an async key-value API in the chat preview). The Artifact copy falls back to `localStorage`. Pick one adapter.
+- **Saves:** research only. Two slots (`trenchline-meta`, `trenchline-meta-b`), newest valid wins. Save code `TL1-<points>-<techMask>-<runs>-<wins>-<check>` in base 36; `techMask` follows `TECH` declaration order, so append nodes only or bump the prefix.
+
+## Suggested path to a proper project
+
+1. Lift `<style>` and `<script>` into `styles.css` and ES modules, one per section above.
+2. Put the mutable state (`units`, `S`, `M`, `owner`, `fort`, `fields`, `jobs`) in one module so the simulation runs without a DOM.
+3. Separate simulation from UI: `toast()` and `refresh()` are called from simulation code; route them through events.
+4. Move data (`UT`, `NU`, `NAT`, `SW`, `CARDS`, `TECH`, `MAPS`) into plain data files.
+5. Replace `Math.random()` in the simulation with a seeded generator. Runs are not repeatable today, which makes balance testing noisy.
+6. Call the headless simulation directly from tests in place of jsdom.
+
+## Not verified
+
+- Nothing has been played by hand. Touch scrolling, double-tap to fortify, Paris Gun aiming and the scrolling trench strip are untested on a phone.
+- Balance: scripted results swing widely between runs. See "Known quirks" in `DESIGN.md`.
+- The save-code and two-slot recovery tests from an earlier session were lost and have not been rewritten. The merge did not touch that code.
+
+## How the owner likes to work
+
+They ask to be asked two or three short multiple-choice questions before each new feature, and answer quickly. They care about historical flavour: named units, real superweapons, distinct art per country.
+# Trench Line: design log
+
+Sections 1 to 6 were built in one session. Section 7 is the merge with a parallel session that had added the Wide open plain map and reworked Russia. Stats are first guesses, tested only by headless simulation, not by hand-playing on a phone.
+
+## 1. Tank variants (every nation)
+
+Each nation fields several kinds of armour instead of one tank.
+
+- A vehicle now uses part of the nation's **armour limit**: a Kugelpanzer takes 0.5, an A7V takes 1, a Maus takes 3, a Ratte takes 6 (of Germany's 8). The army readout shows "armour 6.5 of 8".
+- Slots: light (`tkL`), signature (`tank`), medium-heavy (`tkM`, Antarctica only), heavy (`tkH`), super-heavy (`tkS`).
+- Unlocking is by card. Each variant has its own card. A heavy needs the signature tank first, a super-heavy needs the heavy first (for Germany: tank, then Maus, then Ratte).
+- The generic tank renderer draws any variant from a parts list, with custom paint per nation.
+- Research that affects tanks (Mechanics, Gunnery school, Tank works) applies to every variant.
+- The enemy AI buys every variant on a timer, and the armour limit applies to it too.
+
+| Nation | Variants |
+|---|---|
+| Germany | Kugelpanzer, A7V, Maus, Ratte |
+| Britain | Whippet (MG only), Mk V, Flying Elephant |
+| France | FT mitrailleuse, Renault FT, Saint-Chamond |
+| USA | Ford 3-Ton, Mark VIII Liberty, T28 |
+| Russia | Vezdekhod, Mendeleev (the Tsar Tank is now the superweapon; see section 7) |
+| Austria-Hungary | Skoda 15 cm howitzer, Skoda 30.5 cm mortar (siege guns, not tanks) |
+| Italy | Fiat 3000, Fiat 2000, P 26/40 |
+| Antarctica | Ross, Weddell, Vinson, Erebus, Pole |
+
+## 2. Italy
+
+Chosen by you: **Alpini** infantry, a **mountain gun pit** defence, **Caproni bomber raid** superweapon.
+
+- Alpino: cost 24, 52 health, slower. All Italian troops take 15% less damage in trenches.
+- 65 mm mountain gun pit (120): arcing shells that hurt trench troops more than France's 75 mm pit.
+- Caproni raid (420, 80 s cooldown): a bomber flies down the nearest enemy position ahead of the selected trench and drops eight bombs.
+- Chosen by me: Arditi, Fiat-Revelli teams, Alpine snipers, Bombarda mortar crews; Fiat 3000, Fiat 2000, P 26/40; grey-green colours and flag.
+
+## 3. Landships research node
+
+Fifth and last Armour node (120 points, needs the other four). Super-heavy tanks are available from the start of every battle, no card needed. Only Germany (Ratte) and Antarctica (Pole) have one. Existing save codes still load.
+
+## 4. Aimable Paris Gun
+
+- Tap the button, tap anywhere on the field, press **Confirm target** (500). Cancel aiming backs out. You can start aiming while short of supplies; Confirm stays greyed out.
+- One shell, 4.5 seconds in flight, radius 90, about 700 damage at the centre falling to about 300 at the edge. Levels fortifications and wire in range. Hits the enemy HQ for roughly 500 to 560 when it lands there.
+- A red warning circle with a shrinking ring shows where and when it lands, for both sides.
+- The enemy aims at your richest cluster of units, or your HQ.
+
+## 5. The Long March map
+
+Chosen by you: 45 trenches, fortified belts with wide gaps, same stats, a super trench in the middle.
+
+- Layout: nine belts of five trenches, 150 px apart inside a belt, 520 px of empty ground between belts. World width 10,320 px.
+- The line selector becomes a scrolling strip with gaps marking belts, and recentres on the selected line.
+- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. The Kettering Bug flight time is capped at 7 seconds for the same reason.
+- **Super trench** (trench 23): starts empty and neutral at level 0. Whoever takes it first gets three built-in guns (two pillboxes and a 75 mm pit, 1.6 times normal health) that change hands with the trench. Holding it pays **+3 supplies a second** and lets you fortify to **level 4** (cost 320). You get a free card on first capture and then **one every 3 minutes held**; the timer pauses while you do not hold it, and a countdown shows in the supplies area. The enemy gets only the income and the guns.
+
+## 6. United States of Antarctica
+
+Chosen by you: a nation that never was, WWI-and-WWII realistic designs at humongous size, 20 fragile infantry, 20 armour, bunkers, a colossal tank superweapon, snow-white tanks, five variants, Antarctic place names, a flag with the white continent on blue, and a poor start with fast income growth.
+
+- Infantry cap 20, normal prices, 30 health for riflemen. Ice Trooper, Blizzard gunner, Sledge raider, Polar Ranger, Frost mortar crew.
+- Economy: starts with 15 supplies and +2 a second; income grows 0.7 a second every minute (the USA's is 0.4).
+- **Bunkers**: a separate button (120 supplies, 600 health), up to two per trench. Settled troops walk in, six per bunker. Shots at sheltered troops hit the bunker instead and splash only reaches the bunker. Sheltered troops fire at full effect. When a bunker falls, the survivors are left exposed.
+- **Southern Colossus**: 2,500 supplies, 9,000 health, four turrets, machine guns, crushing treads, 150 s cooldown, one at a time, does not count toward the armour limit.
+- The enemy waits until it holds 60% of a superweapon's cost before choosing one, but only for costs of 1,500 or more (in practice, only the Colossus).
+
+## 7. Merge: Wide open plain, hedgehogs, and Russia's line-up
+
+Two versions of the game had diverged. The larger one (sections 1 to 6) is the base; these parts were ported into it from the other.
+
+- **Wide open plain map** (`plain`): 17 evenly spaced trenches, no cover between them. Trenches 4 and 14 are **double trenches**, called super trenches in the game: two trench lines with a wall between, set in a supply yard with crates, barrels, tents and shell stacks.
+  - Troops inside take 0.55 times damage on top of normal trench cover; fortifying stacks with it.
+  - Room for 5 emplacements (a normal trench has 3).
+  - +1 supply a second to whoever holds one, including the enemy.
+  - **Hedgehog belts** on both sides stop the attacker's tanks short of the trench until the attacker's infantry hold it. The holder's tanks pass freely. Giants (`big`: Tsar Tank, Southern Colossus) roll over them. If nobody holds the trench, nobody is stopped.
+- **Russia**, as chosen by you in that session: the Tsar Tank is a superweapon with its own button (900, one at a time, 60 s cooldown, does not use the armour limit), and Russia needs the tank card like everyone else.
+  - Chosen by me to fit the variant system: the **Vezdekhod** moved from the light slot to the signature slot (110, 200 health, machine gun only, limit use 1) and Russia has no separate light tank; the **Mendeleev** stays as the heavy but its limit use went from 0.8 to 2; the armour limit went from 2 to 10.
+
+## Known quirks
+
+- "Super trench" now means two different things: the single neutral one on the Long March (built-in guns, +3 supplies, level 4, free cards) and the two double trenches on the Wide open plain (cover, 5 slots, +1 supply, hedgehogs). In code they are `SUPER` (one line index) and `DBL` (a list).
+- On the Wide open plain, reinforcements still walk from the HQ (the Long March's one-trench-behind rule is not applied), so they take over a minute to reach a far-forward front.
+
+- Every non-magazine weapon draws an extra faint "miss" tracer, even on hits and shells. Looks like an `else` attached to the wrong `if` in the original code. Not changed.
+- Bunkers share the three emplacement slots in each trench with MG nests, so two bunkers leave room for one nest.
+- Sheltered troops fire from about 30 px behind the trench line, so they reach slightly less far.
+- A fully passive player was overrun in about 9 minutes on the Long March in testing.
+- The cheap armoured MG tanks (Kugelpanzer, Ford, Vezdekhod) may be too strong against infantry, since bullets barely hurt armour.
+- The Paris Gun at 500 may be too cheap for a shell that can wipe a cluster.
+- Everything here was tested headlessly. Nothing was hand-played, and the research screen with five Armour nodes was not checked on a phone.
+
+## Open questions (unanswered when this zip was made)
+
+1. Should bunkers share the trench's 3 emplacement slots with MG nests, get their own 2 extra slots, or replace MG nests?
+2. Should the bunker stay slightly behind the line (less reach) or sit on the trench line (same reach)?
+3. Antarctic economy: keep as is, slower start (10 supplies, +1.5 a second), or faster growth (0.9 a second every minute)?
+4. Should the Paris Gun pause the game while you aim?
+5. Should Italy get a fourth tank, and should the Alpini bonus be kept?
+6. Other super-heavy tanks for the nations that lack one?
+7. Should the two kinds of super trench be unified, or one of them renamed?
+8. Should Russia get a light tank again, now that the Vezdekhod is its signature tank?
+9. Should the Wide open plain use the Long March's rule that reinforcements arrive one trench behind the front?
+
+## Ideas not started
+
+Mud and rain map, Ottoman Empire, balance and AI difficulty, polish (sound, tutorial).
+
+exec
+/usr/bin/zsh -lc "nl -ba docs/PLAN.md | sed -n '259,378p'; cat legacy/tests/harness.js legacy/tests/smoke.js legacy/tests/merge.js" in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+   259	## Task 7: sim combat — stepUnits
+   260	
+   261	- [ ] **Failing tests** `tests/unit/combat-step.test.js` (drive with fixed `dt`):
+   262	  - movement toward `posX` target; `wireSlow` 0.3 for infantry, tanks delete wire; river units funnel to nearest bridge band; big units ignore rivers.
+   263	  - **hedgehogs** (port of legacy merge test): enemy holds double trench 14 → player tank halts at `LX[14]-94-len-8`, tsar (`big`) passes; when player infantry hold 14, tank passes.
+   264	  - firing: cooldowns randomised ±15% via rng; magazine (BAR: 20 shots then reload cd); jam (Chauchat); `moveFire` gating; min range respected; shell push with `atk` type, splash, cov, arc.
+   265	  - **regression for the stray tracer bug**: with `acc:1` rifleman fires → exactly one tracer (hit), no miss tracer; with `acc:0` → exactly one faint miss tracer; shell weapons draw no tracer either way.
+   266	  - HQ guns fire only within 270; shells land: splash damages units in radius only, `base:true` shells hit HQ; siege shells can strip fort levels; huge (Paris) shell razes forts in `rz`, shakes.
+   267	  - ownership: only-attacker-settled line flips `owner`; empty trench keeps owner.
+   268	  - nest capture flips side when enemies hold its line alone; AH garrison fortifies lines with ≥3 settled after GARR_T.
+   269	  - bunkers: settled troops walk in (≤6), keep firing; on bunker death troops exposed; `stepBunkers` releases on side change.
+   270	  - barrage card: every 10 s spawns M[0].barrage shells at frontmost enemy.
+   271	- [ ] Implement stepUnits (799–987) + `stepFields`/`wireSlow` moved to `fortify.js` (imported); replace the tracer block at 885–891 with:
+   272	```js
+   273	if (best && bd <= T.range) {
+   274	  u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
+   275	  if (T.shell) shells.push({ /* unchanged fields */ });
+   276	  else if (rng.float() < T.acc * accVs(u, best)) { tracer(u.x + dir * 9, u.y, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
+   277	  else tracer(u.x + dir * 9, u.y, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
+   278	  if (T.jam && rng.float() < T.jam) u.cd = 2.4;
+   279	  if (T.mag) { u.shots = (u.shots || 0) + 1; if (u.shots >= T.mag) { u.shots = 0; u.cd = T.reload; } }
+   280	}
+   281	```
+   282	(the original fired the faint miss tracer unconditionally for non-magazine weapons — DESIGN.md "Known quirks" #3).
+   283	- [ ] Pass, commit: `feat: stepUnits with hedgehogs, rivers, fixed miss tracer`.
+   284	
+   285	## Task 8: sim fortify
+   286	
+   287	- [ ] **Failing tests** `tests/unit/fortify.test.js`:
+   288	  - `freeSlot`: 3 slots normal trench, 5 in double; occupied by nests and pending jobs.
+   289	  - `buildNest` spawns sapper job; `stepJobs` stage 0→1→2 spawns gun carrier after 4 s, completes after 3 more + arrival, replaces with nest at slot; killed sapper abandons (toast).
+   290	  - `buildDef` per nation: gb wire field object at LX+54; ru 10 mines spread; fr/us/it pit & depot (US depot adds income via DEPOT_RATE; duplicate depot per trench blocked); aq bunker via slots and ≤2 per trench.
+   291	  - `buildSuper`: first capture spawns pillbox/pit75/pillbox fixed, hp ×1.6, slots 0/1/2.
+   292	  - `fortify` costs FORT_COST levels, owner-gated, max level 3 (4 on SUPER), supply-gated.
+   293	- [ ] Implement `src/sim/fortify.js` (port lines 989–1110). Pass, commit: `feat: fortification, nests, bunkers, fields`.
+   294	
+   295	## Task 9: sim superweapons
+   296	
+   297	- [ ] **Failing tests** `tests/unit/superweapons.test.js` per kind (`swBlock` strings, one-at-a-time, cost/cd set):
+   298	  - de Paris: `useSW(0,{x,y})` pushes huge shell (dmg 700, splash 90, dur 4.5, rz 80); aiming clamps to field.
+   299	  - gb Messines: tunnel 25 s against targetFor trench, then `detonate` kills occupants within 70 px, razes forts if not owner, mine toast.
+   300	  - fr char2c / ru tsar / aq colossus: spawn one, blocked while alive, `T.sup` doesn't count to armour.
+   301	  - us bugs: 4 shells, flight capped `min(7, max(1.5, dx/230))`.
+   302	  - it caproni: plane crosses field in (WH+100)/110 s, 8 bombs along the trench column.
+   303	  - ah skoda42: 3 big razing shells, staggered −1.3 s.
+   304	  - enemy AI aiming uses richest cluster (`aimPoint`).
+   305	- [ ] Implement `src/sim/superweapons.js` (1112–1196). Pass, commit: `feat: superweapons`.
+   306	
+   307	## Task 10: sim AI
+   308	
+   309	- [ ] **Failing tests** `tests/unit/ai.test.js`: income ramp formula incl. us/aq modifiers, depots, super/dbl income; buy loop respects armour cap and inf cap; `aiThink` gathers at F, advances on power ratios (seeded, deterministic); wants sw only past 240 s and 60% cost for ≥1500.
+   310	- [ ] Implement `src/sim/ai.js` (1197–1261). Pass, commit: `feat: enemy commander`.
+   311	
+   312	## Task 11: sim cards
+   313	
+   314	- [ ] **Failing tests** `tests/unit/cards.test.js`:
+   315	  - pool excludes `once` already taken, failing `can`, redundant `u_tank` when unlocked; corps tech forces u_tank in first offer; intel offers 4.
+   316	  - seeded pick: same seed → same offer; weights respected statistically (χ²-lite: each of 2 cards appears across 200 seeds).
+   317	  - `takeCard('u_raider')` unlocks + spawns 2 at sel; bonds +1.5 income; helmet heals and buffs existing troops; barrage stacks +2.
+   318	  - `relabelCards` per nation text (gb raiders vs de stormtroopers; ah "Siege gun: Škoda 30.5 cm"; aq Weddell tank text).
+   319	- [ ] Implement `src/sim/cards.js`: `CARDS` effects map, `relabelCards()`, `buildOffer()` (pure — returns ids), `takeCard(id)` (1263–1342 logic minus DOM; emits `dirty:buy` when unlock).
+   320	- [ ] Pass, commit: `feat: cards`.
+   321	
+   322	## Task 12: sim tick + meta/storage (rewrites the lost tests)
+   323	
+   324	- [ ] **Failing tests** `tests/unit/meta.test.js` (localStorage fake or real via jsdom env — use `@vitest/environment jsdom` per-file):
+   325	```js
+   326	it('makeCode/readCode round-trip points, tech mask, runs, wins', () => {
+   327	  META.points = 123; META.tech = { marks: 1, kit: 1 }; META.runs = 7; META.wins = 3;
+   328	  const d = readCode(makeCode());
+   329	  expect(d.points).toBe(123); expect(d.tech).toEqual({ marks: 1, kit: 1 }); expect(d.runs).toBe(7); expect(d.wins).toBe(3);
+   330	});
+   331	it('rejects bad checksum, wrong prefix, junk, negative numbers', () => {
+   332	  expect(readCode('TL1-0-0-0-0-ZZ')).toBeNull();
+   333	  expect(readCode('TL2-0-0-0-0-' + 'TL1-0-0-0-0-'.slice(0))).toBeNull();
+   334	  expect(readCode('hello')).toBeNull();
+   335	  const c = makeCode(); expect(readCode(c.replace(/-([0-9A-Z]+)$/, '-AAAA'))).toBeNull();
+   336	});
+   337	it('prunes tech whose predecessor is missing (order enforcement)', () => {
+   338	  // craft code with kit but not marks via mask bit 1 only
+   339	  const body = 'TL1-5-1-0-0'; const code = body + '-' + codeCheck(body);
+   340	  expect(readCode(code).tech).toEqual({}); // kit requires marks
+   341	});
+   342	it('two-slot recovery: newest valid wins, corrupt slot repaired', async () => {
+   343	  localStorage.setItem('trenchline-meta', JSON.stringify({ code: makeCode(), rev: 5, ts: 100 }));
+   344	  localStorage.setItem('trenchline-meta-b', 'garbage');
+   345	  await loadMeta();
+   346	  expect(META.rev).toBeGreaterThanOrEqual(6);            // resaved, both slots valid now
+   347	  expect(localStorage.getItem('trenchline-meta-b')).not.toBe('garbage');
+   348	});
+   349	it('saveMeta writes both slots and bumps rev', async () => { … });
+   350	it('applyTech applies exactly the owned nodes to a fresh game', () => { … // e.g. marks → dmg.rifle 1.1, walls → +400 hp });
+   351	```
+   352	- [ ] **Failing tests** `tests/unit/tick.test.js`: supplies accrue at `incomeNow`; super-trench card every SUPER_CARD_T while held; fallback orders when a selected trench is lost (tick block 1564–1569); end detection emits `game:end` with earned points; `cards:offer` when pending; effects arrays decay.
+   353	- [ ] Implement `src/storage.js`, `src/sim/meta.js` (534–639 minus `saveState` DOM — move save-state text to UI), `src/sim/tick.js` (1552–1573; `endGame` becomes event emit + `metaAward()` call).
+   354	- [ ] Pass, commit: `feat: tick + meta persistence (lost tests rewritten)`.
+   355	
+   356	## Task 13: headless smoke + merge suites (ports of legacy tests)
+   357	
+   358	- [ ] **Failing test** `tests/unit/smoke.test.js` — port of `legacy/tests/smoke.js` without jsdom: every nation as player vs de (and de vs each), plus aq/it river, ru/fr plain both ways, gb/aq + de/it march. Drive `tick(0.04)` to 240 s; auto-take first card via `takeCard(offer[0])`; keep supplies/HQ topped like the original; assert: no NaN in unit fields, armour caps respected, no exceptions, game still runs.
+   359	- [ ] **Failing test** `tests/unit/merge.test.js` — port of `legacy/tests/merge.js`: Russia lineup `tkList('ru')==='tank,tkH'`, tank card needed, limit 10, tsar is SW; superweapon use once; hedgehog halt/pass exact positions; 5 emplacements at double trench; `+4.0 a second` income display value (`incomeNow()` ≈ base+1).
+   360	- [ ] Tune until green (these are the real parity gates; failures mean port bugs — fix sim, not tests). Commit: `test: headless smoke + merge parity suites`.
+   361	
+   362	## Task 14: UI — hud, buy, overlays, input, loop
+   363	
+   364	- [ ] `src/ui/hud.js`: `toast(msg)` (bus `toast` → element), `refresh()` (1408–1446) reading sim state, `buildMap()` (1387–1392) + line-strip click → `select(L,true)`; `select`/`focusLine` (1345–1350; cam lives here).
+   365	- [ ] `src/ui/buy.js`: `buildBuy()` (1398–1401) + buy clicks → `spawn` via sim exports (1402–1407).
+   366	- [ ] `src/ui/cards.js`: offer overlay rendering + `takeCard` wiring (1321–1342 UI half).
+   367	- [ ] `src/ui/overlays.js`: start screen (1519–1537), end screen (1538–1550), research overlay incl. code copy/load + save-state text (1449–1500).
+   368	- [ ] `src/ui/input.js`: pointer drag/tap/double-tap fortify, arrow keys, Paris aim taps (2228–2255).
+   369	- [ ] `src/ui/loop.js`: `frame` with fixed 0.04 sub-steps, pause on overlays, speed toggle, 4 Hz refresh (2257–2271); `resize`; `makeDecor` + decor arrays live in draw/terrain.
+   370	- [ ] `src/main.js`: wire everything; `loadMeta().then(...)`; expose debug hook `window.__trench = { … }` **only when `location.search` includes `debug` or `e2e`** (units/sw/fields/fort/jobs/step/info/seed/ut/tkList/tanks/full/buildBuy/offer equivalents used by e2e).
+   371	- [ ] **Tests** `tests/unit/ui.test.js` (jsdom env, canvas stubbed): start a game via hook; assert: map strip renders `HQI+1` buttons; `refresh()` updates supplies/rate/army text and aria-pressed; buy button disabled when short of supplies; advance moves sel; pause/speed toggle; card overlay shows and picking applies; tech overlay renders 4 branches × nodes and research button spends points; end overlay shows victory and a valid save code. Commit: `feat: ui layer`.
+   372	
+   373	## Task 15: renderer
+   374	
+   375	- [ ] Port drawing (1574–2227) into `src/ui/draw/`: `helpers.js` (circle/oval/line/at/colors, ctx setup), `terrain.js` (ground, patches, craters, rivers+bridges, drawTrench/drawSuper, HQ bases, flags, wire/mines/hedgehogs, job ghosts, decor + `makeDecor` using `decor(seed)`), `men.js` (soldier styles per nation, nests/pillboxes/pits/bunkers, carriers, wreck infantry bits), `tanks.js` (`drawTankGen` parts renderer + per-country fallbacks + tsar/char2c/colossus + wrecks), `effects.js` (smoke, tracers, booms, shells incl. Paris warning circle, planes, floats, aim reticle), `index.js` (`draw()` with camera transform, `vis()`, HUD-ish canvas bits).
+   376	- [ ] **Test** `tests/unit/draw.test.js`: no-op Proxy ctx (like legacy `tools/bot.js` stub); spawn one of every unit type for gb/de/fr/ru/us/ah/it/aq on each map, run `draw()` — no exceptions; `vis()` culls off-camera.
+   377	- [ ] Manual check via `npm run dev` on desktop + narrow viewport; commit: `feat: canvas renderer`.
+   378	
+// Headless test harness: loads trench-line.html in jsdom with a real canvas and exposes internals.
+// Usage: node tests/smoke.js   (needs: npm install jsdom @napi-rs/canvas)
+const {JSDOM}=require('jsdom');const fs=require('fs'),path=require('path');
+function load(file){
+  file=file||path.join(__dirname,'..','trench-line.html');
+  let html=fs.readFileSync(file,'utf8');
+  html=html.replace('window.__trench={','window.__trench={NAT:()=>NAT,STATS:()=>STATS,SPECIAL:()=>SPECIAL,SW:()=>SW,TECH:()=>TECH,MAPS:()=>MAPS,LX:()=>LX,NT:()=>NT,HQI:()=>HQI,SUPER:()=>SUPER,owner:()=>owner,S:()=>S,ai:()=>ai,bases:()=>bases,META:()=>META,spawn:(s,t,L)=>spawn(s,t,L,true),setCam:x=>{cam=camT=x},ut:(s,k)=>ut(s,k),tkList:n=>tkList(n),tanks:s=>tanks(s),full:(s,k)=>full(s,k),buildBuy:()=>buildBuy(),offer:()=>offerCards(),');
+  return new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){
+    w.HTMLCanvasElement.prototype.getBoundingClientRect=function(){return {width:900,height:300,left:0,top:0,right:900,bottom:300}};
+    w.addEventListener('error',e=>console.log('PAGE ERROR',e.message));
+  }});
+}
+module.exports={load};
+// Plays every nation against every other for a few simulated minutes and checks for errors,
+// NaN values, and armour-limit violations. Exit code 1 on failure.
+const {load}=require('./harness');
+const nats=['gb','de','fr','ru','us','ah','it','aq'];let fails=0;
+function run(me,foe,map){return new Promise(res=>{
+  const dom=load(),w=dom.window,d=w.document;let err=0;w.addEventListener('error',()=>err++);
+  setTimeout(()=>{
+    const T=w.__trench;
+    d.querySelector('#natList [data-nation='+me+']').click();d.querySelector('#natList [data-nation='+foe+']').click();d.querySelector('#natList [data-map='+map+']').click();
+    const S=T.S(),b=T.bases(),NAT=T.NAT();let bad=0,over=0;
+    for(let t=0;t<240;t+=4){
+      S.supplies=Math.max(S.supplies,500);T.ai().money=Math.max(T.ai().money,500);S.pending=0;d.getElementById('cardOv').hidden=true;
+      b[0].hp=b[0].max;b[1].hp=b[1].max;T.step(4);
+      for(const u of T.units())if(!isFinite(u.x)||!isFinite(u.y)||!isFinite(u.hp))bad++;
+      if(T.tanks(0)>NAT[me].tanks+1e-6||T.tanks(1)>NAT[foe].tanks+1e-6)over++;
+    }
+    const ok=!err&&!bad&&!over;if(!ok)fails++;
+    console.log((ok?'PASS ':'FAIL ')+me+' vs '+foe+' on '+map+(ok?'':' errors='+err+' nan='+bad+' overCap='+over));
+    dom.window.close();res();
+  },200);
+});}
+(async()=>{
+  for(const me of nats)await run(me,me==='de'?'gb':'de','open');
+  for(const f of nats)if(f!=='de')await run('de',f,'open');
+  await run('aq','it','river');await run('ru','fr','plain');await run('fr','ru','plain');await run('gb','aq','march');await run('de','it','march');
+  console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);
+})();
+// Targeted checks for the Wide open plain map (double "super" trenches, hedgehogs)
+// and Russia's line-up (Vezdekhod tank, Mendeleev heavy, Tsar Tank superweapon).
+// Usage: node tests/merge.js [screenshot.png]   Exit code 1 on failure.
+const {load}=require('./harness');const fs=require('fs');
+let fails=0;const ok=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg);if(!c)fails++};
+const dom=load(),w=dom.window,d=w.document;let err=0;w.addEventListener('error',()=>err++);
+const start=(me,foe,map)=>{d.querySelector('#natList [data-nation='+me+']').click();d.querySelector('#natList [data-nation='+foe+']').click();d.querySelector('#natList [data-map='+map+']').click()};
+setTimeout(()=>{
+  const T=w.__trench;
+  // ---- Russia
+  start('ru','de','plain');
+  ok(T.tkList('ru').join(',')==='tank,tkH','Russia fields Vezdekhod then Mendeleev: '+T.tkList('ru').map(k=>T.ut(0,k).name).join(', '));
+  ok(!T.S().unlocked.tank,'Russian tank needs its card');
+  ok(T.NAT().ru.tanks===10&&T.SW().ru&&T.SW().ru.kind==='tsar','armour limit 10 and Tsar Tank is the superweapon');
+  const sb=d.getElementById('swBtn');T.S().supplies=5000;T.step(0.1);
+  ok(!sb.hidden&&!sb.disabled&&/Tsar Tank/.test(sb.textContent),'superweapon button offers the Tsar Tank');
+  sb.click();T.step(0.1);sb.click();T.step(0.1);
+  ok(T.units().filter(u=>u.type==='tsar').length===1,'one Tsar Tank at a time');
+  ok(T.tanks(0)===0,'Tsar Tank does not use the armour limit');
+  // ---- plain layout and double trenches
+  const LX=T.LX(),own=T.owner();
+  ok(T.NT()===17&&LX.length===19,'plain has 17 trenches');
+  // ---- hedgehogs: enemy holds trench 14
+  for(const u of T.units())if(u.type==='tsar')u.hp=0;T.step(0.1);
+  T.ai().money=0;const hold=T.spawn(1,'rifle',14);hold.hp=hold.max=1e7;own[14]=1;
+  const tk=T.spawn(0,'tank',13);tk.hp=tk.max=1e7;tk.line=15;
+  const ts=T.spawn(0,'tsar',13);ts.hp=ts.max=1e7;ts.line=15;
+  const run=n=>{for(let i=0;i<n;i++){T.ai().money=0;T.S().pending=0;d.getElementById('cardOv').hidden=true;T.bases()[0].hp=T.bases()[0].max;T.step(1)}};
+  run(45);
+  ok(tk.x<LX[14]-94&&tk.x>LX[13],'Vezdekhod halts short of the hedgehogs (x '+Math.round(tk.x)+', trench at '+LX[14]+')');
+  ok(ts.x>LX[14],'Tsar Tank rolls over the hedgehogs (x '+Math.round(ts.x)+')');
+  if(process.argv[2]){T.setCam(LX[13]-120);T.draw();fs.writeFileSync(process.argv[2],Buffer.from(d.getElementById('field').toDataURL().split(',')[1],'base64'))}
+  // ---- infantry take it: tank passes
+  hold.hp=0;T.step(0.1);const mine=T.spawn(0,'rifle',14);mine.hp=mine.max=1e7;own[14]=0;run(45);
+  ok(tk.x>LX[14],'Vezdekhod passes once the trench is yours (x '+Math.round(tk.x)+')');
+  // ---- five emplacement slots and income
+  T.S().supplies=5000;d.querySelector('#map [data-line="14"]').click();T.step(0.1);
+  const nb=d.getElementById('nestBtn');let built=0;for(let i=0;i<7;i++){T.step(0.1);if(!nb.disabled){nb.click();built++}}
+  ok(built===5,'a super trench takes 5 emplacements (built '+built+')');
+  ok(/\+4\.0 a second/.test(d.getElementById('rate').textContent),'holding one super trench adds 1 supply a second: '+d.getElementById('rate').textContent);
+  ok(err===0,'no page errors');
+  console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);
+},300);
+
+exec
+/usr/bin/zsh -lc "sed -n '558,760p' legacy/trench-line.html; sed -n '1260,1345p' legacy/trench-line.html; sed -n '1510,1585p' legacy/trench-line.html; sed -n '2250,2276p' legacy/trench-line.html" in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+const META_KEY='trenchline-meta';
+let META={points:0,tech:{},runs:0,wins:0};
+const store=(typeof window.storage!=='undefined'&&window.storage&&window.storage.set)?window.storage:null;
+/* two automatic saves: each holds the save code, a counter and a time; the newest valid one wins */
+const SAVE_KEYS=[META_KEY,META_KEY+'-b'];
+let saveOk=-1;
+function parseSave(text){
+  try{
+    const d=JSON.parse(text);
+    if(d&&typeof d.code==='string'){const data=readCode(d.code);return data?{data,rev:d.rev||0,ts:d.ts||0}:null}
+    if(d&&typeof d.points==='number')return {data:{points:d.points,tech:Object.assign({},d.tech||{}),runs:d.runs||0,wins:d.wins||0},rev:0,ts:0};
+  }catch(e){}
+  return null;
+}
+async function loadMeta(){
+  if(!store){saveState();return}
+  const found=[];
+  for(const k of SAVE_KEYS){
+    let rec=null;
+    try{const r=await store.get(k,false);if(r&&r.value)rec=parseSave(r.value)}catch(e){}
+    found.push(rec);
+  }
+  const good=found.filter(Boolean).sort((x,y)=>(y.rev-x.rev)||(y.ts-x.ts));
+  if(good.length){
+    const g=good[0];
+    META.points=g.data.points;META.tech=g.data.tech;META.runs=g.data.runs;META.wins=g.data.wins;META.rev=g.rev;
+    if(found.some(f=>!f||f.rev!==g.rev))await saveMeta();else{saveOk=2;saveState()}
+  }else saveState();
+}
+async function saveMeta(){
+  if(!store){saveState();return}
+  META.rev=(META.rev||0)+1;
+  const rec=JSON.stringify({code:makeCode(),rev:META.rev,ts:Date.now()});
+  let ok=0;
+  for(const k of SAVE_KEYS){try{const r=await store.set(k,rec,false);if(r!==null)ok++}catch(e){}}
+  saveOk=ok;saveState();
+}
+function saveState(){
+  const el=document.getElementById('saveState');if(!el)return;
+  el.textContent=!store?'Automatic saving is not available here, so your code is the only save.'
+    :saveOk===2?'Saved automatically in two places.'
+    :saveOk===1?'One of the two automatic saves failed. The other is good, and your code still works.'
+    :saveOk===0?'Both automatic saves failed. Copy your code to keep your progress.'
+    :'Two automatic saves are kept. Nothing to save yet.';
+}
+const has=id=>!!META.tech[id];
+/* save code: TL1-points-upgrades-runs-wins-check, all in base 36 */
+const TECH_IDS=()=>TECH.flatMap(b=>b.nodes.map(n=>n.id));
+function codeCheck(body){let h=7;for(let i=0;i<body.length;i++)h=(h*31+body.charCodeAt(i))%1296;return h.toString(36).toUpperCase().padStart(2,'0')}
+function makeCode(){
+  let mask=0;TECH_IDS().forEach((id,i)=>{if(META.tech[id])mask|=1<<i});
+  const body=['TL1',META.points,mask,META.runs,META.wins].map((v,i)=>i?Math.max(0,Math.floor(v)).toString(36).toUpperCase():v).join('-');
+  return body+'-'+codeCheck(body);
+}
+function readCode(text){
+  const parts=text.trim().toUpperCase().replace(/\s+/g,'').split('-');
+  if(parts.length!==6||parts[0]!=='TL1')return null;
+  const body=parts.slice(0,5).join('-');
+  if(codeCheck(body)!==parts[5])return null;
+  const nums=parts.slice(1,5).map(v=>parseInt(v,36));
+  if(nums.some(v=>!isFinite(v)||v<0))return null;
+  const tech={};TECH_IDS().forEach((id,i)=>{if(nums[1]&(1<<i))tech[id]=1});
+  for(const b of TECH)b.nodes.forEach((n,i)=>{if(tech[n.id]&&i>0&&!tech[b.nodes[i-1].id])delete tech[n.id]});
+  return {points:nums[0],tech,runs:nums[2],wins:nums[3]};
+}
+function applyTech(){
+  const m=M[0];
+  if(has('marks'))m.dmg.rifle*=1.1;
+  if(has('kit'))m.hp*=1.1;
+  if(has('craft'))m.speed*=1.15;
+  if(has('deep'))m.cover*=0.92;
+  if(has('walls')){bases[0].max+=400;bases[0].hp+=400}
+  if(has('guns'))bases[0].dmg*=1.4;
+  if(has('aid'))m.heal+=1;
+  if(has('stock'))S.supplies+=40;
+  if(has('rail'))m.income+=0.4;
+  if(has('econ'))m.bounty+=0.2;
+  if(has('mech'))m.tankHp*=1.1;
+  if(has('gunnery')){for(const k of TK)m.dmg[k]*=1.1;m.dmg.mortar*=1.1}
+  if(has('works'))for(const k of TK)m.cost[k]*=0.9;
+  if(has('titan'))S.unlocked.tkS=true;
+}
+
+/* ---------- state ---------- */
+const SW={
+ de:{kind:'paris',name:'Paris Gun',cost:500,cd:90,text:'One massive shell on a spot you choose, anywhere on the field. It lands after 4 seconds, wrecks everything in a big circle and levels fortifications there.'},
+ gb:{kind:'mine',name:'Messines mine',cost:450,cd:120,text:'Tunnels for 25 seconds under the nearest enemy trench ahead of the selected one, then blows up everything in it.'},
+ fr:{kind:'char2c',name:'Char 2C',cost:1100,cd:60,text:'A 69-ton super-heavy tank with a turret gun and machine guns. One at a time.'},
+ us:{kind:'bugs',name:'Kettering Bugs',cost:350,cd:75,text:'Four flying bombs dive on the nearest enemy position ahead of the selected trench.'},
+ ah:{kind:'skoda42',name:'\u0160koda 42 cm',cost:400,cd:90,text:'Three fortress-breaking shells on the nearest enemy position ahead. They level its fortifications.'},
+
+ aq:{kind:'colossus',name:'Southern Colossus',cost:2500,cd:150,text:'A colossal 9,000-health landship with four turrets, machine guns and crushing treads. One at a time.'},
+ it:{kind:'caproni',name:'Caproni bombers',cost:420,cd:80,text:'A bomber flies down the nearest enemy position ahead of the selected trench and drops eight bombs along its length.'},
+ ru:{kind:'tsar',name:'Tsar Tank',cost:900,cd:60,text:'A giant on nine-metre wheels that crushes whatever it reaches and rolls over hedgehogs. One at a time.'}
+};
+for(const n in NAT)NAT[n].blurb+=' Superweapon: '+(SW[n]?SW[n].name:'Tsar Tank')+'.';
+let sw=[{cd:0,tunnel:null},{cd:0,tunnel:null}],shake=0;
+const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const MAPS={
+ open:{name:'No man\u2019s land',blurb:'Open, cratered ground and nine trenches.',rivers:[]},
+ river:{name:'River crossing',blurb:'Two river channels cut the field around a central island at trench 5. Troops and tanks can only cross at the bridges, where they bunch up under fire.',
+        rivers:[{x0:(LX[4]+LX[5])/2-36,x1:(LX[4]+LX[5])/2+36,b:[72,228]},{x0:(LX[5]+LX[6])/2-36,x1:(LX[5]+LX[6])/2+36,b:[72,228]}]},
+ plain:{name:'Wide open plain',blurb:'A long front: 17 trenches and no cover between them. Trenches 4 and 14 are super trenches, a double line with a wall between: far stronger cover, room for 5 emplacements, 1 extra supply a second for whoever holds them, and belts of steel hedgehogs that stop the attacker\u2019s tanks until infantry take the trench.',
+        rivers:[],n:17,dbl:[4,14]},
+ march:{name:'The Long March',blurb:'45 trenches in nine fortified belts with wide empty ground between them, and a super trench in the middle. New troops arrive one trench behind the line you send them to.',
+        rivers:[],belts:9,per:5,tight:150,gap:520,super:true,rail:true}
+};
+function setLayout(key){
+  const m=MAPS[key]||MAPS.open;
+  LX.length=0;
+  if(m.belts){
+    const n=m.belts*m.per;let x=150;LX.push(x);
+    for(let i=1;i<=n;i++){x+=i===1?230:(((i-1)%m.per)===0?m.gap:m.tight);LX.push(x)}
+    x+=230;LX.push(x);WW=x+150;NT=n;
+  }else{
+    const n=m.n||9;for(let i=0;i<=n+1;i++)LX.push(150+i*230);WW=LX[n+1]+150;NT=n;
+  }
+  HQI=NT+1;SUPER=m.super?Math.ceil(NT/2):-1;DBL=m.dbl||[];
+}
+const BW=10;
+let MAP='open',RIV=[];
+let fort=new Array(11).fill(0),jobs=[],fields=[],garr=new Array(11).fill(0);
+const GARR_T=[50,85,130,200];
+const DEPOT_RATE=0.8,SUPER_INC=3,SUPER_CARD_T=180;
+const depots=side=>{let n=0;for(const u of units)if(u.T.depot&&u.side===side)n++;return n};
+const incomeNow=()=>M[0].income+M[0].growth*S.t/60+depots(0)*DEPOT_RATE+(owner&&owner[SUPER]===0?SUPER_INC:0)+dblHeld(0)*DBL_RATE;
+const nestCost=side=>SPECIAL[NAT[nation[side]].nest].cost;
+let S,M,units,bases,ai,sel,owner,nation=['gb','de'];
+let aim=null,planes=[],tracers=[],shells=[],booms=[],floats=[],scorch=[],smoke=[],wrecks=[];
+let running=false,userPaused=false,speed=1,uid=1;
+
+function mods(){
+  const o={dmg:{},cd:{},cost:{},hp:1,cover:1,speed:1,income:3,growth:0,bounty:1,heal:0,barrage:0,tankHp:1};
+  for(const k of ORDER.concat(['bunker','colossus','tsar','nest','pillbox','pit75','pit65','depot','char2c','carrier','guncarrier'])){o.dmg[k]=1;o.cd[k]=1;o.cost[k]=1}
+  return o;
+}
+function newGame(mine,theirs,map){
+  nation=[mine,theirs];MAP=MAPS[map]?map:'open';setLayout(MAP);RIV=MAPS[MAP].rivers;
+  S={t:0,score:0,supplies:mine==='aq'?15:40,kills:0,losses:0,cardKills:0,need:4,pending:0,taken:{},cards:0,unlocked:{rifle:true,mg:true},barrageT:6,warnT:0,superOwner:-1,superCard:false,superT:0};
+  sw=[{cd:0,tunnel:null},{cd:0,tunnel:null}];
+  M=[mods(),mods()];
+  for(let s=0;s<2;s++){if(nation[s]==='gb')M[s].cd.rifle=0.85;if(nation[s]==='it')M[s].cover*=0.85}
+  if(nation[0]==='us'){M[0].income=2.3;M[0].growth=0.4}
+  if(nation[0]==='aq'){M[0].income=2;M[0].growth=0.7}
+  relabelCards();
+  units=[];aim=null;planes=[];tracers=[];shells=[];booms=[];floats=[];scorch=[];smoke=[];wrecks=[];
+  bases=[{x:LX[0],hp:BASE_HP,max:BASE_HP,cd:0,dmg:1},{x:LX[HQI],hp:BASE_HP,max:BASE_HP,cd:0,dmg:1}];
+  ai={money:40,buyT:1,thinkT:3,lastAdv:0,aggr:2,want:null,F:NT};
+  fort=new Array(HQI+1).fill(0);jobs=[];fields=[];garr=new Array(HQI+1).fill(0);
+  owner=new Array(HQI+1).fill(-1);owner[0]=0;owner[1]=0;owner[NT]=1;owner[HQI]=1;
+  sel=1;
+  applyTech();
+  for(let i=0,n=Math.round((120+(has('vets')?80:0))/ut(0,'rifle').cost);i<n;i++)spawn(0,'rifle',1,true);
+  for(let i=0,n=Math.round(AI_START*20/ut(1,'rifle').cost);i<n;i++)spawn(1,'rifle',NT,true);
+  cam=0;camT=0;running=true;userPaused=false;
+  $('nmA').textContent=NAT[nation[0]].name+' (you)';$('nmB').textContent=NAT[nation[1]].name;
+  $('pauseBtn').textContent='Pause';
+  makeDecor();buildMap();buildBuy();refresh();
+  toast('Drag the field sideways to look around. Press Advance to take the next trench.');
+}
+
+/* ---------- geometry ---------- */
+const trenchX=(cx,y)=>cx+((Math.floor(y/SEG)%2)?6:-6);
+function posX(side,L,y,tank){
+  const dir=side?-1:1,own=side?HQI:0,foe=HQI-own;
+  if(L===own)return LX[own]+dir*(tank?52+Math.abs(tank):55);
+  if(L===foe)return LX[foe]-dir*(tank?72+Math.abs(tank):85);
+  return tank?LX[L]+dir*tank:trenchX(LX[L]+(isDbl(L)?((Math.floor(y*0.61)%2)?14:-14):0),y);
+}
+const isTrench=L=>L>=1&&L<=NT;
+function pickLane(side,L){
+  let best=150,bs=-1;
+  for(let k=0;k<5;k++){
+    const y=22+Math.random()*(WH-44);let near=1e9;
+    for(const u of units)if(u.side===side&&u.line===L)near=Math.min(near,Math.abs(u.y-y));
+    if(near>bs){bs=near;best=y}
+  }
+  return best;
+}
+/* on maps with a railhead, reinforcements appear one trench behind the line they are sent to */
+function startX(side,L){
+  const dir=side?-1:1,own=side?HQI:0;
+  if(!MAPS[MAP].rail)return LX[own]-dir*14;
+  return LX[Math.max(0,Math.min(HQI,L-dir))]-dir*14;
+}
+function spawn(side,type,L,placed){
+  const T=ut(side,type),m=M[side],own=side?HQI:0,dir=side?-1:1;
+  let y=pickLane(side,L);if(T.big)y=Math.max(50,Math.min(WH-50,y));
+  const park=T.armor?(T.rear?-((T.park||38)+26):(T.park||38)+4):0;
+  let hp=T.hp*(T.armor?m.tankHp:m.hp);
+  const u={id:uid++,side,type,T,cd2:0,flash2:0,gun:1,tread:0,puff:0,line:L,y,aim:0,park,x:placed?posX(side,L,y,park):startX(side,L),hp,max:hp,cd:Math.random()*T.cd,settled:!!placed,moving:false,walk:Math.random()*6,flash:0};
+  units.push(u);return u;
+}
+const count=side=>{let n=0;for(const u of units)if(u.side===side&&!u.T.armor&&!u.fixed)n++;return n};
+const tanks=side=>{let n=0;for(const u of units)if(u.side===side&&u.T.armor&&!u.T.sup)n+=u.T.w||1;return n};
+const anyTank=()=>TK.some(k=>S.unlocked[k]&&ut(0,k));
+const tkCan=k=>!!ut(0,k)&&!S.unlocked[k]&&(k==='tkL'||!tkPrev(nation[0],k)||!!S.unlocked[tkPrev(nation[0],k)]);
+const full=(side,type)=>{const T=ut(side,type);return T.armor?tanks(side)+(T.w||1)>NAT[nation[side]].tanks+1e-6:count(side)>=NAT[nation[side]].inf};
+const countAt=(side,L)=>{let n=0;for(const u of units)if(u.side===side&&u.line===L&&!u.fixed)n++;return n};
+const power=(side,L)=>{let p=0;for(const u of units)if(u.side===side&&u.line===L)p+=u.T.cost;return p};
+const cost=type=>Math.round(ut(0,type).cost*M[0].cost[type]);
+const frontLine=()=>{let f=0;for(const u of units)if(u.side===0&&!u.fixed&&u.line>f)f=u.line;return f};
+
+}
+
+/* ---------- cards ---------- */
+const CARDS=[
+ {id:'draft',w:3,name:'Fresh draft',text:'',take(){for(let i=0,n=Math.round(80/ut(0,'rifle').cost);i<n;i++)spawn(0,'rifle',sel)}},
+ {id:'gunsec',w:2,name:'Gun section',text:'2 machine gunners report to your HQ at once.',take(){for(let i=0;i<2;i++)spawn(0,'mg',sel)}},
+ {id:'u_raider',w:3,once:true,name:'Trench raiders',text:'Unlocks raiders: fast, and their grenades ignore trench cover. Two arrive now.',take(){S.unlocked.raider=true;spawn(0,'raider',sel);spawn(0,'raider',sel);buildBuy()}},
+ {id:'u_sniper',w:3,once:true,name:'Sharpshooters',text:'Unlocks snipers: very long reach, and trenches only halve their damage. One arrives now.',take(){S.unlocked.sniper=true;spawn(0,'sniper',sel);buildBuy()}},
+ {id:'u_mortar',w:3,once:true,name:'Mortar teams',text:'Unlocks mortars: shells that reach two trench lines and hit groups. One arrives now.',take(){S.unlocked.mortar=true;spawn(0,'mortar',sel);buildBuy()}},
+ {id:'u_tank',w:3,once:true,name:'Tank unlock',text:'Unlocks tanks: slow, armoured against bullets, and they fire while moving.',take(){S.unlocked.tank=true;buildBuy()}},
+ {id:'u_tkL',w:2.5,once:true,name:'Light tank',text:'',can:()=>tkCan('tkL'),take(){S.unlocked.tkL=true;buildBuy()}},
+ {id:'u_tkM',w:2,once:true,name:'Medium-heavy tank',text:'',can:()=>tkCan('tkM'),take(){S.unlocked.tkM=true;buildBuy()}},
+ {id:'u_tkH',w:2,once:true,name:'Heavy tank',text:'',can:()=>tkCan('tkH'),take(){S.unlocked.tkH=true;buildBuy()}},
+ {id:'u_tkS',w:1.5,once:true,name:'Super-heavy tank',text:'',can:()=>tkCan('tkS'),take(){S.unlocked.tkS=true;buildBuy()}},
+ {id:'bonds',w:3,name:'War bonds',text:'+1.5 supplies every second.',take(){M[0].income+=1.5}},
+ {id:'spoils',w:2,name:'Spoils of war',text:'+50% supplies from kills.',take(){M[0].bounty+=0.5}},
+ {id:'musket',w:2,name:'Musketry school',text:'Riflemen and snipers deal 20% more damage.',take(){M[0].dmg.rifle*=1.2;M[0].dmg.sniper*=1.2}},
+ {id:'dugout',w:2,name:'Deeper dugouts',text:'Your troops in trenches take 20% less damage.',take(){M[0].cover*=0.8}},
+ {id:'helmet',w:2,name:'Steel helmets',text:'Infantry gain 20% health, including troops already in the field.',take(){M[0].hp*=1.2;for(const u of units)if(u.side===0&&!u.T.armor){u.hp*=1.2;u.max*=1.2}}},
+ {id:'march',w:2,name:'Quick march',text:'Infantry move 20% faster.',take(){M[0].speed*=1.2}},
+ {id:'belt',w:2,name:'Belt feed',text:'Machine gunners fire 25% faster.',take(){M[0].cd.mg*=0.8}},
+ {id:'cheap',w:2,name:'Mass production',text:'Riflemen cost 20% less.',take(){M[0].cost.rifle*=0.8;buildBuy()}},
+ {id:'hq',w:1.5,name:'Fortified HQ',text:'Your HQ gains 500 health and its guns hit 30% harder.',take(){bases[0].max+=500;bases[0].hp+=500;bases[0].dmg*=1.3}},
+ {id:'barrage',w:2,name:'Creeping barrage',text:'Your guns shell the nearest enemy position every 10 seconds. Taking it again adds 2 shells.',take(){M[0].barrage+=M[0].barrage?2:3}},
+ {id:'medic',w:2,name:'Stretcher bearers',text:'Troops resting in a trench recover 1.5 health per second.',take(){M[0].heal+=1.5}},
+ {id:'plate',w:2,name:'Thicker plate',text:'Tanks gain 30% health, including tanks already in the field.',can:anyTank,take(){M[0].tankHp*=1.3;for(const u of units)if(u.side===0&&u.T.armor){u.hp*=1.3;u.max*=1.3}}},
+ {id:'train',w:2,name:'Supply train',text:'150 supplies now.',take(){S.supplies+=150}}
+];
+const CARDTXT={
+ gb:{u_raider:['Trench raiders','Unlocks trench raiders: cheap, tough and fast, and their bombs ignore trench cover. Two arrive now.'],
+     u_tank:['Tank unlock: Mk V','Unlocks the Mk V: quick, with two guns, though bullets still hurt it a little.']},
+ de:{u_raider:['Stormtroopers','Unlocks stormtroopers: submachine guns that ignore trench cover. Two arrive now.'],
+     u_tank:['Tank unlock: A7V','Unlocks the A7V: a slow fortress with thick armour and six machine guns.']},
+ fr:{u_mortar:['75 mm field guns','Unlocks the 75 mm field gun: rapid shellfire that tears up troops in the open but does little against trenches. One arrives now.'],
+     u_tank:['Tank unlock: Renault FT','Unlocks the Renault FT: small, cheap and fast. You can field 12.']},
+ us:{u_raider:['Trench shotgunners','Unlocks trench shotgunners: devastating at very short range, and trench cover does not stop them. Two arrive now.'],
+     u_tank:['Tank unlock: Mark VIII Liberty','Unlocks the Mark VIII Liberty: the heaviest standard tank, with two guns and machine guns. You can field 5.']},
+ aq:{u_raider:['Sledge raiders','Unlocks sledge raiders: fast ski-troopers whose grenades ignore trench cover. Two arrive now.'],
+     u_mortar:['Frost mortar crews','Unlocks the frost mortar: a trench mortar that shells up to two trench lines away. One arrives now.'],
+     u_tank:['Tank unlock: Weddell','Unlocks the Weddell: a big, snow-white medium tank with a long gun and a coaxial machine gun.']},
+ it:{u_raider:['Arditi','Unlocks the Arditi: fearless shock troops, fast, whose grenades ignore trench cover. Two arrive now.'],
+     u_mortar:['Bombarda crews','Unlocks the Bombarda: a trench mortar that shells up to two trench lines away. One arrives now.'],
+     u_tank:['Tank unlock: Fiat 2000','Unlocks the Fiat 2000: a slow 40-ton fortress with a turret gun and a ring of machine guns.']},
+ ah:{u_raider:['Sturmtruppen','Unlocks Sturmtruppen: hand-picked assault troops whose grenades ignore trench cover. Two arrive now.'],
+     u_tank:['Siege gun: \u0160koda 30.5 cm','Unlocks the \u0160koda 30.5 cm mortar: a slow siege gun that reaches three trenches, hits a wide area and can smash fortifications. You can field 2.']},
+ ru:{u_tank:['Tank unlock: Vezdekhod','Unlocks the Vezdekhod: a quick, cheap light tank on one wide track, with a machine gun and no cannon. You can field 10.']}
+};
+function relabelCards(){
+  for(const c of CARDS){if(c.name0===undefined){c.name0=c.name;c.text0=c.text}c.name=c.name0;c.text=c.text0}
+  const set=(id,name,text)=>{const c=CARDS.find(x=>x.id===id);if(name)c.name=name;c.text=text};
+  const r=ut(0,'rifle'),cap=w=>w[0].toUpperCase()+w.slice(1);
+  set('draft',null,Math.round(80/r.cost)+' '+r.pl+' report to your HQ at once.');
+  set('gunsec',null,'2 '+ut(0,'mg').pl+' report to your HQ at once.');
+  set('cheap',null,cap(r.pl)+' cost 20% less.');
+  set('musket',null,cap(r.pl)+' and snipers deal 20% more damage.');
+  const t=CARDTXT[nation[0]];for(const id in t)set(id,t[id][0],t[id][1]);
+  for(const [id,k,lab] of [['u_tkL','tkL','Light tank'],['u_tkM','tkM','Medium-heavy tank'],['u_tkH','tkH','Heavy tank'],['u_tkS','tkS','Super-heavy tank']]){
+    const T=ut(0,k);if(!T)continue;
+    set(id,(nation[0]==='ah'?'Siege gun':lab)+': '+T.name,'Unlocks the '+T.name+': '+T.role+' It uses '+fmt(T.w||1)+' of your '+NAT[nation[0]].tanks+' armour places.');
+  }
+}
+function offerCards(){
+  const pool=CARDS.filter(c=>!(c.once&&S.taken[c.id])&&(!c.can||c.can())&&!(c.id==='u_tank'&&S.unlocked.tank));
+  const out=[],want=has('intel')?4:3;
+  if(has('corps')&&S.cards===0){const i=pool.findIndex(c=>c.id==='u_tank');if(i>=0)out.push(pool.splice(i,1)[0])}
+  while(out.length<want&&pool.length){
+    let tot=0;for(const c of pool)tot+=c.w;
+    let r=Math.random()*tot,i=0;for(;i<pool.length-1;i++){r-=pool[i].w;if(r<=0)break}
+    out.push(pool.splice(i,1)[0]);
+  }
+  $('cardSub').textContent=S.pending>1?'It lasts for the rest of this battle. '+(S.pending-1)+' more to choose after this.':'It lasts for the rest of this battle.';
+  $('cardList').innerHTML=out.map(c=>'<button class="pick" data-card="'+c.id+'"><h3>'+c.name+'</h3><p>'+c.text+'</p></button>').join('');
+  $('cardOv').hidden=false;
+  const f=$('cardList').querySelector('button');if(f&&f.focus)f.focus();
+}
+$('cardList').addEventListener('click',ev=>{
+  const b=ev.target.closest('button[data-card]');if(!b)return;
+  const c=CARDS.find(x=>x.id===b.dataset.card);
+  c.take();S.taken[c.id]=(S.taken[c.id]||0)+1;S.cards++;S.pending--;
+  $('cardOv').hidden=true;
+  refresh();
+  if(S.pending>0)offerCards();
+});
+
+/* ---------- orders ---------- */
+function select(L,center){
+  if(d.kind==='paris'){
+    if(swBlock(0))return;
+    aim={x:null,y:null};toast('Tap the field to place the target, then press Confirm. Drag to look around.');refresh();return;
+  }
+  if(S.supplies<d.cost||!useSW(0))return;
+  S.supplies-=d.cost;
+  toast(d.kind==='mine'?'Tunnellers are digging toward trench '+sw[0].tunnel.line+'.':d.kind==='char2c'?'A Char 2C is rolling out of your HQ.':d.kind==='tsar'?'A Tsar Tank is rolling out of your HQ.':d.kind==='colossus'?'The Southern Colossus is rolling out of your HQ.':d.kind==='bugs'?'Kettering Bugs are in the air.':d.kind==='caproni'?'A Caproni bomber is on its way.':'The 42 cm battery has fired.');
+  refresh();
+});
+let pickMine=null,pickFoe=null;
+function renderStart(){
+  if(pickMine&&pickFoe){
+    $('startHead').textContent=NAT[pickMine].name+' against '+NAT[pickFoe].name+'. Choose the battlefield';
+    $('natList').innerHTML=Object.keys(MAPS).map(k=>'<button class="pick" data-map="'+k+'"><h3>'+MAPS[k].name+'</h3><p>'+MAPS[k].blurb+'</p></button>').join('');
+    return;
+  }
+  $('startHead').textContent=pickMine?'You are '+NAT[pickMine].name+'. Choose your enemy':'Choose your country';
+  $('natList').innerHTML=Object.keys(NAT).filter(n=>n!==pickMine).map(n=>'<button class="pick" data-nation="'+n+'"><h3>'+(pickMine?'Fight ':'Play as ')+NAT[n].name+'</h3><p>'+NAT[n].blurb+' Armour: '+tkList(n).map(k=>STATS[n][k].name).join(', ')+'.</p></button>').join('');
+}
+$('natList').addEventListener('click',ev=>{
+  const mb=ev.target.closest('button[data-map]');
+  if(mb){$('startOv').hidden=true;newGame(pickMine,pickFoe,mb.dataset.map);return}
+  const b=ev.target.closest('button[data-nation]');if(!b)return;
+  if(!pickMine)pickMine=b.dataset.nation;else pickFoe=b.dataset.nation;
+  renderStart();$('startOv').scrollTop=0;
+});
+renderStart();
+$('againBtn').addEventListener('click',()=>{$('endOv').hidden=true;pickMine=null;pickFoe=null;renderStart();$('startOv').hidden=false});
+function endGame(won){
+  running=false;
+  $('endTitle').textContent=won?'Victory':'Defeat';
+  $('endText').textContent=won?'The enemy HQ has fallen to '+NAT[nation[0]].name+'.':'Your HQ has been overrun by '+NAT[nation[1]].name+'.';
+  const m=Math.floor(S.t/60),s=Math.floor(S.t%60);
+  $('eTime').textContent=m+':'+(s<10?'0':'')+s;$('eKills').textContent=S.kills;$('eLost').textContent=S.losses;$('eCards').textContent=S.cards;
+  const earned=Math.floor(S.score/4)+(won?30:0);
+  META.points+=earned;META.runs++;if(won)META.wins++;saveMeta();
+  $('eCode').value=makeCode();$('eMsg').textContent='';
+  $('ePts').textContent='+'+earned+(won?' (30 for the win)':'');
+  techLabels();
+  $('endOv').hidden=false;
+}
+
+/* ---------- simulation tick ---------- */
+function tick(dt){
+  if(!running)return;
+  S.t+=dt;S.supplies+=incomeNow()*dt;
+  if(SUPER>0&&owner[SUPER]===0){S.superT+=dt;if(S.superT>=SUPER_CARD_T){S.superT-=SUPER_CARD_T;S.pending++;toast('The super trench has sent you a free card.')}}
+  stepUnits(dt);aiStep(dt);stepSW(dt);
+  for(const a of [tracers,booms,floats])for(const o of a)o.life-=dt;
+  tracers=tracers.filter(o=>o.life>0);booms=booms.filter(o=>o.life>0);floats=floats.filter(o=>o.life>0);
+  for(const f of floats)f.y-=dt*22;
+  for(const p of smoke){p.life-=dt;p.r+=dt*(p.dark?7:5);p.y-=dt*9;p.x-=dt*4}
+  smoke=smoke.filter(p=>p.life>0);
+  for(const w of wrecks){w.t+=dt;if(w.t<18){w.puff-=dt;if(w.puff<=0){w.puff=0.22;puff(w.x+(Math.random()-0.5)*14,w.y+(Math.random()-0.5)*8,true)}}}
+  const fl=frontLine();if(sel>Math.max(fl,0)&&countAt(0,sel)===0)sel=fl;
+  if(sel>0&&sel<HQI){
+    let foes=0,near=0;const sx=LX[sel];
+    for(const u of units){if(u.fixed)continue;if(u.side===1){if(u.line===sel&&u.settled)foes++}else if(Math.abs(u.x-sx)<260&&u.line>=sel)near++}
+    if(foes&&!near){for(const u of units)if(u.side===0&&u.line===sel&&!u.fixed)u.line=sel-1;toast('Trench '+sel+' is lost. Your orders fall back to '+lineName(sel-1)+'.');sel--}
+  }
+  if(bases[1].hp<=0)endGame(true);else if(bases[0].hp<=0)endGame(false);
+  else if(S.pending>0&&$('cardOv').hidden)offerCards();
+}
+
+/* ---------- drawing ---------- */
+const cv=$('field'),ctx=cv.getContext('2d');
+let CW=360,CH=300,DPR=1,K=1,cam=0,camT=0,patches=[],craters=[];
+const vw=()=>CW/K;
+function rnd(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return (s-1)/2147483646}}
+function makeDecor(){
+  patches=[];craters=[];
+  const R=rnd(1916),np=Math.round(110*WW/2600),nc=Math.round(170*WW/2600);
+  for(let i=0;i<np;i++)patches.push({x:R()*WW,y:R()*WH,rx:16+R()*40,ry:9+R()*20,l:R()<0.5});
+  for(let i=0;i<nc;i++){
+    const x=260+R()*(WW-520),y=8+R()*(WH-16),r=4+R()*9,w=R()<0.35;
+    let ok=true;for(let L=1;L<=NT;L++)if(Math.abs(x-LX[L])<r+(isDbl(L)?108:16))ok=false;
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('keydown',ev=>{
+  if(ev.key==='ArrowRight'){camT=Math.min(WW-vw(),camT+120);ev.preventDefault()}
+  else if(ev.key==='ArrowLeft'){camT=Math.max(0,camT-120);ev.preventDefault()}
+});
+window.addEventListener('resize',resize);
+
+/* ---------- loop ---------- */
+let last=performance.now(),uiT=0;
+function frame(now){
+  let dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;if(dt<0)dt=0;
+  const paused=userPaused||!$('cardOv').hidden||!$('startOv').hidden||!$('endOv').hidden;
+  if(!paused){let left=dt*speed;while(left>0){const d=Math.min(0.04,left);tick(d);left-=d}}
+  if(shake>0)shake=Math.max(0,shake-dt*16);
+  if(!drag)cam+=(camT-cam)*Math.min(1,dt*7);
+  draw();
+  uiT+=dt;if(uiT>=0.25){uiT=0;refresh()}
+  requestAnimationFrame(frame);
+}
+buildMap();resize();techLabels();
+loadMeta().then(techLabels);
+requestAnimationFrame(frame);
+window.__trench={units:()=>units,sw:()=>sw,fields:()=>fields,fort:()=>fort,jobs:()=>jobs,draw(){cam=camT;draw()},step(sec){for(let t=0;t<sec&&running&&$('cardOv').hidden;t+=0.04)tick(0.04);refresh()},info:()=>({t:S.t,sel,running,sup:S.supplies,kills:S.kills,losses:S.losses,hp:[bases[0].hp,bases[1].hp],n:[count(0)+tanks(0),count(1)+tanks(1)],hq:HQI,lines:LX.map((x,L)=>L).map(L=>countAt(0,L)+'/'+countAt(1,L)).join(' '),pw:L=>[power(0,L),power(1,L)],settled:L=>units.filter(u=>u.side===0&&u.line===L).every(u=>u.settled),cards:S.cards})};
+})();
+</script>
+</body>
+</html>
+
+codex
+The plan has several tests that conflict with the source and dependencies that prevent early tasks from passing. I am checking the card pause state and bundle setup next.
+
+exec
+/usr/bin/zsh -lc "nl -ba legacy/trench-line.html | sed -n '579,640p'; nl -ba legacy/trench-line.html | sed -n '1344,1388p'; rg -n 'stepJobs|stepBunkers|buildSuper|detonate|Math.random|shake' legacy/trench-line.html" in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+   579	  }
+   580	  const good=found.filter(Boolean).sort((x,y)=>(y.rev-x.rev)||(y.ts-x.ts));
+   581	  if(good.length){
+   582	    const g=good[0];
+   583	    META.points=g.data.points;META.tech=g.data.tech;META.runs=g.data.runs;META.wins=g.data.wins;META.rev=g.rev;
+   584	    if(found.some(f=>!f||f.rev!==g.rev))await saveMeta();else{saveOk=2;saveState()}
+   585	  }else saveState();
+   586	}
+   587	async function saveMeta(){
+   588	  if(!store){saveState();return}
+   589	  META.rev=(META.rev||0)+1;
+   590	  const rec=JSON.stringify({code:makeCode(),rev:META.rev,ts:Date.now()});
+   591	  let ok=0;
+   592	  for(const k of SAVE_KEYS){try{const r=await store.set(k,rec,false);if(r!==null)ok++}catch(e){}}
+   593	  saveOk=ok;saveState();
+   594	}
+   595	function saveState(){
+   596	  const el=document.getElementById('saveState');if(!el)return;
+   597	  el.textContent=!store?'Automatic saving is not available here, so your code is the only save.'
+   598	    :saveOk===2?'Saved automatically in two places.'
+   599	    :saveOk===1?'One of the two automatic saves failed. The other is good, and your code still works.'
+   600	    :saveOk===0?'Both automatic saves failed. Copy your code to keep your progress.'
+   601	    :'Two automatic saves are kept. Nothing to save yet.';
+   602	}
+   603	const has=id=>!!META.tech[id];
+   604	/* save code: TL1-points-upgrades-runs-wins-check, all in base 36 */
+   605	const TECH_IDS=()=>TECH.flatMap(b=>b.nodes.map(n=>n.id));
+   606	function codeCheck(body){let h=7;for(let i=0;i<body.length;i++)h=(h*31+body.charCodeAt(i))%1296;return h.toString(36).toUpperCase().padStart(2,'0')}
+   607	function makeCode(){
+   608	  let mask=0;TECH_IDS().forEach((id,i)=>{if(META.tech[id])mask|=1<<i});
+   609	  const body=['TL1',META.points,mask,META.runs,META.wins].map((v,i)=>i?Math.max(0,Math.floor(v)).toString(36).toUpperCase():v).join('-');
+   610	  return body+'-'+codeCheck(body);
+   611	}
+   612	function readCode(text){
+   613	  const parts=text.trim().toUpperCase().replace(/\s+/g,'').split('-');
+   614	  if(parts.length!==6||parts[0]!=='TL1')return null;
+   615	  const body=parts.slice(0,5).join('-');
+   616	  if(codeCheck(body)!==parts[5])return null;
+   617	  const nums=parts.slice(1,5).map(v=>parseInt(v,36));
+   618	  if(nums.some(v=>!isFinite(v)||v<0))return null;
+   619	  const tech={};TECH_IDS().forEach((id,i)=>{if(nums[1]&(1<<i))tech[id]=1});
+   620	  for(const b of TECH)b.nodes.forEach((n,i)=>{if(tech[n.id]&&i>0&&!tech[b.nodes[i-1].id])delete tech[n.id]});
+   621	  return {points:nums[0],tech,runs:nums[2],wins:nums[3]};
+   622	}
+   623	function applyTech(){
+   624	  const m=M[0];
+   625	  if(has('marks'))m.dmg.rifle*=1.1;
+   626	  if(has('kit'))m.hp*=1.1;
+   627	  if(has('craft'))m.speed*=1.15;
+   628	  if(has('deep'))m.cover*=0.92;
+   629	  if(has('walls')){bases[0].max+=400;bases[0].hp+=400}
+   630	  if(has('guns'))bases[0].dmg*=1.4;
+   631	  if(has('aid'))m.heal+=1;
+   632	  if(has('stock'))S.supplies+=40;
+   633	  if(has('rail'))m.income+=0.4;
+   634	  if(has('econ'))m.bounty+=0.2;
+   635	  if(has('mech'))m.tankHp*=1.1;
+   636	  if(has('gunnery')){for(const k of TK)m.dmg[k]*=1.1;m.dmg.mortar*=1.1}
+   637	  if(has('works'))for(const k of TK)m.cost[k]*=0.9;
+   638	  if(has('titan'))S.unlocked.tkS=true;
+   639	}
+   640	
+  1344	/* ---------- orders ---------- */
+  1345	function select(L,center){
+  1346	  if(!running)return;
+  1347	  if(L>Math.max(1,frontLine())&&L>sel){toast('You can only select lines your troops have reached.');if(center)focusLine(L);return}
+  1348	  sel=L;if(center)focusLine(L);refresh();
+  1349	}
+  1350	function focusLine(L){camT=Math.max(0,Math.min(WW-vw(),posX(0,L,150,false)-vw()*0.42))}
+  1351	$('advBtn').addEventListener('click',()=>{
+  1352	  if(!running||sel>=HQI)return;
+  1353	  let n=0;for(const u of units)if(u.side===0&&u.line===sel&&!u.fixed){u.line=sel+1;n++}
+  1354	  if(!n){toast('No troops here to send forward.');return}
+  1355	  sel++;focusLine(sel);refresh();
+  1356	});
+  1357	$('backBtn').addEventListener('click',()=>{
+  1358	  if(!running||sel<=0)return;
+  1359	  for(const u of units)if(u.side===0&&u.line===sel&&!u.fixed)u.line=sel-1;
+  1360	  sel--;focusLine(sel);refresh();
+  1361	});
+  1362	$('gatherBtn').addEventListener('click',()=>{
+  1363	  if(!running)return;
+  1364	  let n=0;for(const u of units)if(u.side===0&&u.line<sel&&!u.fixed){u.line=sel;n++}
+  1365	  toast(n?n+' troops called up to '+lineName(sel)+'.':'No troops behind this line.');
+  1366	});
+  1367	$('fortBtn').addEventListener('click',()=>fortify(sel));
+  1368	$('nestBtn').addEventListener('click',()=>{
+  1369	  if(!running||!isTrench(sel)||owner[sel]!==0||S.supplies<nestCost(0))return;
+  1370	  if(!buildNest(0,sel)){toast('No room for another emplacement at trench '+sel+'.');return}
+  1371	  S.supplies-=nestCost(0);toast('A sapper is carrying sandbags to trench '+sel+'. The gun team follows.');refresh();
+  1372	});
+  1373	$('defBtn').addEventListener('click',()=>{
+  1374	  const d=NAT[nation[0]].def;
+  1375	  if(!running||!d||!isTrench(sel)||owner[sel]!==0||S.supplies<d.cost||!canDef(0,sel))return;
+  1376	  if(!buildDef(0,sel))return;
+  1377	  S.supplies-=d.cost;
+  1378	  toast(d.kind==='wire'?'Wire laid in front of trench '+sel+'. It slows enemy infantry until a tank or shellfire clears it.':d.kind==='mines'?'Mines laid in front of trench '+sel+'. The enemy cannot see them.':d.kind==='depot'?'Sappers are carrying stores to trench '+sel+' to set up a supply depot.':d.kind==='bunker'?'Sappers are building a bunker at trench '+sel+'.':'A sapper is carrying sandbags to trench '+sel+'. The gun follows.');
+  1379	  refresh();
+  1380	});
+  1381	const lineName=L=>L===0?'your HQ':L===HQI?'the enemy HQ':'trench '+L;
+  1382	
+  1383	/* ---------- interface ---------- */
+  1384	let toastT=null;
+  1385	function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),3600)}
+  1386	let lastSel=-1;
+  1387	function buildMap(){
+  1388	  let h='';const per=(MAPS[MAP]&&MAPS[MAP].per)||0;
+654:let sw=[{cd:0,tunnel:null},{cd:0,tunnel:null}],shake=0;
+731:    const y=22+Math.random()*(WH-44);let near=1e9;
+748:  const u={id:uid++,side,type,T,cd2:0,flash2:0,gun:1,tread:0,puff:0,line:L,y,aim:0,park,x:placed?posX(side,L,y,park):startX(side,L),hp,max:hp,cd:Math.random()*T.cd,settled:!!placed,moving:false,walk:Math.random()*6,flash:0};
+863:        puff(u.x-dir*(hurtBad?4:(T.len||21))+(Math.random()-0.5)*4,u.y+(Math.random()-0.5)*8,hurtBad);
+868:          u.cd2=T.mg.cd*(0.8+Math.random()*0.4);u.flash2=0.07;
+870:          if(Math.random()<T.mg.acc*accVs(u,best)){tracer(u.x,u.y+sy,best.x,best.y,1,'#ffd76a');hurt(best,T.mg.dmg,'mg',u)}
+871:          else tracer(u.x,u.y+sy,best.x+(Math.random()-0.5)*30,best.y+(Math.random()-0.5)*30,0.8,'rgba(255,215,106,.6)');
+886:      u.cd=T.cd*m.cd[u.type]*(0.85+Math.random()*0.3);u.flash=0.08;
+888:      else if(Math.random()<T.acc*accVs(u,best)){tracer(u.x+dir*9,u.y,best.x,best.y,u.type==='sniper'?1.4:1,'#ffe9a8');hurt(best,dmg,T.atk||u.type,u)}
+889:      if(T.jam&&Math.random()<T.jam)u.cd=2.4;
+891:      else tracer(u.x+dir*9,u.y,best.x+(Math.random()-0.5)*30,best.y+(Math.random()-0.5)*30,0.8,'rgba(255,233,168,.6)');
+895:        u.cd=T.cd*m.cd[u.type]*(0.85+Math.random()*0.3);u.flash=0.08;
+896:        const by=WH/2+(Math.random()-0.5)*70;
+909:      if(Math.random()<0.55*accVs(HQG,best)){tracer(b.x+dir*22,WH/2+(Math.random()-0.5)*50,best.x,best.y,1,'#ffd76a');hurt(best,9*b.dmg,'base',null)}
+916:      for(let i=0;i<9;i++){const a=i*0.7+Math.random(),r=i?Math.random()*s.splash*0.8:0;boom(s.x1+Math.cos(a)*r,s.y1+Math.sin(a)*r,34+Math.random()*26)}
+917:      if(!reduceMotion)shake=Math.max(shake,10);
+933:    if(s.big&&!reduceMotion)shake=Math.max(shake,4);
+936:    if(s.siege&&!s.base)for(let L=1;L<=NT;L++)if(Math.abs(s.x1-LX[L])<26&&fort[L]>0&&Math.random()<0.4){
+950:      if(tgt)for(let i=0;i<M[0].barrage;i++)shells.push({x0:bases[0].x,y0:WH/2,x1:tgt.x+(Math.random()-0.5)*26,y1:20+Math.random()*(WH-40),t:-i*0.25,dur:1.6,side:0,type:'barrage',dmg:26,splash:36,arc:1.5});
+963:      if(prev<0)buildSuper(now);
+985:  stepBunkers();
+986:  stepJobs(dt);
+1031:function stepBunkers(){
+1042:      u.shelter=b;u.ly0=u.ly===undefined?u.y:u.ly;u.tx=b.x;u.ly=b.y+(Math.random()-0.5)*14;occ++;
+1062:    for(let i=0;i<10;i++)mines.push({x:LX[L]+dir*(40+Math.random()*40),y:16+(i+Math.random())*(WH-32)/10,live:true});
+1068:function buildSuper(side){
+1082:function stepJobs(dt){
+1162:    for(let i=0;i<4;i++)shells.push({x0:own.x,y0:50+i*66,x1:tx+(Math.random()-0.5)*44,y1:30+Math.random()*(WH-60),t:-i*0.7,dur:Math.min(7,Math.max(1.5,Math.abs(tx-own.x)/230)),side,type:'barrage',dmg:atHQ?70:110,splash:42,cov:0.7,arc:0,plane:true,base:atHQ});
+1167:    for(let i=0;i<8;i++){const y=22+i*(WH-44)/7;shells.push({x0:tx,y0:y,x1:tx+(Math.random()-0.5)*14,y1:y,t:-(y-y0)/vy,dur:0.9,side,type:'barrage',dmg:atHQ?50:75,splash:32,cov:0.7,arc:2,base:atHQ})}
+1170:    for(let i=0;i<3;i++)shells.push({x0:own.x,y0:WH/2,x1:tx+(Math.random()-0.5)*16,y1:50+i*100+(Math.random()-0.5)*40,t:-i*1.3,dur:3,side,type:'barrage',dmg:atHQ?120:180,splash:70,cov:0.85,arc:3,big:true,raze:true,base:atHQ});
+1175:function detonate(side,L){
+1184:  for(let i=0;i<8;i++)boom(LX[L]+(Math.random()-0.5)*26,18+i*(WH-36)/7,34+Math.random()*14);
+1185:  if(!reduceMotion)shake=9;
+1193:    if(st.tunnel){st.tunnel.t-=dt;if(st.tunnel.t<=0){const L=st.tunnel.line;st.tunnel=null;detonate(sd,L)}}
+1205:      if(!ai.want&&S.t>60&&canBuild&&Math.random()<0.05){
+1206:        if(fort[F]<maxFort(F)&&FORT_COST[fort[F]]<=ai.money*2+80&&Math.random()<0.5)ai.want='fort';
+1207:        else if(canDef(1,F)&&Math.random()<0.5)ai.want='def';
+1210:      if(!ai.want&&S.t>240&&SW[nation[1]]&&!swBlock(1)&&(SW[nation[1]].cost<1500||ai.money>=SW[nation[1]].cost*0.6)&&Math.random()<0.025)ai.want='sw';
+1228:        let r=Math.random()*tot;for(const k of ok){r-=AI_W[k];if(r<=0){ai.want=k;break}}
+1258:  ai.lastAdv=S.t;ai.aggr=2+Math.random()*0.9;
+1327:    let r=Math.random()*tot,i=0;for(;i<pool.length-1;i++){r-=pool[i].w;if(r<=0)break}
+1563:  for(const w of wrecks){w.t+=dt;if(w.t<18){w.puff-=dt;if(w.puff<=0){w.puff=0.22;puff(w.x+(Math.random()-0.5)*14,w.y+(Math.random()-0.5)*8,true)}}}
+1791:  if(f<0.33){ctx.fillStyle=Math.random()<0.5?'#ff9a3a':'#ffd060';circle(-5,2,2+Math.random()*1.6);ctx.fillStyle='#ffe9a8';circle(-5,2,1)}
+2070:    if(w.t<8){ctx.fillStyle=Math.random()<0.5?'#ff9a3a':'#ffd060';circle(-L*0.12,W*0.05,W*0.16+Math.random()*2);circle(L*0.38,-W*0.12,W*0.08+Math.random())}
+2078:    if(w.t<10){ctx.fillStyle=Math.random()<0.5?'#ff9a3a':'#ffd060';circle(8,0,3.4+Math.random()*2);circle(-3,3,1.6+Math.random())}
+2084:    if(w.t<8){ctx.fillStyle=Math.random()<0.5?'#ff9a3a':'#ffd060';circle(1,0,1.6+Math.random()*1.2)}
+2093:  if(w.t<8){ctx.fillStyle=Math.random()<0.5?'#ff9a3a':'#ffd060';circle(-3,1,2.4+Math.random()*1.5);circle(8,-2,1.4+Math.random())}
+2099:  ctx.save();ctx.scale(K,K);ctx.translate(-cam+(shake>0?(Math.random()-0.5)*shake:0),shake>0?(Math.random()-0.5)*shake:0);
+2263:  if(shake>0)shake=Math.max(0,shake-dt*16);
+
+exec
+/usr/bin/zsh -lc "ls -la; cat ../landfall/package.json ../landfall/.github/workflows/pages.yml ../wobblers/package.json 2>/dev/null; rg -n 'esbuild|rolldown' ../landfall/package-lock.json | head -20; sed -n '1112,1165p' legacy/trench-line.html; sed -n '233,242p' legacy/trench-line.html" in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+total 32
+drwxrwxr-x 6 v v 4096 Nov 17 15:14 .
+drwxrwxr-x 8 v v 4096 Nov 17 14:52 ..
+drwxrwxr-x 8 v v 4096 Nov 17 15:14 .git
+-rw-rw-r-- 1 v v   61 Nov 17 15:14 .gitignore
+-rw-r--r-- 1 v v 2297 Nov 17  2026 README.md
+drwxrwxr-x 2 v v 4096 Nov 17 15:13 docs
+drwxrwxr-x 4 v v 4096 Nov 17 15:14 legacy
+drwxrwxr-x 2 v v 4096 Nov 17 15:14 reviews
+{
+  "name": "landfall",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "e2e": "vite build && vitest run --config tests/e2e/vitest.config.js",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "vite": "8.3.5",
+    "vitest": "4.1.12"
+  }
+}
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1
+{
+  "name": "wobblers",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "e2e": "vite build && vitest run --config tests/e2e/vitest.config.js",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "vite": "8.3.5",
+    "vitest": "4.1.12"
+  }
+}
+565:    "node_modules/@rolldown/binding-android-arm-eabi": {
+567:      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm-eabi/-/binding-android-arm-eabi-1.2.19.tgz",
+582:    "node_modules/@rolldown/binding-android-arm64": {
+584:      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.2.19.tgz",
+599:    "node_modules/@rolldown/binding-darwin-arm64": {
+601:      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.2.19.tgz",
+616:    "node_modules/@rolldown/binding-darwin-x64": {
+618:      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-x64/-/binding-darwin-x64-1.2.19.tgz",
+633:    "node_modules/@rolldown/binding-freebsd-x64": {
+635:      "resolved": "https://registry.npmjs.org/@rolldown/binding-freebsd-x64/-/binding-freebsd-x64-1.2.19.tgz",
+650:    "node_modules/@rolldown/binding-linux-arm-gnueabihf": {
+652:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-1.2.19.tgz",
+667:    "node_modules/@rolldown/binding-linux-arm64-gnu": {
+669:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-1.2.19.tgz",
+684:    "node_modules/@rolldown/binding-linux-arm64-musl": {
+686:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.2.19.tgz",
+701:    "node_modules/@rolldown/binding-linux-ppc64-gnu": {
+703:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-1.2.19.tgz",
+718:    "node_modules/@rolldown/binding-linux-s390x-gnu": {
+720:      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-1.2.19.tgz",
+/* ---------- superweapons ---------- */
+function targetFor(side){
+  if(side===0){
+    for(let L=sel+1;L<=NT;L++)if(units.some(u=>u.side===1&&u.line===L&&u.settled))return L;
+    return HQI;
+  }
+  for(let L=ai.F-1;L>=1;L--)if(units.some(u=>u.side===0&&u.line===L&&u.settled))return L;
+  return 0;
+}
+/* where the enemy commander aims the Paris Gun: the richest cluster of your units, else your HQ */
+function aimPoint(side){
+  const foe=1-side;let best=null,bs=0;
+  for(const c of units){
+    if(c.side!==foe||c.hp<=0)continue;
+    let sc=0;for(const e of units)if(e.side===foe&&e.hp>0&&Math.hypot(e.x-c.x,e.y-c.y)<85)sc+=e.T.cost;
+    if(sc>bs){bs=sc;best=c}
+  }
+  return best?{x:best.x,y:best.y}:{x:bases[foe].x,y:WH/2};
+}
+function swBlock(side){
+  const d=SW[nation[side]],st=sw[side];
+  if(!d)return 'none';
+  if(st.tunnel)return 'Tunnelling under trench '+st.tunnel.line+': '+Math.ceil(st.tunnel.t)+' seconds to go.';
+  if(st.cd>0)return 'Ready again in '+Math.ceil(st.cd)+' seconds.';
+  if(d.kind==='mine'&&!isTrench(targetFor(side)))return 'No enemy-held trench ahead of the selected one.';
+  if(d.kind==='char2c'&&units.some(u=>u.side===side&&u.type==='char2c'))return 'Already in the field.';
+  if(d.kind==='colossus'&&units.some(u=>u.side===side&&u.type==='colossus'))return 'Already in the field.';
+  if(d.kind==='tsar'&&units.some(u=>u.side===side&&u.type==='tsar'))return 'Already in the field.';
+  return '';
+}
+function useSW(side,at){
+  const d=SW[nation[side]];if(!d||swBlock(side))return false;
+  const st=sw[side],dir=side?-1:1,own=bases[side],foe=bases[1-side],T=targetFor(side),atHQ=!isTrench(T);
+  const tx=atHQ?foe.x-dir*24:LX[T];
+  if(d.kind==='paris'){
+    const a=at||aimPoint(side),x=Math.max(0,Math.min(WW,a.x)),y=Math.max(0,Math.min(WH,a.y));
+    shells.push({x0:own.x,y0:WH/2,x1:x,y1:y,t:0,dur:4.5,side,type:'barrage',dmg:700,splash:90,cov:0.8,rz:80,arc:3.2,big:true,huge:true});
+    if(side===1){let nl=1;for(let L=1;L<=NT;L++)if(Math.abs(LX[L]-x)<Math.abs(LX[nl]-x))nl=L;toast('The enemy Paris Gun has fired at the area near trench '+nl+'. Look for the red circle.')}
+  }else if(d.kind==='mine'){
+    st.tunnel={line:T,t:25};
+  }else if(d.kind==='char2c'){
+    spawn(side,'char2c',side?ai.F:sel);
+    if(side===1)toast('The enemy has sent out a Char 2C.');
+  }else if(d.kind==='tsar'){
+    spawn(side,'tsar',side?ai.F:sel);
+    if(side===1)toast('The enemy has sent out a Tsar Tank.');
+  }else if(d.kind==='colossus'){
+    spawn(side,'colossus',side?ai.F:sel);
+    if(side===1)toast('The enemy has sent out a Southern Colossus.');
+  }else if(d.kind==='bugs'){
+    for(let i=0;i<4;i++)shells.push({x0:own.x,y0:50+i*66,x1:tx+(Math.random()-0.5)*44,y1:30+Math.random()*(WH-60),t:-i*0.7,dur:Math.min(7,Math.max(1.5,Math.abs(tx-own.x)/230)),side,type:'barrage',dmg:atHQ?70:110,splash:42,cov:0.7,arc:0,plane:true,base:atHQ});
+    if(side===1)toast('Flying bombs are heading for '+lineName(T)+'.');
+  }else if(d.kind==='caproni'){
+    const vy=110,y0=-50;
+/* ---------- constants ---------- */
+let WW=2600,NT=9,HQI=10,SUPER=-1;   /* world width, number of trenches, enemy HQ line, super trench line */
+const WH=300, SEG=WH/7;
+/* Wide open plain: double trenches (two lines with a wall between), listed in DBL */
+let DBL=[];
+const isDbl=L=>DBL.indexOf(L)>=0;
+const HEDGE=94,DBL_COV=0.55,DBL_RATE=1,SLOTS5=[0.12,0.31,0.5,0.69,0.88];
+const dblHeld=side=>{let n=0;for(const L of DBL)if(owner&&owner[L]===side)n++;return n};
+const LX=[150];for(let i=1;i<=9;i++)LX.push(150+i*230);LX.push(2450);
+const UT={
+
+exec
+/usr/bin/zsh -lc "rg -n 'node_modules/esbuild|\"esbuild\"|\"dependencies\"' ../landfall/node_modules/vite/package.json ../landfall/package-lock.json | tail -12; ls ../landfall/node_modules/esbuild 2>/dev/null; rg -n 'reduceMotion' legacy/trench-line.html; sed -n '989,1018p' legacy/trench-line.html; cat ../landfall/eslint.config.js; git status --short; git log -3 --oneline" in /home/v/Documents/Dev/Max/trench-line
+ succeeded in 0ms:
+../landfall/package-lock.json:2512:      "dependencies": {
+../landfall/package-lock.json:2534:        "esbuild": "^0.27.0 || ^0.28.0",
+../landfall/package-lock.json:2552:        "esbuild": {
+../landfall/package-lock.json:2590:      "dependencies": {
+../landfall/package-lock.json:2680:      "dependencies": {
+../landfall/package-lock.json:2713:      "dependencies": {
+../landfall/package-lock.json:2728:      "dependencies": {
+../landfall/package-lock.json:2744:      "dependencies": {
+../landfall/node_modules/vite/package.json:58:  "dependencies": {
+../landfall/node_modules/vite/package.json:87:    "esbuild": "^0.28.2",
+../landfall/node_modules/vite/package.json:126:    "esbuild": "^0.27.0 || ^0.28.0",
+../landfall/node_modules/vite/package.json:144:    "esbuild": {
+655:const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+917:      if(!reduceMotion)shake=Math.max(shake,10);
+933:    if(s.big&&!reduceMotion)shake=Math.max(shake,4);
+1185:  if(!reduceMotion)shake=9;
+/* ---------- fortifying and MG nests ---------- */
+function freeSlot(L){
+  const SL=isDbl(L)?SLOTS5:SLOTS;
+  for(let i=0;i<SL.length;i++){
+    let used=false;
+    for(const u of units)if(u.T.nest&&u.line===L&&u.slot===i)used=true;
+    for(const j of jobs)if(j.line===L&&j.slot===i)used=true;
+    if(!used)return i;
+  }
+  return -1;
+}
+function wireSlow(u){
+  for(const f of fields){
+    if(f.type!=='wire'||f.side===u.side||Math.abs(u.x-f.x)>f.w/2)continue;
+    if(u.T.armor){f.hp=0;continue}
+    return 0.3;
+  }
+  return 1;
+}
+function stepFields(){
+  if(!fields.length)return;
+  for(const f of fields){
+    if(f.type!=='mines')continue;
+    for(const mn of f.mines){
+      if(!mn.live)continue;
+      let hit=false;
+      for(const u of units)if(u.side!==f.side&&u.hp>0&&Math.abs(u.x-mn.x)<13&&Math.abs(u.y-mn.y)<13){hit=true;break}
+      if(!hit)continue;
+      mn.live=false;boom(mn.x,mn.y,22);
+      for(const e of units)if(e.side!==f.side&&e.hp>0&&Math.hypot(e.x-mn.x,e.y-mn.y)<=28)hurt(e,60,'barrage',null,undefined,true);
+import js from "@eslint/js";
+import globals from "globals";
+
+export default [
+  { ignores: ["dist/", "legacy/", "node_modules/", "docs/", "reviews/", "tests/e2e/out/"] },
+  js.configs.recommended,
+  { files: ["src/**/*.js"], languageOptions: { globals: globals.browser } },
+  { files: ["tests/**/*.js", "*.config.js"], languageOptions: { globals: globals.node } },
+  { files: ["tests/unit/ui/**/*.js"], languageOptions: { globals: { ...globals.node, ...globals.browser } } },
+];
+3006806 chore: move prototype to legacy/, drop generated artifact copy
+770d4c8 init: prototype handoff as received
+
+codex
+VERDICT: APPROVE WITH CHANGES
+
+- BLOCKER - docs/PLAN.md:226 - Task 4 requires `spawn`, `relabelCards`, and `META`, implemented in Tasks 5, 11, and 12. Task 7 also requires `buildSuper`, `stepBunkers`, and `stepJobs` from Task 8. These commits cannot pass their stated tests in order. Extract the state container first, then implement dependencies before `newGame` and `stepUnits`. Document the import graph and prohibit module-level reads of cyclic imports before initialization.
+
+- BLOCKER - docs/PLAN.md:109 - The RNG tests cannot pass as written. `.nottoEqual` is not a matcher, and `rng.seed` cannot remain both a callable method and the number `42`. Use `.not.toEqual` and separate the reseed method from the current seed value.
+
+- BLOCKER - docs/PLAN.md:382 - The e2e build assumes that Vite installs esbuild. The inspected sibling lockfile has no installed esbuild package; Vite lists it as an optional peer. The command also bundles a CSS import without defining an output path or CSS handling. Declare esbuild as a direct development dependency and specify how the harness removes or handles CSS. Install canvas stubs and error capture in `beforeParse`, before the inline bundle executes.
+
+- IMPORTANT - docs/PLAN.md:42 - Replacing DOM calls with events does not cover all browser dependencies. Combat and superweapons read `reduceMotion`, initialized through `window.matchMedia` at prototype line 655. A near-verbatim port retains a browser dependency or leaves an undefined variable. Move this preference into the UI and emit shake requests, or inject the preference explicitly. Add a Node-only import and execution test without browser globals.
+
+- IMPORTANT - docs/PLAN.md:352 - The plan removes `$('cardOv').hidden` without defining its replacement. That flag prevents repeated offers and stops the debug step loop while a choice is open. Events alone cannot preserve that state. Store the active offer in the simulation, emit once per offer, and define how choosing a card advances pending choices. Test repeated ticks, multiple pending cards, and headless operation without UI listeners.
+
+- IMPORTANT - docs/PLAN.md:364 - Task 14 does not assign the advance, retreat, gather, nest-purchase, defense-purchase, and superweapon-confirmation handlers to modules. Several handlers contain simulation rules, including ownership checks and supply deductions. Define simulation command functions and wire the UI to them. Test that each successful purchase charges once and each rejected purchase charges nothing. Preserve the existing distinction between `useSW()` and its callers, which currently deduct the cost.
+
+- IMPORTANT - docs/PLAN.md:191 - Several proposed assertions conflict with the execution environment or prototype. The Node state test accesses `localStorage` without a fake. The geometry test at line 232 assumes side-dependent trench offsets, but `posX()` uses the same zigzag for both sides. The save test at line 339 uses mask `1`, which selects `marks`, while expecting an invalid `kit` selection. Remove storage access from the state test, derive geometry expectations from the source, and use mask `2` for the prerequisite test.
+
+- IMPORTANT - docs/PLAN.md:342 - The recovery test proves only that one corrupt slot gets replaced. It does not test “newest valid wins.” Add competing valid saves with different revisions, equal revisions with different timestamps, either slot corrupted, both slots invalid, legacy JSON saves, and one or both writes failing. Pin the full `TECH_IDS()` order and include a fixed legacy save code; checking only five IDs cannot protect the remaining mask bits.
+
+- IMPORTANT - docs/PLAN.md:316 - “Each of 2 cards appears across 200 seeds” does not test weights. With three or four offer slots, both cards can appear regardless of their weights. Use controlled RNG values to test cumulative weight boundaries, selection without replacement, and pool filtering. Include variant prerequisites and the `plate` eligibility rule, whose `can` function is omitted from the proposed data shape.
+
+- IMPORTANT - docs/PLAN.md:369 - “Fixed 0.04 sub-steps” leaves a parity-sensitive distinction unresolved. The prototype uses steps of at most `0.04`, including a remainder, after clamping frame time to `0.1` and applying speed. It evaluates overlay pause state once per frame. Add controlled-frame tests for the clamp, remainder, speed, and an offer opening during a frame. Preserve this behavior explicitly.
+
+- IMPORTANT - docs/PLAN.md:393 - Copying the sibling workflow runs lint, unit tests, and build, but never e2e. A broken start screen or button handler can therefore reach Pages despite the planned integration gate. Run `npm run e2e` before uploading the deployment artifact.
+
+- MINOR - docs/PLAN.md:76 - Task 0 already exists as two commits in the current repository. Repeating its moves targets files that no longer exist. Mark it complete against those commits and begin execution at Task 1.
+
+## Assumptions and gaps
+
+This was a static review. The repository has no new application or toolchain to execute. I inspected the sibling package files, lockfile, and Pages workflow, but did not run installation or CI.
+
+The legacy harness loads the original inline script. It does not demonstrate the proposed esbuild wrapper. The wrapper requires its own successful run. Canvas stubs also cannot establish visual fidelity or touch behavior.
+tokens used
+51,002
