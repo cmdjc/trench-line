@@ -1,6 +1,6 @@
 # Trench Line: stat tables
 
-Generated from the game data by `tests/gen-stats.js`. Numbers are first-pass and need playtesting.
+Generated from the game data by `npm run stats` (`scripts/gen-stats.mjs`). Numbers are first-pass and need playtesting.
 
 ## Nations
 

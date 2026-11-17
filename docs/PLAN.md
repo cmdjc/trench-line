@@ -425,12 +425,12 @@ if (best && bd <= T.range) {
 
 ## Task 18: scripts, README, license, workflow
 
-- [ ] `scripts/bot.mjs`: headless scripted player driving sim directly (port `legacy/tools/bot.js` logic; args me foe map seed; `--json`; deterministic per seed).
-- [ ] `scripts/gen-stats.mjs`: regen `docs/STATS.md` from `src/data` (port `legacy/tests/gen-stats.js`); `npm run stats`; run and commit refreshed STATS.md.
-- [ ] `README.md`: pitch, play link, dev commands, architecture map, **credits: "Designed and authored by M K. Built with the help of the AI agents Claude (Anthropic) and GLM (Z.ai)."**, Apache-2.0, screenshot if cheap.
-- [ ] `LICENSE` Apache-2.0 (from landfall, "Copyright 2026 M K"). `package.json` `author:"M K"`, `license:"Apache-2.0"`, homepage/bugs URLs.
-- [ ] `.github/workflows/pages.yml` (landfall's) **plus an e2e step**: `npm run check && npm run e2e` before the pages artifact upload (codex important).
-- [ ] Commit: `docs: readme, credits, license, pages workflow`.
+- [x] `scripts/bot.mjs`: headless scripted player driving sim directly (port `legacy/tools/bot.js` logic; args me foe map seed; `--json`; deterministic per seed).
+- [x] `scripts/gen-stats.mjs`: regen `docs/STATS.md` from `src/data` (port `legacy/tests/gen-stats.js`); `npm run stats`; run and commit refreshed STATS.md.
+- [x] `README.md`: pitch, play link, dev commands, architecture map, **credits: "Designed and authored by M K. Built with the help of the AI agents Claude (Anthropic) and GLM (Z.ai)."**, Apache-2.0, screenshot if cheap.
+- [x] `LICENSE` Apache-2.0 (from landfall, "Copyright 2026 M K"). `package.json` `author:"M K"`, `license:"Apache-2.0"`, homepage/bugs URLs.
+- [x] `.github/workflows/pages.yml` (landfall's) **plus an e2e step**: `npm run check && npm run e2e` before the pages artifact upload (codex important).
+- [x] Commit: `docs: readme, credits, license, pages workflow`.
 
 ## Task 19: final review + verification
 

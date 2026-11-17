@@ -1,43 +1,61 @@
 # Trench Line
 
-A single-file WWI trench-warfare strategy game. Take the trenches one at a time and destroy the enemy HQ before yours falls.
+A top-down First World War trench-battle game. Pick one of eight nations, take the enemy's trenches one line at a time, and destroy their HQ before they overrun yours. Troops dug into a trench take a fraction of the damage open ground costs; kills earn you cards that unlock tanks, guns and tricks; and the longer the battle runs, the stronger the enemy grows.
 
-## Contents
+Play it at https://cmdjc.github.io/trench-line/
 
-| File | What it is |
+## How to play
+
+Buy troops with supplies, select a trench line, and send it forward with **Advance**. Men walk to the line, settle into the trench, and hold it. Bring stragglers with **Bring all here**, fall back when a line is lost, and double-tap a trench you hold to fortify it. Emplacements — MG nests and your nation's special defence — hold ground on their own. Once your kills fill the card meter you pick a card: unlocks, income, buffs, one-off boosts.
+
+Every nation plays differently: Britain's wire and mines, Germany's Paris Gun and stormtroopers, France's Char 2C, Russia's Tsar Tank, Austria-Hungary's siege guns, Italy's Caproni bombers, America's Kettering bugs, and Antarctica's absurd Southern Colossus. Superweapons unlock after four minutes and change the battle; the enemy commander has his own.
+
+Four battlefields: open ground, a river crossing with two bridges, a wide plain with double super trenches, and the Long March — 45 trenches with a super trench in the middle.
+
+Research points carry between battles. Spend them on a permanent tree, or carry your progress with a save code.
+
+## Controls
+
+Drag the field or use the arrow keys to scroll. Tap a trench to select it, double-tap one you hold to fortify it, tap the button rows for everything else. The game is playable end to end with Tab and Enter.
+
+## Running it locally
+
+Install the dependencies from the lock file with `npm ci`.
+
+| Command | What it does |
 |---|---|
-| `trench-line.html` | The whole game. Open it in any browser; no build step, no server. |
-| `docs/DESIGN.md` | Design log: what was added, the choices you made, known quirks and open questions. |
-| `docs/HANDOFF.md` | Code map and conventions for turning this into a proper JS/HTML project. |
-| `docs/STATS.md` | Stat tables for every nation, tank, emplacement, research node, superweapon and map, generated from the game's data. |
-| `tests/` | Headless tests (jsdom + a real canvas). |
-| `tools/bot.js` | A scripted player that fights whole battles, for balance checks. |
-| `tools/make-artifact.py` | Builds `artifact/trench-line.html`, the copy published as a claude.ai Artifact. |
+| `npm run dev` | Starts the Vite dev server. |
+| `npm run build` | Writes a static build to `dist/`. |
+| `npm run preview` | Serves the built game locally. |
+| `npm run test` | Runs the unit tests. |
+| `npm run lint` | Runs ESLint over the whole project. |
+| `npm run e2e` | Builds the game and plays it through a real page load in jsdom. |
+| `npm run check` | Runs lint, the unit tests, and the build. |
+| `npm run stats` | Regenerates the stat tables in `docs/STATS.md` from the game data. |
+| `npm run bot` | Plays a scripted, seeded battle headlessly. `node scripts/bot.mjs de gb open 3`. |
 
-## Playing
+## Tests
 
-Pick your country, your enemy and a battlefield. Drag the field sideways to look around. Select a trench in the strip, then Advance, Fall back or Bring all here. Kills earn cards. Double-tap a trench you hold to fortify it. Research points are earned each battle and kept with a save code.
+The unit tests cover the seeded random source, every data table (units, nations, tech, cards, maps), save codes and recovery, the state container, geometry and spawning, the damage model, fortifications, the simulation step (movement, rivers, hedgehogs, firing — including the fixed stray miss-tracer from the prototype), superweapons, the enemy commander, cards, commands, the tick loop, parity smoke tests of every nation on every map, the UI through a fake DOM, and the canvas renderer against a no-op context.
 
-## Nations (8)
+The e2e test builds the real page with esbuild, loads it in jsdom, and plays a full battle through real button clicks: picks, buying, advancing, double-tap fortifying, card picks, the Messines mine, a rigged victory, the save code, and a fresh run afterwards.
 
-Britain, Germany, France, Russia, USA, Austria-Hungary, Italy, and the United States of Antarctica.
+## Debug flag
 
-## Maps (4)
+Add `?debug=1` (or `?e2e=1`) to the game URL to expose `window.__trench`, a hook the e2e tests use to read and nudge the game. Without it, the game exposes no globals.
 
-- **No man's land**: 9 trenches, open ground.
-- **River crossing**: 9 trenches, two river channels with bridges.
-- **Wide open plain**: 17 trenches, with two double super trenches guarded by tank-stopping hedgehogs.
-- **The Long March**: 45 trenches in nine belts of five, wide empty ground between belts, and a super trench in the middle.
+## Layout
 
-## Running the tests
+All content lives in `src/data/`: nations (caps, traits, defence kinds), unit stats and tank variants, superweapons, the research tree, cards and maps. The simulation lives in `src/sim/` — state, geometry, combat, fortify, step, superweapons, the enemy commander, cards, commands and tick — and is deliberately browser-free: ESLint keeps DOM globals out of it, so the whole game runs headlessly for tests and the bot. The renderer (`src/ui/draw/`) and the HUD, overlays, input and loop (`src/ui/`) drive it through a small event bus. Battles are seeded: `newGame(mine, theirs, map, seed)` reproduces a battle exactly, which is what the parity suites and `scripts/bot.mjs` rely on.
 
-```
-npm install jsdom @napi-rs/canvas
-node tests/smoke.js        # every nation as player and as enemy, plus all four maps
-node tests/merge.js        # Wide open plain, hedgehogs, Russia's line-up
-node tests/gen-stats.js    # regenerates docs/STATS.md
-```
+## Deployment
 
-To watch a scripted player fight a whole battle: `node tools/bot.js <me> 2.5 <enemy> <map>` (countries `gb de fr ru us ah it aq`, maps `open river plain march`; set `MAXS=3600` for the long maps).
+A GitHub Actions workflow (`.github/workflows/pages.yml`) deploys the game to GitHub Pages on each push to `main`. It runs `npm run check` and `npm run e2e` first.
 
-`smoke.js` simulates a few minutes of play per matchup and fails on page errors, NaN values or armour-limit violations. It does not test balance or feel; that needs a human.
+## Credits
+
+Designed and authored by M K. Built with the help of the AI agents Claude (Anthropic) and GLM (Z.ai).
+
+## License
+
+Trench Line is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

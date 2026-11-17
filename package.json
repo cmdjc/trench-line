@@ -6,6 +6,8 @@
   "description": "A top-down First World War trench-battle game",
   "license": "Apache-2.0",
   "author": "M K",
+  "homepage": "https://cmdjc.github.io/trench-line/",
+  "bugs": "https://github.com/cmdjc/trench-line/issues",
   "engines": { "node": ">=22.12" },
   "scripts": {
     "dev": "vite",
