@@ -137,7 +137,7 @@ Port lines 233–533, 642–652 (SW), 535–557 (TECH), 1263–1306 (CARDS/CARDT
 - `data/tech.js`: `TECH` (order frozen — save-code mask), `TECH_IDS()`.
 - `data/cards.js`: `CARDS` as data only: `{id, w, once?, canId?, name, text}` where `canId` ∈ `{'anyTank'}` (the `plate` card's `can`, codex important) — predicates live in `sim/cards.js`. Plus `CARDTXT`.
 - `data/maps.js`: `MAPS` with rivers as **precomputed literal numbers** (they embed the default 9-trench LX math from lines 658–659; the river map is only played at 9 trenches, so literals preserve behaviour).
-- [ ] **Failing tests** `tests/unit/data.test.js`, then implement, then pass:
+- [x] **Failing tests** `tests/unit/data.test.js`, then implement, then pass:
 ```js
 import { describe, expect, it } from 'vitest';
 import { NATS } from '../../src/data/nations.js';
@@ -178,7 +178,7 @@ it('each nation has a superweapon; maps cover the four keys', () => {
   expect(Object.keys(MAPS).sort()).toEqual(['march', 'open', 'plain', 'river']);
 });
 ```
-- [ ] Commit: `feat: data modules (units, nations, tech, cards, maps, sw)`.
+- [x] Commit: `feat: data modules (units, nations, tech, cards, maps, sw)`.
 
 ## Task 4: storage + meta (rewrites the lost tests)
 
