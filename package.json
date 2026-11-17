@@ -1,0 +1,30 @@
+{
+  "name": "trench-line",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A top-down First World War trench-battle game",
+  "license": "Apache-2.0",
+  "author": "M K",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "e2e": "vite build && vitest run --config tests/e2e/vitest.config.js",
+    "stats": "node scripts/gen-stats.mjs",
+    "bot": "node scripts/bot.mjs",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "esbuild": "^0.28.0",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "vite": "8.3.5",
+    "vitest": "4.1.12"
+  }
+}

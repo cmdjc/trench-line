@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trench Line</title>
+<meta name="description" content="A top-down First World War trench-battle game. Take the trenches one at a time and destroy the enemy HQ.">
+<script type="module" src="/src/main.js"></script>
+</head>
+<body>
+<main class="game">
+  <header class="top">
+    <div class="hq"><span class="nm" id="nmA">Your HQ</span><div class="bar"><i id="hpA"></i></div></div>
+    <div class="clock" id="clock">0:00</div>
+    <div class="hq right"><span class="nm" id="nmB">Enemy HQ</span><div class="bar"><i id="hpB"></i></div></div>
+  </header>
+
+  <div class="fieldwrap">
+    <canvas id="field" tabindex="0" aria-label="Battlefield seen from above. Drag sideways or use the arrow keys to scroll. Use the trench buttons below to select a line."></canvas>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <div class="map" id="map" role="group" aria-label="Trench lines, from your HQ on the left to the enemy HQ on the right"></div>
+
+  <div class="orders">
+    <p id="selText"></p>
+    <div class="obtns">
+      <button class="act alt" id="backBtn">Fall back</button>
+      <button class="act alt" id="gatherBtn">Bring all here</button>
+      <button class="act" id="advBtn">Advance</button>
+    </div>
+    <div class="obtns">
+      <button class="act alt" id="fortBtn">Fortify</button>
+      <button class="act alt" id="nestBtn">MG nest</button>
+      <button class="act alt" id="defBtn">Defence</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <p><b id="supplies">0</b> supplies <span id="rate"></span></p>
+    <p id="army"></p>
+    <p id="cardText"></p>
+    <p id="superInfo" hidden></p>
+    <span class="sp"></span>
+    <button class="small" id="pauseBtn">Pause</button>
+    <button class="small" id="speedBtn">Speed 1×</button>
+  </div>
+
+  <div class="buy" id="buy"></div>
+  <button class="act alt swbtn" id="swBtn" hidden></button>
+  <button class="act alt" id="aimCancel" hidden style="width:100%;margin-top:6px">Cancel aiming</button>
+  <p class="held" id="held"></p>
+</main>
+
+<div class="overlay" id="startOv">
+  <div class="sheet">
+    <h2>Trench Line</h2>
+    <p>Take the trenches one at a time and destroy the enemy HQ on the far right before yours falls. Troops in a trench take 75% less damage. Kills earn cards, and the enemy grows stronger the longer the battle runs. Double-tap a trench you hold to fortify it.</p>
+    <h3 id="startHead" style="font-family:var(--display);margin:0 0 8px">Choose your country</h3>
+    <div id="natList"></div>
+    <button class="ghost" id="techBtn">Research</button>
+    <p class="credits">A game by M K · built with the AI agents Claude and GLM.</p>
+  </div>
+</div>
+
+<div class="overlay" id="cardOv" hidden>
+  <div class="sheet">
+    <h2>Choose a card</h2>
+    <p id="cardSub">It lasts for the rest of this battle.</p>
+    <div id="cardList"></div>
+  </div>
+</div>
+
+<div class="overlay" id="endOv" hidden>
+  <div class="sheet">
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <dl>
+      <dt>Battle length</dt><dd id="eTime"></dd>
+      <dt>Enemies killed</dt><dd id="eKills"></dd>
+      <dt>Troops lost</dt><dd id="eLost"></dd>
+      <dt>Cards taken</dt><dd id="eCards"></dd>
+      <dt>Research points earned</dt><dd id="ePts"></dd>
+    </dl>
+    <button class="act" id="againBtn" style="width:100%">Start a new run</button>
+    <button class="ghost" id="endTechBtn">Research</button>
+    <div class="techinfo codebox" style="margin-top:12px">
+      <label for="eCode" style="margin-top:0">Your save code after this battle</label>
+      <input id="eCode" readonly>
+      <div class="row2"><button class="act alt" id="eCopy">Copy code</button></div>
+      <p id="eMsg" role="status" aria-live="polite" style="min-height:20px;margin:8px 0 0;font-size:14px"></p>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="techOv" hidden>
+  <div class="sheet">
+    <h2>Research</h2>
+    <p>Permanent upgrades for every battle, whichever country you play. You earn points for kills and for winning. <b id="techPts">0</b> to spend.</p>
+    <div id="techTree"></div>
+    <div class="techinfo" id="techInfo" aria-live="polite"></div>
+    <button class="act" id="techBuy" style="width:100%">Research</button>
+    <div class="techinfo codebox" style="margin-top:12px">
+      <h3>Save code</h3>
+      <p>This code holds your points and research. Keep it somewhere, then load it in any copy or newer version of the game.</p>
+      <label for="codeOut">Your code</label>
+      <input id="codeOut" readonly aria-label="Your save code">
+      <div class="row2"><button class="act alt" id="codeCopy">Copy code</button></div>
+      <label for="codeIn">Load a code</label>
+      <input id="codeIn" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="TL1-...">
+      <div class="row2"><button class="act alt" id="codeLoad">Load code</button></div>
+      <p id="codeMsg" role="status" aria-live="polite"></p>
+      <p id="saveState" style="color:var(--muted);font-size:13px;margin-top:6px"></p>
+    </div>
+    <button class="ghost" id="techBack">Back</button>
+  </div>
+</div>
+</body>
+</html>
