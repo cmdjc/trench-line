@@ -9,7 +9,9 @@ import { loadMeta } from './sim/meta.js';
 import { tick } from './sim/tick.js';
 import { count, countAt, tanks, power, ut, full } from './sim/geometry.js';
 import { tkList } from './data/units.js';
-import { initCamera, resize } from './ui/camera.js';
+import { NAT } from './data/nations.js';
+import { initCamera, resize, resetCam } from './ui/camera.js';
+import { $ } from './ui/dom.js';
 import { initHud, buildMap, refresh, toast } from './ui/hud.js';
 import { initBuy, buildBuy } from './ui/buy.js';
 import { initCards, showOffer } from './ui/cards.js';
@@ -26,7 +28,12 @@ export function boot() {
   bus.on('toast', toast);
   bus.on('dirty:map', () => { buildMap(); refresh(); });
   bus.on('dirty:buy', () => { buildBuy(); refresh(); });
-  bus.on('game:start', () => { buildMap(); buildBuy(); refresh(); });
+  bus.on('game:start', () => {
+    resetCam();                               // prototype 712: cam=0;camT=0
+    $('nmA').textContent = NAT[G.nation[0]].name + ' (you)';   // prototype 713
+    $('nmB').textContent = NAT[G.nation[1]].name;
+    buildMap(); buildBuy(); refresh();
+  });
   bus.on('cards:offer', showOffer);
   bus.on('game:end', showEnd);
   bus.on('meta', renderSaveState);

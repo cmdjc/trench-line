@@ -218,6 +218,15 @@ describe('end screen and start flow', () => {
     expect($('endOv').hidden).toBe(false);
   });
 
+  it('starting a new battle resets the camera and paints the nation names', () => {
+    cam.x = 4000; cam.tx = 4000;              // panned far right on the open map
+    newGame('ru', 'fr', 'plain', 7);
+    expect(cam.x).toBe(0);
+    expect(cam.tx).toBe(0);
+    expect($('nmA').textContent).toBe('Russia (you)');
+    expect($('nmB').textContent).toBe('France');
+  });
+
   it('again returns to the start screen and a full pick flow starts a battle', () => {
     endGame(false);
     $('againBtn').click();

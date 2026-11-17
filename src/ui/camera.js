@@ -23,6 +23,8 @@ export function resize() {
   cam.tx = Math.max(0, Math.min(G.WW - vw(), cam.tx));
 }
 
+export function resetCam() { cam.x = 0; cam.tx = 0; }   // prototype line 712: cam=0;camT=0
+
 export function focusLine(L) {
   cam.tx = Math.max(0, Math.min(G.WW - vw(), posX(0, L, 150, false) - vw() * 0.42));
 }
