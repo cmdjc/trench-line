@@ -385,11 +385,11 @@ if (best && bd <= T.range) {
 
 ## Task 13: sim commands + tick
 
-- [ ] Implement `src/sim/commands.js` (port handler bodies from 1351–1380, 1402–1407, 1502–1518): `select(L)`, `advance()`, `fallback()`, `gather()`, `buyUnit(k)` (unlock/cost/cap checks, deduct, spawn at sel), `buildNestAt(L)`, `buildDefAt(L)`, `fortifyAt(L)` (re-export from fortify), `startAiming()`, `confirmAim()`, `fireSuperweapon()` — each returns success and emits `hud`/`toast`; **purchase charges exactly once, rejection charges nothing** (tests).
-- [ ] **Failing tests** `tests/unit/commands.test.js` per command: happy path + each rejection branch (no troops, short of supplies, cap, ownership, line reached) with supply totals asserted before/after.
-- [ ] **Failing tests** `tests/unit/tick.test.js`: income accrual `incomeNow` (base+growth+depots+super+dbl); super-trench free card every `SUPER_CARD_T` while held (timer pauses when lost); selected-trench fallback orders (1564–1569) demote `sel` and pull troops back; `bases hp ≤0` → exactly one `game:end` (with won flag + earned points `floor(S.score/4)+30/0`), `running=false`; `cards:offer` when `pending>0 && !G.offer`; effects decay (tracer 0.08 s, boom 0.45, floats rise 22/s, smoke drift, wreck puffs ≤18 s).
-- [ ] Implement `src/sim/tick.js` (1552–1573; `endGame` → emit + `META` award via meta.js `awardRun(won, score)`).
-- [ ] Pass, commit: `feat: commands + tick + end-of-game award`.
+- [x] Implement `src/sim/commands.js` (port handler bodies from 1351–1380, 1402–1407, 1502–1518): `select(L)`, `advance()`, `fallback()`, `gather()`, `buyUnit(k)` (unlock/cost/cap checks, deduct, spawn at sel), `buildNestAt(L)`, `buildDefAt(L)`, `fortifyAt(L)` (re-export from fortify), `startAiming()`, `confirmAim()`, `fireSuperweapon()` — each returns success and emits `hud`/`toast`; **purchase charges exactly once, rejection charges nothing** (tests).
+- [x] **Failing tests** `tests/unit/commands.test.js` per command: happy path + each rejection branch (no troops, short of supplies, cap, ownership, line reached) with supply totals asserted before/after.
+- [x] **Failing tests** `tests/unit/tick.test.js`: income accrual `incomeNow` (base+growth+depots+super+dbl); super-trench free card every `SUPER_CARD_T` while held (timer pauses when lost); selected-trench fallback orders (1564–1569) demote `sel` and pull troops back; `bases hp ≤0` → exactly one `game:end` (with won flag + earned points `floor(S.score/4)+30/0`), `running=false`; `cards:offer` when `pending>0 && !G.offer`; effects decay (tracer 0.08 s, boom 0.45, floats rise 22/s, smoke drift, wreck puffs ≤18 s).
+- [x] Implement `src/sim/tick.js` (1552–1573; `endGame` → emit + `META` award via meta.js `awardRun(won, score)`).
+- [x] Pass, commit: `feat: commands + tick + end-of-game award`.
 
 ## Task 14: headless smoke + merge parity suites
 

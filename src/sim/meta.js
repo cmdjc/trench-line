@@ -52,6 +52,14 @@ export async function saveMeta() {
   saveState();
 }
 
+/* end-of-run award (prototype endGame 1544–1545); UI shows the values from `game:end` */
+export function awardRun(won, score) {
+  const earned = Math.floor(score / 4) + (won ? 30 : 0);
+  META.points += earned; META.runs++; if (won) META.wins++;
+  void saveMeta();
+  return earned;
+}
+
 /* save code: TL1-points-upgrades-runs-wins-check, all in base 36 */
 export function codeCheck(body) { let h = 7; for (let i = 0; i < body.length; i++) h = (h * 31 + body.charCodeAt(i)) % 1296; return h.toString(36).toUpperCase().padStart(2, '0'); }
 
