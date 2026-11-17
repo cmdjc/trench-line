@@ -357,7 +357,7 @@ if (best && bd <= T.range) {
 
 ## Task 10: sim superweapons
 
-- [ ] **Failing tests** `tests/unit/superweapons.test.js` per kind (`swBlock` reason strings, one-at-a-time, `st.cd=d.cd` set, cost NOT deducted by useSW — callers do):
+- [x] **Failing tests** `tests/unit/superweapons.test.js` per kind (`swBlock` reason strings, one-at-a-time, `st.cd=d.cd` set, cost NOT deducted by useSW — callers do):
   - de Paris: `useSW(0,{x,y})` pushes one huge shell (dmg 700, splash 90, dur 4.5, rz 80, big+huge), clamps target into the field.
   - gb Messines: `swBlock` reports tunnelling; `stepSW` counts down 25 s then `detonate` kills occupants within 70 px (1e6 infantry / 400 nest / 300 armour), razes forts if trench not held, 8 booms, shake.
   - fr char2c / ru tsar / aq colossus: spawn one at the right line, `swBlock('Already in the field.')` while alive, `T.sup` skips armour accounting.
@@ -365,7 +365,7 @@ if (best && bd <= T.range) {
   - it caproni: plane `(WH+100)/110` s crossing, 8 bombs along the trench column, `base` shells vs HQ.
   - ah skoda42: 3 big razing shells staggered 1.3 s.
   - `aimPoint`: richest 85-px cluster of the foe, HQ fallback.
-- [ ] Implement `src/sim/superweapons.js` (1112–1196: `targetFor, aimPoint, swBlock, useSW, detonate, stepSW`). Pass, commit: `feat: superweapons`.
+- [x] Implement `src/sim/superweapons.js` (1112–1196: `targetFor, aimPoint, swBlock, useSW, detonate, stepSW`). Pass, commit: `feat: superweapons`.
 
 ## Task 11: sim AI
 
