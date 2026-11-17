@@ -316,15 +316,15 @@ it('die(): enemy death pays 0.25×cost bounty, bumps kills/cardKills, card at ne
 
 ## Task 8: sim fortify (before stepUnits — codex blocker)
 
-- [ ] **Failing tests** `tests/unit/fortify.test.js`:
+- [x] **Failing tests** `tests/unit/fortify.test.js`:
   - `freeSlot`: 3 slots normal trench, 5 in double; occupied by built nests and pending jobs.
   - `buildNest` spawns sapper job at the right slot coords; `stepJobs`: gun carrier after 4 s, completes after 3 s more + arrival → nest occupies slot; killed sapper abandons job (toast event); completed job removes carriers.
   - `buildDef` per nation: gb wire at `LX[L]+54` w46 hp140; ru 10 mines spread over height; fr pit75; us depot (income +0.8 each via DEPOT_RATE; second depot in same trench blocked); it pit65; aq bunker through slots, ≤2 per trench, shelters handled in Task 9 test.
   - `buildSuper(side)`: pillbox/pit75/pillbox fixed units at slots 0/1/2, hp ×1.6.
   - `fortify` (command form `fortifyAt(L)` ownership/cost/max-level checks live here per Porting rule; costs FORT_COST[lv], max 3, SUPER 4) — success increments and charges once, rejects charge nothing.
   - `stepFields`: mines detonate on enemy within 13 px (60 dmg 'barrage' splash 28), wire slows (0.3) and is destroyed by armour contact, dead fields removed.
-- [ ] Implement `src/sim/fortify.js` (port lines 989–1110: `freeSlot, wireSlow, stepFields, bunkerCount, stepBunkers, canDef, buildDef, buildSuper, buildNest, stepJobs, fortifyAt`). Imports `hurt` from combat (function-body use only).
-- [ ] Pass, commit: `feat: fortification, nests, bunkers, minefields, wire`.
+- [x] Implement `src/sim/fortify.js` (port lines 989–1110: `freeSlot, wireSlow, stepFields, bunkerCount, stepBunkers, canDef, buildDef, buildSuper, buildNest, stepJobs, fortifyAt`). Imports `hurt` from combat (function-body use only).
+- [x] Pass, commit: `feat: fortification, nests, bunkers, minefields, wire`.
 
 ## Task 9: sim combat — stepUnits (+ the bug fix)
 
