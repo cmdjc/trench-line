@@ -12,6 +12,14 @@ let CW = 360, CH = 300, DPR = 1, K = 1;
 export const metrics = () => ({ CW, CH, DPR, K });
 export const vw = () => CW / K;
 
+// Camera travel limits. Normally the view is a window into [0, WW]; when a
+// wide screen shows the whole world at once, park it centred instead of
+// pinned to the left edge.
+export const clampCam = x => {
+  const span = G.WW - vw();
+  return span <= 0 ? span / 2 : Math.max(0, Math.min(span, x));
+};
+
 export function resize() {
   const cv = document.getElementById('field');
   if (!cv) return;
@@ -19,14 +27,14 @@ export function resize() {
   if (!r.width) return;
   DPR = Math.min(window.devicePixelRatio || 1, 2); CW = r.width; CH = r.height;
   cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR); K = CH / WH;
-  cam.x = Math.max(0, Math.min(G.WW - vw(), cam.x));
-  cam.tx = Math.max(0, Math.min(G.WW - vw(), cam.tx));
+  cam.x = clampCam(cam.x);
+  cam.tx = clampCam(cam.tx);
 }
 
 export function resetCam() { cam.x = 0; cam.tx = 0; }   // prototype line 712: cam=0;camT=0
 
 export function focusLine(L) {
-  cam.tx = Math.max(0, Math.min(G.WW - vw(), posX(0, L, 150, false) - vw() * 0.42));
+  cam.tx = clampCam(posX(0, L, 150, false) - vw() * 0.42);
 }
 
 export function initCamera() {

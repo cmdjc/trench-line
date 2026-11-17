@@ -11,7 +11,7 @@ import { offerCards } from '../../src/sim/cards.js';
 import { META, makeCode, readCode } from '../../src/sim/meta.js';
 import { TECH } from '../../src/data/tech.js';
 import { bus } from '../../src/core/events.js';
-import { cam } from '../../src/ui/camera.js';
+import { cam, vw, resize, focusLine, metrics } from '../../src/ui/camera.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 
 const $ = id => document.getElementById(id);
@@ -20,6 +20,11 @@ function game() {
   newGame('gb', 'de', 'open', 7);
   $('startOv').hidden = true; $('cardOv').hidden = true; $('endOv').hidden = true;
   cam.x = 0; cam.tx = 0; G.shake = 0; G.speed = 1; G.userPaused = false;
+}
+
+function fieldBox(w, h) {   // simulate a resized (e.g. wider) window
+  const cv = $('field');
+  cv.getBoundingClientRect = () => ({ width: w, height: h, left: 0, top: 0, right: w, bottom: h, x: 0, y: 0 });
 }
 
 beforeEach(() => {
@@ -346,3 +351,48 @@ describe('debug hook', () => {
     expect(window.__trench).toBeUndefined();
   });
 });
+
+describe('responsive width', () => {
+  it('a wider field reveals more battlefield', () => {
+    fieldBox(1600, 300);
+    resize();
+    expect(metrics().CW).toBe(1600);
+    expect(vw()).toBeCloseTo(1600, 5);          // K = 300/300 = 1
+    cam.x = 99999; cam.tx = 99999; resize();     // clamped to the world edge
+    expect(cam.x).toBe(G.WW - vw());
+    expect(cam.tx).toBe(G.WW - vw());
+  });
+
+  it('an ultra-wide view centres the whole battlefield', () => {
+    fieldBox(5000, 300);
+    resize();
+    const span = G.WW - vw();
+    expect(span).toBeLessThan(0);                // whole world visible
+    expect(cam.x).toBe(span / 2);
+    expect(cam.tx).toBe(span / 2);
+    focusLine(5);                                // focus keeps it centred
+    expect(cam.tx).toBe(span / 2);
+  });
+
+  it('dragging cannot pull a fully-visible world off centre', () => {
+    fieldBox(5000, 300);
+    resize();
+    const centre = (G.WW - vw()) / 2;
+    const cv = $('field');
+    cv.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 400, clientY: 150 }));
+    cv.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 100, clientY: 150 }));
+    expect(cam.x).toBe(centre);
+    cv.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 100, clientY: 150 }));
+    expect(cam.x).toBe(centre);
+  });
+
+  it('arrow keys cannot scroll past a fully-visible world', () => {
+    fieldBox(5000, 300);
+    resize();
+    const centre = (G.WW - vw()) / 2;
+    $('field').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    $('field').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(cam.tx).toBe(centre);
+  });
+});
+

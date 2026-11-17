@@ -16,6 +16,17 @@
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
 .game{max-width:600px;margin:0 auto;padding:calc(8px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom))}
+/* Wider screens: give the battlefield the extra horizontal room (the camera
+   zoom is set by field height, so width translates directly into how much
+   of the front line you can see). */
+@media (min-width:700px){
+  .game{max-width:940px}
+  .buy{grid-template-columns:repeat(3,1fr)}
+}
+@media (min-width:1280px){
+  .game{max-width:1120px}
+  .buy{grid-template-columns:repeat(4,1fr)}
+}
 button{font:inherit;color:inherit;border:0;border-radius:3px;cursor:pointer}
 button:focus-visible,canvas:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 

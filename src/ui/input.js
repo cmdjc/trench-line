@@ -7,7 +7,7 @@ import { WH } from '../data/units.js';
 import { G } from '../sim/state.js';
 import { posX } from '../sim/geometry.js';
 import * as commands from '../sim/commands.js';
-import { cam, vw, metrics } from './camera.js';
+import { cam, clampCam, metrics } from './camera.js';
 import { $ } from './dom.js';
 
 let drag = null, lastTap = { L: -1, t: 0 };
@@ -20,7 +20,7 @@ export function initInput() {
   cv.addEventListener('pointermove', ev => {
     if (!drag) return; const dx = ev.clientX - drag.x;
     if (Math.abs(dx) > 6) drag.moved = true;
-    if (drag.moved) cam.x = cam.tx = Math.max(0, Math.min(G.WW - vw(), drag.cam - dx / metrics().K));
+    if (drag.moved) cam.x = cam.tx = clampCam(drag.cam - dx / metrics().K);
   });
   function endDrag(ev) {
     if (!drag) return;
@@ -40,7 +40,7 @@ export function initInput() {
   cv.addEventListener('pointerup', endDrag);
   cv.addEventListener('pointercancel', endDrag);
   cv.addEventListener('keydown', ev => {
-    if (ev.key === 'ArrowRight') { cam.tx = Math.min(G.WW - vw(), cam.tx + 120); ev.preventDefault(); }
-    else if (ev.key === 'ArrowLeft') { cam.tx = Math.max(0, cam.tx - 120); ev.preventDefault(); }
+    if (ev.key === 'ArrowRight') { cam.tx = clampCam(cam.tx + 120); ev.preventDefault(); }
+    else if (ev.key === 'ArrowLeft') { cam.tx = clampCam(cam.tx - 120); ev.preventDefault(); }
   });
 }
