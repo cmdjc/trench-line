@@ -13,6 +13,7 @@ import { tier, raise, nextCost } from './base.js';
 import { BASE } from '../data/base.js';
 import { GUNS } from '../data/guns.js';
 import { fireGun, gunBlock, clampAim } from './gun.js';
+import { validDrop } from './drop.js';
 import { swBlock, useSW, swCost } from './superweapons.js';
 
 export { fortifyAt };
@@ -75,7 +76,12 @@ export function buildDefAt(L) {
 /* superweapon: paris starts an aim; confirm fires it (prototype swBtn 1502–1518) */
 export function startAiming() {
   const d = SW[G.nation[0]];
-  if (!G.running || !d || d.kind !== 'paris' || swBlock(0)) return false;
+  if (!G.running || !d || (d.kind !== 'paris' && d.kind !== 'drop') || swBlock(0)) return false;
+  if (d.kind === 'drop') {
+    G.aim = { kind: 'drop', x: null, y: null, line: -1 };
+    toast('Tap a highlighted trench to choose the drop zone, then press Confirm.');
+    bus.emit('hud'); return true;
+  }
   G.aim = { kind: 'paris', x: null, y: null };
   toast('Tap the field to place the target, then press Confirm. Drag to look around.');
   bus.emit('hud'); return true;
@@ -99,6 +105,14 @@ export function confirmAim() {
   }
   const d = SW[G.nation[0]];
   if (!G.running || !d || !G.aim) return false;
+  if (G.aim.kind === 'drop') {
+    const L = G.aim.line;
+    if (d.kind !== 'drop' || !validDrop(0, L) || G.S.supplies < swCost(0) || swBlock(0)) return false;
+    if (!useSW(0, { line: L })) return false;
+    G.S.supplies -= swCost(0); G.aim = null;
+    toast('Paratroopers are jumping over trench ' + L + '.');
+    bus.emit('hud'); return true;
+  }
   if (G.aim.x === null || G.S.supplies < swCost(0) || swBlock(0)) return false;
   if (!useSW(0, { x: G.aim.x, y: G.aim.y })) return false;
   G.S.supplies -= swCost(0); G.aim = null;
@@ -110,7 +124,7 @@ export function cancelAim() { G.aim = null; bus.emit('hud'); }
 
 export function fireSuperweapon() {
   const d = SW[G.nation[0]];
-  if (!G.running || !d || d.kind === 'paris') return false;
+  if (!G.running || !d || d.kind === 'paris' || d.kind === 'drop') return false;
   if (G.S.supplies < swCost(0) || !useSW(0)) return false;
   G.S.supplies -= swCost(0);
   toast(d.kind === 'mine' ? 'Tunnellers are digging toward trench ' + G.sw[0].tunnel.line + '.'

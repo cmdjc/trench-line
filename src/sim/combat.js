@@ -63,7 +63,8 @@ export function tracer(x1, y1, x2, y2, w, col) { G.tracers.push({ x1, y1, x2, y2
 export function stepUnits(dt) {
   for (const u of G.units) {
     if (u.hp <= 0) continue;
-    const T = u.T, m = G.M[u.side], minR = T.min || 0;
+    const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
+    if (falling) u.fall -= dt;
     let best = null, bd = 1e9, blocked = false;
     for (const e of G.units) {
       if (e.side === u.side || e.hp <= 0) continue;
@@ -94,7 +95,8 @@ export function stepUnits(dt) {
       }
     }
     const dy = ty - u.y;
-    if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
+    if (falling) u.moving = false;
+    else if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
       const sp = T.speed * (T.armor ? 1 : m.speed) * dt * wireSlow(u);
       let nx = u.x + sgn * Math.min(sp, Math.abs(dx));
       if (limX !== null) nx = sgn > 0 ? Math.min(nx, Math.max(u.x, limX)) : Math.max(nx, Math.min(u.x, limX));
@@ -136,7 +138,7 @@ export function stepUnits(dt) {
         }
       }
     }
-    if (u.cd > 0 || T.noFire || (u.moving && !T.moveFire)) continue;
+    if (u.cd > 0 || T.noFire || (falling && !T.fallFire) || (u.moving && !T.moveFire)) continue;
     const dmg = T.dmg * m.dmg[u.type] * (u.dmgMul || 1);
     let ox = u.x, oy = u.y;
     if (T.armor) {

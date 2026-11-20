@@ -49,7 +49,7 @@ export function spawn(side, type, L, placed) {
   G.units.push(u); return u;
 }
 
-export const count = side => { let n = 0; for (const u of G.units) if (u.side === side && !u.T.armor && !u.fixed) n++; return n; };
+export const count = side => { let n = 0; for (const u of G.units) if (u.side === side && !u.T.armor && !u.fixed && !u.para) n++; return n; };
 export const tanks = side => { let n = 0; for (const u of G.units) if (u.side === side && u.T.armor && !u.T.sup) n += u.T.w || 1; return n; };
 export const anyTank = () => TK.some(k => G.S.unlocked[k] && ut(0, k));
 export const tkCan = k => !!ut(0, k) && !G.S.unlocked[k] && (k === 'tkL' || !tkPrev(G.nation[0], k) || !!G.S.unlocked[tkPrev(G.nation[0], k)]);

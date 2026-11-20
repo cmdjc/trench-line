@@ -56,7 +56,7 @@ export function setLayout(key) {
 
 export function mods() {
   const o = { dmg: {}, cd: {}, cost: {}, hp: 1, cover: 1, speed: 1, income: 3, growth: 0, bounty: 1, heal: 0, barrage: 0, tankHp: 1 };
-  for (const k of ORDER.concat(['bunker', 'colossus', 'tsar', 'nest', 'pillbox', 'pit75', 'pit65', 'depot', 'char2c', 'carrier', 'guncarrier'])) { o.dmg[k] = 1; o.cd[k] = 1; o.cost[k] = 1; }
+  for (const k of ORDER.concat(['bunker', 'colossus', 'tsar', 'nest', 'pillbox', 'pit75', 'pit65', 'depot', 'char2c', 'carrier', 'guncarrier', 'tommy'])) { o.dmg[k] = 1; o.cd[k] = 1; o.cost[k] = 1; }
   return o;
 }
 

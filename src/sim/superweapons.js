@@ -6,6 +6,7 @@ import { WH } from '../data/units.js';
 import { G, lineName, toast } from './state.js';
 import { isTrench, spawn } from './geometry.js';
 import { die, boom } from './combat.js';
+import { dropTarget, validDrop, spawnDrop } from './drop.js';
 import { rng } from '../core/rng.js';
 import { tier } from './base.js';
 import { TUNNEL_T, MINE_COST, MINE_R, MINE_TANK, MINE_NEST, PARIS_CD, PARIS_DMG, PARIS_SPLASH, PARIS_GAP, DOCK_CD, DOCK_HP, DOCK_DMG, DOCK_SCALE } from '../data/base.js';
@@ -42,6 +43,7 @@ export function swBlock(side) {
   if (st.tunnel) return 'Tunnelling under trench ' + st.tunnel.line + ': ' + Math.ceil(st.tunnel.t) + ' seconds to go.';
   if (st.cd > 0) return 'Ready again in ' + Math.ceil(st.cd) + ' seconds.';
   if (d.kind === 'mine' && !isTrench(targetFor(side))) return 'No enemy-held trench ahead of the selected one.';
+  if (d.kind === 'drop' && dropTarget(side) < 0) return 'No enemy or empty trench within 3 trenches of your front.';
   if (d.kind === 'char2c' && G.units.some(u => u.side === side && u.type === 'char2c')) return 'Already in the field.';
   if (d.kind === 'colossus' && G.units.some(u => u.side === side && u.type === 'colossus')) return 'Already in the field.';
   if (d.kind === 'tsar' && G.units.some(u => u.side === side && u.type === 'tsar')) return 'Already in the field.';
@@ -73,7 +75,10 @@ export function useSW(side, at) {
     if (nat >= 3) { u.dmgMul = DOCK_DMG; u.scale = DOCK_SCALE; }
     if (side === 1) toast('The enemy has sent out a Southern Colossus.');
   } else if (d.kind === 'drop') {
-    return false; // implemented in Task 2
+    const L = at && validDrop(side, at.line) ? at.line : dropTarget(side);
+    if (L < 0) return false;
+    spawnDrop(side, L);
+    if (side === 1) toast('Enemy paratroopers are landing at trench ' + L + '.');
   } else if (d.kind === 'caproni') {
     const vy = 110, y0 = -50;
     G.planes.push({ x: tx, y: y0, vy, side, t: 0, dur: (WH + 100) / vy });
