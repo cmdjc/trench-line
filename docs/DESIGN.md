@@ -120,10 +120,10 @@ Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the 
 - **Cost**: `SW.us.cost` is hard-coded to 341, and a test checks it against `dropCost()`, the unit costs times 1.1.
 - **Enemy**: an enemy USA drops from 120 seconds on (`AI_DROP_T`), other enemy superweapons wait 240. It uses the same ready check and the same random draw as them, so seeded battles stay reproducible.
 - **Headless bot**: when the drop is ready, a target exists and supplies are at least twice the cost, the bot drops on the nearest valid trench. Its JSON reports `drops` and `foeDrops`.
-- **Thompson gunner**: changed from the first pass, hp 50 to 20, damage 7 to 3 and cooldown 0.35 to 0.45 s. Its cost stays 45, so the drop price is the same. Its shots ignore trench cover like any raider's, and defenders cannot shoot a falling man, so the first pass wiped a six-man trench with almost no losses.
-- **Balance check**: US against each nation and each nation against the USA, open map, seeds 1 to 10, wins out of 10, against `main` with the Kettering Bugs. No change was larger than 2 wins (20 points). The bot affords a drop rarely (under 1 a battle), while the enemy USA drops about 3 to 6 times a battle.
+- **Thompson gunner**: the stormtrooper template (hp 50, damage 7, cooldown 0.35 s) was too strong, so it is at the weakest the brief allows, within 30% of it: hp 35, damage 4.9, cooldown 0.455 s. Cost stays 45, so the drop price is the same. Its shots ignore trench cover like any raider's. Defenders do shoot falling paratroopers (a test covers it); they just have about two seconds before the Thompsons kill them.
+- **Balance check**: US against each nation and each nation against the USA, open map, seeds 1 to 10, wins out of 10, against `main` with the Kettering Bugs. No change was larger than 2 wins (20 points). The bot affords a drop rarely (under 1 a battle), while the enemy USA drops about 2 to 5 times a battle.
 
-| Matchup | Main (bugs) | First pass | Final |
+| Matchup | Main (bugs) | Template Thompson | Final |
 |---|---|---|---|
 | USA v Britain | 5 | 3 | 4 |
 | USA v Germany | 10 | 10 | 10 |
@@ -137,10 +137,10 @@ Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the 
 | France v USA | 0 | 0 | 0 |
 | Austria-Hungary v USA | 3 | 5 | 5 |
 | Antarctica v USA | 2 | 2 | 2 |
-| Italy v USA | 1 | 1 | 2 |
+| Italy v USA | 1 | 1 | 1 |
 | Russia v USA | 0 | 0 | 0 |
 
-- **Lone drop**: with no attack behind it, onto settled riflemen (a quarter of them MGs) at fortification level 1, 100 battles each. Against 6 defenders the drop takes the trench every time, against 8 about 70 times in 100, and against 10 about 15. The goal was that 6 or more usually fail. That could not be met by tuning the Thompson alone: with its damage near zero the other four paratroopers still win against 6, and defenders cannot shoot a man who is still falling. The target needs a change to the platoon or the fall rules, which were not mine to change.
+- **Lone drop**: with no attack behind it, onto settled riflemen (a quarter of them MGs) at fortification level 1, 100 battles each, the drop takes the trench every time against 6 and 8 defenders and about 99 times in 100 against 10. The goal was that 6 or more usually fail, and it is not met. Weakening the Thompson to the limit barely moves it, because the other four paratroopers and the numbers (8 against 6, a Thompson firing about four times a rifleman's rate for 45 supplies) decide it. Meeting the goal would need a change to the platoon, which was not mine to change.
 
 ## Known quirks
 

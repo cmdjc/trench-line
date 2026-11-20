@@ -189,4 +189,18 @@ describe('landing and ownership', () => {
     for (let i = 0; i < 20; i++) { stepUnits(0.1); if (t.cd > last) shots++; last = t.cd; expect(r.cd).toBeLessThanOrEqual(0); }
     expect(shots).toBeGreaterThan(2);
   });
+  it('defenders in the drop trench shoot paratroopers while they are still falling', () => {
+    G.units = [];
+    G.fort[3] = 1; G.owner[3] = 1;
+    for (let i = 0; i < 6; i++) spawn(1, 'rifle', 3, true);
+    spawnDrop(0, 3);
+    const hp0 = paras().reduce((a, u) => a + u.hp, 0);
+    let hit = false;
+    for (let i = 0; i < 40 && !hit; i++) {
+      stepUnits(0.1);
+      hit = paras().some(u => u.fall > 0 && u.hp < u.max);
+    }
+    expect(hit).toBe(true);
+    expect(paras().reduce((a, u) => a + u.hp, 0)).toBeLessThan(hp0);
+  });
 });
