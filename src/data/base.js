@@ -4,6 +4,7 @@
 import { SW } from './superweapons.js';
 
 export const BASE_COST = [300, 550, 900];
+export const AI_BASE_SHARE = 0.2;  // share of enemy income put in its upgrade fund after 150 s
 export const SHARED = ['walls', 'depot', 'hosp'];
 
 export const WALLS_HP = 500;      // HQ health per tier

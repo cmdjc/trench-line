@@ -10,13 +10,15 @@ import { canDef, freeSlot, buildNest, buildDef } from './fortify.js';
 import { swBlock, useSW, swCost } from './superweapons.js';
 import { rng } from '../core/rng.js';
 import { baseIncome, tier, nextCost, raise } from './base.js';
-import { BASE } from '../data/base.js';
+import { BASE, AI_BASE_SHARE } from '../data/base.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
 
 export function aiStep(dt) {
   const ai = G.ai;
-  ai.money += (AI_INCOME * (1 + G.S.t / AI_RAMP) * (G.nation[1] === 'us' ? Math.min(1.8, 0.75 + G.S.t / 400) : G.nation[1] === 'aq' ? Math.min(2, 0.6 + G.S.t / 300) : 1) + depots(1) * DEPOT_RATE + (G.owner[G.SUPER] === 1 ? SUPER_INC : 0) + dblHeld(1) * DBL_RATE + baseIncome(1)) * dt;
+  const inc = (AI_INCOME * (1 + G.S.t / AI_RAMP) * (G.nation[1] === 'us' ? Math.min(1.8, 0.75 + G.S.t / 400) : G.nation[1] === 'aq' ? Math.min(2, 0.6 + G.S.t / 300) : 1) + depots(1) * DEPOT_RATE + (G.owner[G.SUPER] === 1 ? SUPER_INC : 0) + dblHeld(1) * DBL_RATE + baseIncome(1)) * dt;
+  const share = G.S.t >= 150 && BASE_ROT.some(i => tier(1, i) < 3) ? AI_BASE_SHARE : 0;
+  ai.fund += inc * share; ai.money += inc * (1 - share);
   ai.buyT -= dt;
   if (ai.buyT <= 0) {
     ai.buyT = 0.5;
@@ -58,20 +60,16 @@ export function aiStep(dt) {
 
 const BASE_GAP = 90; // seconds between enemy base purchases
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp'];
-// Level base upgrades. When it is time and the AI has nothing else in mind, 'base' becomes a
-// real want: it holds off other purchases and saves until it can pay. No rng.
+// Level base upgrades, paid from a separate fund that takes a share of income after 150 s, so
+// unit buying never pauses. Buys the lowest tier in rotation when the fund covers it. No rng.
 function aiBase() {
   const ai = G.ai;
-  if (ai.want !== 'base') {
-    if (ai.want || G.S.t < ai.baseT) return false;
-    ai.want = 'base';
-  }
+  if (G.S.t < ai.baseT) return false;
   const low = Math.min(...BASE_ROT.map(i => tier(1, i)));
   const id = BASE_ROT.find(i => tier(1, i) === low);
   const cost = nextCost(1, id);
-  if (cost === null) { ai.want = null; ai.baseT = Infinity; return false; }
-  if (ai.money < cost) return true;
-  ai.money -= cost; raise(1, id); ai.baseT = G.S.t + BASE_GAP; ai.want = null;
+  if (cost === null || ai.fund < cost) return false;
+  ai.fund -= cost; raise(1, id); ai.baseT = G.S.t + BASE_GAP;
   const name = id === 'nat' ? BASE[G.nation[1]].name : BASE[id].name;
   toast('The enemy has raised its ' + name + ' to tier ' + tier(1, id) + '.');
   return true;

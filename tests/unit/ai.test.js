@@ -27,35 +27,35 @@ describe('enemy income', () => {
   it('accrues the base ramp AI_INCOME·(1+t/AI_RAMP)', () => {
     game(); quiet();
     for (const t of [0, 300]) {
-      G.S.t = t; const m0 = G.ai.money; aiStep(0.1);
-      expect(G.ai.money - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * 0.1, 6);
     }
   });
   it('us enemy ramps with min(1.8, 0.75+t/400)', () => {
     game('de', 'us'); quiet();
     for (const t of [100, 1000]) {
-      G.S.t = t; const m0 = G.ai.money; aiStep(0.1);
-      expect(G.ai.money - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(1.8, 0.75 + t / 400) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(1.8, 0.75 + t / 400) * 0.1, 6);
     }
   });
   it('aq enemy ramps with min(2, 0.6+t/300)', () => {
     game('de', 'aq'); quiet();
     for (const t of [180, 1200]) {
-      G.S.t = t; const m0 = G.ai.money; aiStep(0.1);
-      expect(G.ai.money - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(2, 0.6 + t / 300) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(2, 0.6 + t / 300) * 0.1, 6);
     }
   });
   it('adds depot and doubled-trench income on plain', () => {
     game('de', 'de', 'plain'); quiet();
     spawn(1, 'depot', G.NT, true); G.owner[4] = 1; G.S.t = 0;
-    const m0 = G.ai.money; aiStep(0.1);
-    expect(G.ai.money - m0).toBeCloseTo((AI_INCOME + DEPOT_RATE + 1) * 0.1, 6);
+    const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
+    expect(G.ai.money + G.ai.fund - m0).toBeCloseTo((AI_INCOME + DEPOT_RATE + 1) * 0.1, 6);
   });
   it('adds super-trench income on march', () => {
     game('de', 'de', 'march'); quiet();
     G.owner[G.SUPER] = 1; G.S.t = 0;
-    const m0 = G.ai.money; aiStep(0.1);
-    expect(G.ai.money - m0).toBeCloseTo((AI_INCOME + SUPER_INC) * 0.1, 6);
+    const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
+    expect(G.ai.money + G.ai.fund - m0).toBeCloseTo((AI_INCOME + SUPER_INC) * 0.1, 6);
   });
 });
 
@@ -178,36 +178,35 @@ describe('aiThink', () => {
 
 describe('enemy base upgrades', () => {
   const calm = () => { G.ai.want = null; G.ai.thinkT = 999; };
-  it('does not buy before t=150', () => {
-    game(); calm(); G.S.t = 100; G.ai.money = 1000; tick();
+  it('does not buy or divert income before t=150', () => {
+    game(); calm(); G.S.t = 100; G.ai.fund = 1000; G.ai.money = 0; tick();
     expect(G.base[1].walls).toBe(0);
+    expect(G.ai.fund).toBe(1000);
   });
-  it('buys walls T1 at t=150, pays 300 and toasts', () => {
-    game(); calm(); G.S.t = 150; G.ai.money = 1000; const m0 = G.ai.money; tick();
+  it('buys walls T1 at t=150 from the fund, pays 300 and toasts', () => {
+    game(); calm(); G.S.t = 150; G.ai.fund = 1000; const m0 = G.ai.money; tick();
     expect(G.base[1].walls).toBe(1);
-    expect(m0 - G.ai.money).toBeGreaterThan(299); expect(m0 - G.ai.money).toBeLessThan(301);
+    expect(G.ai.fund).toBeGreaterThan(699); expect(G.ai.fund).toBeLessThan(720);
+    expect(G.ai.money).toBeGreaterThanOrEqual(m0);
     expect(toasts.some(m => m.startsWith('The enemy has raised its') && m.endsWith('to tier 1.'))).toBe(true);
   });
   it('waits 90s then rotates to nat', () => {
-    game(); calm(); G.S.t = 150; G.ai.money = 5000; tick();
+    game(); calm(); G.S.t = 150; G.ai.fund = 5000; tick();
     G.S.t = 239; tick(); expect(G.base[1].nat).toBe(0);
     G.S.t = 240; tick(); expect(G.base[1].nat).toBe(1); expect(G.base[1].walls).toBe(1);
   });
-  it('saves for the upgrade instead of spending on units', () => {
-    game(); calm(); G.S.t = 150; G.ai.money = 100; tick();
-    expect(G.ai.want).toBe('base'); expect(G.base[1].walls).toBe(0);
-    const n = G.units.length; G.ai.money = 299; G.ai.buyT = 0; tick();
-    expect(G.units.length).toBe(n); expect(G.base[1].walls).toBe(0);
-    G.ai.money = 300; G.ai.buyT = 0; tick();
-    expect(G.base[1].walls).toBe(1); expect(G.ai.want).toBe(null);
+  it('splits income after 150s without touching want', () => {
+    game(); calm(); G.S.t = 200; G.ai.fund = 0; G.ai.money = 0; G.ai.want = 'rifle'; tick(1);
+    expect(G.ai.fund).toBeGreaterThan(0); expect(G.ai.money).toBeGreaterThan(G.ai.fund);
+    expect(G.ai.want).not.toBe('base');
   });
-  it('stops wanting once every tier is 3', () => {
+  it('sends all income to money once every tier is 3', () => {
     game(); calm(); for (const i of ['walls', 'depot', 'hosp', 'nat']) G.base[1][i] = 3;
-    G.S.t = 150; tick();
-    expect(G.ai.want).not.toBe('base'); expect(G.ai.baseT).toBe(Infinity);
+    G.S.t = 200; G.ai.fund = 0; tick(1);
+    expect(G.ai.fund).toBe(0);
   });
   it('draws no rng on a base purchase', () => {
-    game(); calm(); G.S.t = 150; G.ai.money = 1000; rng.reseed(5); tick();
+    game(); calm(); G.S.t = 150; G.ai.fund = 1000; rng.reseed(5); tick();
     const a = rng.float(); rng.reseed(5); expect(a).toBe(rng.float());
   });
 });
