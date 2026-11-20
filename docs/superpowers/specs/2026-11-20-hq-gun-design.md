@@ -91,7 +91,7 @@ must be listed.
 
 - **State:** gun state is separate from the superweapon state, as `G.gun[side] = { cd }`. There is no save-format impact, because battles aren't saved.
 - **Range cap:** range is capped at trench `G.NT`. HQ guns never damage either HQ; they are for troops and emplacements.
-- **Austria-Hungary cover:** "Trench cover protects less" means a lower shell `cov` value. It does not mean ignoring cover.
+- **Austria-Hungary cover:** "Trench cover protects less" means a higher shell `cov` value (in this code, `cov` multiplies damage taken in a trench). It does not mean ignoring cover.
 - **Re-baselining:** in tests that target other behaviour, prefer isolating the enemy gun (for example, push its cooldown far out) over re-baselining expected values. List both.
 
 ## Decided vs. left to the builder
