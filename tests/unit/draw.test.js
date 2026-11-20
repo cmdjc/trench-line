@@ -101,10 +101,23 @@ function populate(n) {
   G.floats.push({ x: 400, y: 140, txt: '+5', life: 0.5 });
   G.scorch.push({ x: 450, y: 160, r: 9 });
   // paris aim reticle + damaged HQ + shake
-  G.aim = { x: 520, y: 140 };
+  G.aim = { kind: 'paris', x: 520, y: 140 };
   G.bases[0].hp = G.bases[0].max * 0.3;
   G.shake = 4;
 }
+
+describe('gun aim drawing', () => {
+  it('draws a gun aim for both sides without throwing', () => {
+    setCtx(stubCtx);
+    for (const nat of [['gb', 'de'], ['us', 'it']]) {
+      newGame(nat[0], nat[1], 'open', 3);
+      G.aim = { kind: 'gun', x: 300, y: 140 };
+      expect(() => draw()).not.toThrow();
+      G.aim = { kind: 'gun', x: null, y: null };
+      expect(() => draw()).not.toThrow();
+    }
+  });
+});
 
 describe('renderer', () => {
   beforeEach(() => {

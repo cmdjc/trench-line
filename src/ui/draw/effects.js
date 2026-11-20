@@ -1,6 +1,9 @@
 // Transient battle effects: smoke, shells, planes, warnings, aim, tracers, booms, floats.
 import { circle, oval, line, ctx } from './helpers.js';
 import { G } from '../../sim/state.js';
+import { GUNS } from '../../data/guns.js';
+import { gunMaxX } from '../../sim/gun.js';
+import { WH } from '../../data/units.js';
 
 function capShape(col, main) {
   ctx.fillStyle = col; ctx.fillRect(-5, -31, 11, 62);
@@ -81,10 +84,21 @@ export function drawWarnings(vis) {
 
 export function drawAim() {
   const aim = G.aim;
-  if (!aim || aim.x === null) return;
-  ctx.fillStyle = 'rgba(226,185,59,.12)'; circle(aim.x, aim.y, 90);
+  if (!aim) return;
+  let rad = 90;
+  if (aim.kind === 'gun') {
+    const gd = GUNS[G.nation[0]];
+    if (gd) {
+      const mx = gunMaxX(0);
+      ctx.strokeStyle = 'rgba(226,185,59,.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 8]);
+      ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, WH); ctx.stroke(); ctx.setLineDash([]);
+      rad = Math.max(...gd.shells.map(s => s.splash)) + Math.max(...gd.shells.map(s => s.spread));
+    }
+  }
+  if (aim.x === null) return;
+  ctx.fillStyle = 'rgba(226,185,59,.12)'; circle(aim.x, aim.y, rad);
   ctx.strokeStyle = 'rgba(226,185,59,.95)'; ctx.lineWidth = 2; ctx.setLineDash([10, 6]);
-  ctx.beginPath(); ctx.arc(aim.x, aim.y, 90, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(aim.x, aim.y, rad, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
   ctx.beginPath(); ctx.arc(aim.x, aim.y, 5, 0, Math.PI * 2); ctx.stroke();
   line(aim.x - 18, aim.y, aim.x - 7, aim.y, 2, 'rgba(226,185,59,.95)');
   line(aim.x + 7, aim.y, aim.x + 18, aim.y, 2, 'rgba(226,185,59,.95)');

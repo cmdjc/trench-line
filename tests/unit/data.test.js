@@ -6,6 +6,7 @@ import { TECH, TECH_IDS } from '../../src/data/tech.js';
 import { MAPS } from '../../src/data/maps.js';
 import { BASE, baseIds } from '../../src/data/base.js';
 import { SW } from '../../src/data/superweapons.js';
+import { GUNS } from '../../src/data/guns.js';
 
 it('every nation has rifle, mg and at least one armour slot', () => {
   for (const n of NATS) {
@@ -46,4 +47,20 @@ it('every nation has a base upgrade with 3 tier texts; baseIds lists shared + na
   }
   for (const k of ['walls', 'depot', 'hosp']) expect(BASE[k].tiers.length).toBe(3);
   expect(baseIds('ru')).toEqual(['walls', 'depot', 'hosp', 'ru']);
+});
+
+it('every nation has an HQ gun matching the design table', () => {
+  const T = { gb: [3, 40, 8, 3], de: [6, 50, 10, 1], fr: [5, 60, 12, 4], us: [9, 90, 20, 1], ah: [4, 50, 10, 1], aq: [3, 35, 10, 5], it: [3, 120, 30, 1], ru: [5, 80, 25, 6] };
+  expect(Object.keys(GUNS).sort()).toEqual(Object.keys(NAT).sort());
+  for (const n in NAT) {
+    const g = GUNS[n], [range, cost, cd, count] = T[n];
+    expect(g.name, n).toBeTruthy();
+    expect([g.range, g.cost, g.cd], n).toEqual([range, cost, cd]);
+    expect(g.shells.length, n).toBe(count);
+    for (const s of g.shells) for (const k of ['dmg', 'splash', 'cov', 'spread', 'delay', 'dur']) expect(typeof s[k], `${n}.${k}`).toBe('number');
+  }
+  expect(GUNS.it.shells[0]).toMatchObject({ dmg: 260, splash: 80 });
+  expect(GUNS.ah.shells[0].cov).toBeGreaterThanOrEqual(0.9);
+  expect(GUNS.ru.shells.every(s => s.spread >= 60)).toBe(true);
+  expect(GUNS.gb.name).toBe('Stokes mortar battery');
 });

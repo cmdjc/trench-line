@@ -12,6 +12,9 @@ import { META, makeCode, readCode } from '../../src/sim/meta.js';
 import { TECH } from '../../src/data/tech.js';
 import { bus } from '../../src/core/events.js';
 import { cam, vw, resize, focusLine, metrics } from '../../src/ui/camera.js';
+import { clampAim } from '../../src/sim/gun.js';
+import { GUNS } from '../../src/data/guns.js';
+import * as commands from '../../src/sim/commands.js';
 import { refresh } from '../../src/ui/hud.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 
@@ -162,6 +165,60 @@ describe('hud', () => {
     expect(G.sw[0].tunnel).toBeTruthy();
     expect(G.S.supplies).toBe(50);
     expect($('toast').textContent).toContain('Tunnellers are digging');
+  });
+});
+
+describe('HQ gun button', () => {
+  const g = GUNS.gb;
+  it('shows Aim when ready and disables when short', () => {
+    G.S.supplies = g.cost - 1; bus.emit('hud');
+    expect($('gunBtn').textContent).toBe('Aim ' + g.name + ': ' + g.cost);
+    expect($('gunBtn').disabled).toBe(true);
+    G.S.supplies = g.cost; bus.emit('hud');
+    expect($('gunBtn').disabled).toBe(false);
+  });
+  it('shows the reload while cooling down', () => {
+    G.S.supplies = 500; G.gun[0].cd = 3.2; bus.emit('hud');
+    expect($('gunBtn').textContent).toBe(g.name + ': ready in 4 s');
+    expect($('gunBtn').disabled).toBe(true);
+  });
+  it('aim, place, confirm fires and charges', () => {
+    G.S.supplies = 500; bus.emit('hud');
+    $('gunBtn').click();
+    expect(G.aim.kind).toBe('gun');
+    expect($('gunBtn').textContent).toContain('Confirm target, ' + g.cost);
+    expect($('gunBtn').textContent).toContain('Tap the field to place the target.');
+    expect($('gunBtn').disabled).toBe(true);        // not placed yet
+    expect($('swBtn').textContent).not.toContain('Confirm target');
+    expect($('aimCancel').hidden).toBe(false);
+    G.aim.x = 300; G.aim.y = 150; bus.emit('hud');
+    expect($('gunBtn').disabled).toBe(false);
+    $('gunBtn').click();
+    expect(G.S.supplies).toBe(500 - g.cost);
+    expect(G.gun[0].cd).toBe(g.cd);
+    expect(G.aim).toBeNull();
+  });
+  it('a gun aim survives refresh when the superweapon is blocked and is cancellable', () => {
+    G.S.supplies = 500; commands.startGunAim(); bus.emit('hud');
+    expect(G.aim && G.aim.kind).toBe('gun');
+    $('aimCancel').click();
+    expect(G.aim).toBeNull();
+  });
+  it('explains a disabled gun confirm when supplies are short', () => {
+    G.S.supplies = g.cost; commands.startGunAim(); G.aim.x = 300; G.aim.y = 150; G.S.supplies = g.cost - 1; bus.emit('hud');
+    expect($('gunBtn').disabled).toBe(true);
+    expect($('gunBtn').textContent).toContain('Not enough supplies yet.');
+  });
+  it('a Paris aim shows swBtn confirm, not gunBtn confirm', () => {
+    G.nation[0] = 'de'; G.S.supplies = 5000; commands.startAiming(); bus.emit('hud');
+    expect(G.aim.kind).toBe('paris');
+    expect($('swBtn').textContent).toContain('Confirm target');
+    expect($('gunBtn').textContent).not.toContain('Confirm');
+  });
+  it('swBtn during a gun aim starts the superweapon instead', () => {
+    G.S.supplies = 500; commands.startGunAim(); bus.emit('hud');
+    $('swBtn').click();
+    expect(G.sw[0].tunnel).toBeTruthy();
   });
 });
 
@@ -391,10 +448,18 @@ describe('pointer input', () => {
   });
 
   it('taps while aiming place the Paris Gun target', () => {
-    G.aim = { x: null, y: null };
+    G.aim = { kind: 'paris', x: null, y: null };
     ptr('pointerdown', 200, 120);
     ptr('pointerup', 200, 120);
-    expect(G.aim).toEqual({ x: 200, y: 120 });
+    expect(G.aim).toEqual({ kind: 'paris', x: 200, y: 120 });
+  });
+
+  it('taps while gun aiming clamp x to the gun range', () => {
+    G.aim = { kind: 'gun', x: null, y: null };
+    ptr('pointerdown', G.WW - 5, 120);
+    ptr('pointerup', G.WW - 5, 120);
+    expect(G.aim.x).toBe(clampAim(0, G.WW - 5));
+    expect(G.aim.x).toBeLessThan(G.WW - 5);
   });
 });
 

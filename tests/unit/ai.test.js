@@ -8,6 +8,7 @@ import { spawn, count, tanks } from '../../src/sim/geometry.js';
 import { aiStep, aiThink } from '../../src/sim/ai.js';
 import { NAT, AI_INCOME, AI_RAMP } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
+import { GUNS, AI_GUN_SHARE } from '../../src/data/guns.js';
 import { DEPOT_RATE, SUPER_INC } from '../../src/data/units.js';
 
 const toasts = [];
@@ -27,22 +28,22 @@ describe('enemy income', () => {
   it('accrues the base ramp AI_INCOME·(1+t/AI_RAMP)', () => {
     game(); quiet();
     for (const t of [0, 300]) {
-      G.S.t = t; const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
-      expect(G.ai.money + G.ai.fund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund + G.ai.gunFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * 0.1, 6);
     }
   });
   it('us enemy ramps with min(1.8, 0.75+t/400)', () => {
     game('de', 'us'); quiet();
     for (const t of [100, 1000]) {
-      G.S.t = t; const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
-      expect(G.ai.money + G.ai.fund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(1.8, 0.75 + t / 400) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund + G.ai.gunFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(1.8, 0.75 + t / 400) * 0.1, 6);
     }
   });
   it('aq enemy ramps with min(2, 0.6+t/300)', () => {
     game('de', 'aq'); quiet();
     for (const t of [180, 1200]) {
-      G.S.t = t; const m0 = G.ai.money + G.ai.fund; aiStep(0.1);
-      expect(G.ai.money + G.ai.fund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(2, 0.6 + t / 300) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund + G.ai.gunFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(2, 0.6 + t / 300) * 0.1, 6);
     }
   });
   it('adds depot and doubled-trench income on plain', () => {
@@ -208,5 +209,61 @@ describe('enemy base upgrades', () => {
   it('draws no rng on a base purchase', () => {
     game(); calm(); G.S.t = 150; G.ai.fund = 1000; rng.reseed(5); tick();
     const a = rng.float(); rng.reseed(5); expect(a).toBe(rng.float());
+  });
+});
+
+describe('enemy HQ gun', () => {
+  const cost = () => GUNS[G.nation[1]].cost;
+  function setup() {
+    game(); quiet(); clearEnemy(); G.S.t = 100; G.ai.money = 0; G.ai.fund = 0; G.ai.gunFund = cost() * 2; G.ai.want = null; G.gun[1].cd = 0;
+    const x = G.bases[1].x - 100;
+    for (let i = 0; i < 4; i++) { const u = spawn(0, 'rifle', 1); u.x = x + i * 5; u.y = 200 + i * 5; }
+    G.ai.F = 0;
+  }
+  function fireTicks(n = 200) { for (let i = 0; i < n && G.gun[1].cd <= 0; i++) tick(0); }
+  it('never fires before 60 s', () => {
+    setup(); G.S.t = 50; fireTicks();
+    expect(G.gun[1].cd).toBeLessThanOrEqual(0);
+  });
+  it('fires at a cluster in range, paying from the gun fund, with no toast', () => {
+    setup(); const f0 = G.ai.gunFund, m0 = G.ai.money; fireTicks();
+    expect(G.gun[1].cd).toBeGreaterThan(0);
+    expect(G.shells.length).toBeGreaterThan(0);
+    expect(f0 - G.ai.gunFund).toBeCloseTo(cost(), 6);
+    expect(G.ai.money).toBe(m0);
+    expect(toasts.length).toBe(0);
+  });
+  it('does not fire with nothing in range', () => {
+    setup(); G.units = G.units.filter(u => u.side !== 0); fireTicks();
+    expect(G.gun[1].cd).toBeLessThanOrEqual(0);
+  });
+  it('does not fire when the gun fund is short', () => {
+    setup(); G.ai.gunFund = cost() - 1; fireTicks();
+    expect(G.gun[1].cd).toBeLessThanOrEqual(0);
+  });
+  it('diverts a share of income to the gun fund from 60 s, none before', () => {
+    game(); quiet(); G.ai.gunFund = 0; G.S.t = 59; aiStep(1);
+    expect(G.ai.gunFund).toBe(0);
+    G.S.t = 100; const m0 = G.ai.money; aiStep(1);
+    const inc = AI_INCOME * (1 + 100 / AI_RAMP);
+    expect(G.ai.gunFund).toBeCloseTo(inc * AI_GUN_SHARE, 6);
+    expect(G.ai.money - m0).toBeCloseTo(inc * (1 - AI_GUN_SHARE), 6);
+  });
+  it('caps the gun fund at 2x cost, returning overflow to money', () => {
+    game(); quiet(); G.S.t = 100; G.ai.gunFund = cost() * 2; const m0 = G.ai.money; aiStep(1);
+    expect(G.ai.gunFund).toBe(cost() * 2);
+    expect(G.ai.money - m0).toBeCloseTo(AI_INCOME * (1 + 100 / AI_RAMP), 6);
+  });
+  it('fires at least once in a 300 s seeded battle with player units in range', () => {
+    game(); clearEnemy(); G.S.t = 60; G.ai.F = 0;
+    const x = G.bases[1].x - 100;
+    for (let i = 0; i < 4; i++) { const u = spawn(0, 'rifle', 1); u.x = x + i * 5; u.y = 200 + i * 5; }
+    let shots = 0, prev = 0;
+    for (let i = 0; i < 1200; i++) {
+      G.S.t += 0.25; aiStep(0.25);
+      for (const u of G.units) if (u.side === 0) { u.hp = u.max; }
+      const cd = G.gun[1].cd; if (cd > prev + 1) shots++; prev = cd; if (cd > 0) G.gun[1].cd -= 0.25;
+    }
+    expect(shots).toBeGreaterThan(0);
   });
 });

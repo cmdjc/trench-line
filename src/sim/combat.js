@@ -190,7 +190,7 @@ export function stepUnits(dt) {
         hurt(e, s.dmg * (1 - 0.55 * d / s.splash), 'barrage', null, s.cov, true);
       }
       const hb = G.bases[1 - s.side], hd = Math.hypot(hb.x - s.x1, WH / 2 - s.y1);
-      if (hd <= s.splash + 22) hurtBase(1 - s.side, s.dmg * 0.8 * (1 - 0.4 * hd / (s.splash + 22)));
+      if (!s.noBase && hd <= s.splash + 22) hurtBase(1 - s.side, s.dmg * 0.8 * (1 - 0.4 * hd / (s.splash + 22)));
       continue;
     }
     boom(s.x1, s.y1, s.big ? 46 : s.base ? 16 : Math.max(10, (s.splash || 20) * 0.6));
@@ -201,7 +201,7 @@ export function stepUnits(dt) {
       G.fort[L]--; boom(s.x1, s.y1, 46);
       if (G.owner[L] === 0) toast('A siege shell smashed part of the fortifications at trench ' + L + '.');
     }
-    if (s.base) hurtBase(1 - s.side, s.dmg);
+    if (s.base && !s.noBase) hurtBase(1 - s.side, s.dmg);
     else for (const e of G.units) { if (e.side === s.side || e.hp <= 0) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
   }
   G.shells = G.shells.filter(s => s.t < s.dur);

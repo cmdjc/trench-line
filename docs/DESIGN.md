@@ -84,9 +84,33 @@ Chosen by you: in-battle upgrades bought at your HQ, three shared plus one per n
 - **National**: Tunnelling Company (Britain), Krupp Works (Germany), Voie Sacree (France), Liberty Depot (USA), K.u.K. Officer School (Austria-Hungary), Colossus Drydock (Antarctica), Teleferica (Italy), Conscription Office (Russia). The exact effects are in `src/data/base.js`. Krupp Works and Colossus Drydock can be bought before the superweapon unlocks; the bonus waits.
 - **Stacking**: the existing Concrete HQ, Aid posts and Light railway research nodes still apply on top.
 - **Research**: four small branches (HQ Walls, Supply Depot, Field Hospital, National works) let a battle start with Walls, Depot, Hospital or the national upgrade at tier 1 or 2. Tier 3 is always bought in battle. New nodes were appended to the tech mask, so old save codes still load.
-- **Enemy**: from 150 seconds on, 20% of its income goes to a separate upgrade fund (`AI_BASE_SHARE`), so unit buying never pauses. Once the fund covers the next tier, and at least 90 seconds have passed since its last purchase, it buys the lowest tier in the rotation walls, national, depot, hospital, with a toast. Once everything is at tier 3 the share stops and all income goes to units again. It uses no random numbers and leaves its other wants alone, so seeded battles stay reproducible. It starts at tier 0 and gets no research.
+- **Enemy**: from 150 seconds on, 20% of its income goes to a separate upgrade fund (`AI_BASE_SHARE`), so unit buying never pauses. Once the fund covers the next tier, and at least 90 seconds have passed since its last purchase, it buys the lowest tier in the rotation walls, national, depot, hospital, with a toast. Once everything is at tier 3 the share stops and then 10% of income still goes to the gun fund after 60 seconds, and the rest goes to units. It uses no random numbers and leaves its other wants alone, so seeded battles stay reproducible. It starts at tier 0 and gets no research.
 - **Headless bot**: `scripts/bot.mjs` buys the next tier in the same rotation when supplies are at least twice the cost (`BASEX` changes the multiple). Its JSON now reports `base` and `foeBase` tiers.
 - **Balance check**: each nation against Germany (Germany against Britain) on the open map, seeds 1 to 10, with and without upgrades. No nation's win rate moved more than 20 points. The bot rarely holds 600 supplies, so it buys few tiers at the default setting; at `BASEX=1` about half its battles include a walls tier, and the depot and hospital are bought least. No numbers were changed. The enemy buys about 1.7 tiers a battle.
+
+## 9. Aimable HQ gun
+
+Chosen by you: every nation's HQ has an aimable gun, one per nation, with its own name, range in trenches and shell pattern. Only the eight gun choices were yours; the starting numbers (range, cost, cooldown, shells) were my calls, and only Germany's cost and cooldown were retuned. The full intent is in `docs/superpowers/specs/2026-11-20-hq-gun-design.md`.
+
+- **Use**: the gun button starts aiming, you tap a point within range (the aim is clamped to the range line), then Confirm. It spends supplies, then reloads for its cooldown. Shells scatter around the point and cannot hurt the bases.
+- **Enemy**: from 60 seconds on, 10% of its income goes to a separate gun fund (`AI_GUN_SHARE`). When the fund covers the cost and the gun is ready, it fires at the richest cluster of your units in reach. After 60 seconds it rolls a 25% seeded check each half-second, and fires only when the best target in range is worth at least the shot cost. There is no warning circle or toast.
+- **Seeded tests**: no seeded test was re-baselined; the three enemy-income tests only add `gunFund` to their sums.
+- **Headless bot**: when the gun is ready, supplies are at least three times its cost, and the best target is worth at least the cost, it fires. Its JSON reports `gunShots` and `foeGunShots`.
+- **Balance check**: each nation against Germany (Germany against Britain) on the open map, seeds 1 to 10, wins out of 10. Chosen by me: only Germany's gun cost and cooldown changed, from 30 / 6 s to 50 / 10 s, because Germany's long range and low price made the enemy gun fire about 15 times a battle and cost the bot up to 30 points. Every nation's change is now within 20 points.
+
+| Nation | Gun (cost / cooldown) | Main | First pass | Final |
+|---|---|---|---|---|
+| Britain | Stokes mortar battery (40 / 8) | 10 | 7 | 9 |
+| Germany | 7.7 cm FK 16 (50 / 10) | 8 | 9 | 8 |
+| France | 75 mm battery (60 / 12) | 8 | 5 | 9 |
+| USA | 155 mm GPF (90 / 20) | 10 | 10 | 10 |
+| Austria-Hungary | Mountain gun battery (50 / 10) | 8 | 8 | 9 |
+| Antarctica | Penguin mortar (35 / 10) | 2 | 4 | 3 |
+| Italy | 210 mm mortar (120 / 30) | 9 | 9 | 9 |
+| Russia | Massed battery (80 / 25) | 7 | 6 | 7 |
+| Germany v Britain | | 2 | 0 | 0 |
+
+The bot rarely holds three times the cost, so it fired mostly with Germany, the USA, Antarctica and Austria-Hungary; in the open-map matrix above, the enemy fired about 3 to 13 shots a battle, and under 1 a battle when Germany played against Britain. Only the first pass had Germany at 30 / 6 s.
 
 ## Known quirks
 

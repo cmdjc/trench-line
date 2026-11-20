@@ -25,6 +25,7 @@ export const G = {
   sel: 1, owner: null,
   fort: new Array(11).fill(0), jobs: [], fields: [], garr: new Array(11).fill(0),
   sw: [{ cd: 0, tunnel: null }, { cd: 0, tunnel: null }],
+  gun: [{ cd: 0 }, { cd: 0 }],
   aim: null, planes: [], tracers: [], shells: [], booms: [], floats: [], scorch: [], smoke: [], wrecks: [],
   running: false, userPaused: false, speed: 1, uid: 1,
   shake: 0,
@@ -103,6 +104,7 @@ export function newGame(mine, theirs, map, seed) {
   G.nation = [mine, theirs]; G.MAP = MAPS[map] ? map : 'open'; setLayout(G.MAP); G.RIV = MAPS[G.MAP].rivers;
   G.S = { t: 0, score: 0, supplies: mine === 'aq' ? 15 : 40, kills: 0, losses: 0, cardKills: 0, need: 4, pending: 0, taken: {}, cards: 0, unlocked: { rifle: true, mg: true }, barrageT: 6, warnT: 0, superOwner: -1, superCard: false, superT: 0 };
   G.sw = [{ cd: 0, tunnel: null }, { cd: 0, tunnel: null }];
+  G.gun = [{ cd: 0 }, { cd: 0 }];
   G.M = [mods(), mods()];
   for (let s = 0; s < 2; s++) { if (G.nation[s] === 'gb') G.M[s].cd.rifle = 0.85; if (G.nation[s] === 'it') G.M[s].cover *= 0.85; }
   if (G.nation[0] === 'us') { G.M[0].income = 2.3; G.M[0].growth = 0.4; }
@@ -110,7 +112,7 @@ export function newGame(mine, theirs, map, seed) {
   relabelCards();
   G.units = []; G.aim = null; G.planes = []; G.tracers = []; G.shells = []; G.booms = []; G.floats = []; G.scorch = []; G.smoke = []; G.wrecks = [];
   G.bases = [{ x: G.LX[0], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }, { x: G.LX[G.HQI], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }];
-  G.ai = { money: 40, fund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
+  G.ai = { money: 40, fund: 0, gunFund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
   G.fort = new Array(G.HQI + 1).fill(0); G.jobs = []; G.fields = []; G.garr = new Array(G.HQI + 1).fill(0);
   G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
   G.sel = 1; G.offer = null;
