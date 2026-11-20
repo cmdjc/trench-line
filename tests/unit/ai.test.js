@@ -109,7 +109,7 @@ describe('want state machine', () => {
     expect(G.ai.money).toBeCloseTo(500 - nestCost(1), 1);
   });
   it('sw (de, cost<1500): wants, fires the Paris Gun and charges it', () => {
-    game(); quiet(); G.owner[9] = 0; G.S.t = 300; G.ai.money = 600;
+    game(); quiet(); G.ai.baseT = 1e9; G.owner[9] = 0; G.S.t = 300; G.ai.money = 600;
     expect(SW.de.cost).toBeLessThan(1500);
     rng.reseed(seedWhere(d => d < 0.025)); tick();
     expect(G.ai.want).toBeNull();
@@ -173,5 +173,28 @@ describe('aiThink', () => {
     G.S.t = 500; aiThink();
     expect(G.ai.F).toBe(0);
     expect(toasts).toContain('The enemy is storming your HQ.');
+  });
+});
+
+describe('enemy base upgrades', () => {
+  const calm = () => { G.ai.want = null; G.ai.thinkT = 999; };
+  it('does not buy before t=150', () => {
+    game(); calm(); G.S.t = 100; G.ai.money = 1000; tick();
+    expect(G.base[1].walls).toBe(0);
+  });
+  it('buys walls T1 at t=150, pays 300 and toasts', () => {
+    game(); calm(); G.S.t = 150; G.ai.money = 1000; const m0 = G.ai.money; tick();
+    expect(G.base[1].walls).toBe(1);
+    expect(m0 - G.ai.money).toBeGreaterThan(299); expect(m0 - G.ai.money).toBeLessThan(301);
+    expect(toasts.some(m => m.startsWith('The enemy has raised its') && m.endsWith('to tier 1.'))).toBe(true);
+  });
+  it('waits 90s then rotates to nat', () => {
+    game(); calm(); G.S.t = 150; G.ai.money = 5000; tick();
+    G.S.t = 239; tick(); expect(G.base[1].nat).toBe(0);
+    G.S.t = 240; tick(); expect(G.base[1].nat).toBe(1); expect(G.base[1].walls).toBe(1);
+  });
+  it('draws no rng on a base purchase', () => {
+    game(); calm(); G.S.t = 150; G.ai.money = 1000; rng.reseed(5); tick();
+    const a = rng.float(); rng.reseed(5); expect(a).toBe(rng.float());
   });
 });

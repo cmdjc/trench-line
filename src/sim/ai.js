@@ -9,7 +9,8 @@ import { isTrench, ut, full, spawn, frontLine, power } from './geometry.js';
 import { canDef, freeSlot, buildNest, buildDef } from './fortify.js';
 import { swBlock, useSW, swCost } from './superweapons.js';
 import { rng } from '../core/rng.js';
-import { baseIncome } from './base.js';
+import { baseIncome, tier, nextCost, raise } from './base.js';
+import { BASE } from '../data/base.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
 
@@ -19,7 +20,7 @@ export function aiStep(dt) {
   ai.buyT -= dt;
   if (ai.buyT <= 0) {
     ai.buyT = 0.5;
-    {
+    if (!aiBase()) {
       const F = ai.F, canBuild = isTrench(F) && G.owner[F] === 1;
       if (!ai.want && G.S.t > 60 && canBuild && rng.float() < 0.05) {
         if (G.fort[F] < maxFort(F) && FORT_COST[G.fort[F]] <= ai.money * 2 + 80 && rng.float() < 0.5) ai.want = 'fort';
@@ -53,6 +54,21 @@ export function aiStep(dt) {
   }
   ai.thinkT -= dt;
   if (ai.thinkT <= 0) { ai.thinkT = 3; aiThink(); }
+}
+
+const BASE_ROT = ['walls', 'nat', 'depot', 'hosp'];
+// Level base upgrades: buys the next id in rotation once affordable (150% of cost). No rng.
+function aiBase() {
+  const ai = G.ai;
+  if (ai.want || G.S.t < ai.baseT) return false;
+  const low = Math.min(...BASE_ROT.map(i => tier(1, i)));
+  const id = BASE_ROT.find(i => tier(1, i) === low);
+  const cost = nextCost(1, id);
+  if (cost === null || ai.money < cost * 1.5) return false;
+  ai.money -= cost; raise(1, id); ai.baseT = G.S.t + 90;
+  const name = id === 'nat' ? BASE[G.nation[1]].name : BASE[id].name;
+  toast('The enemy has raised its ' + name + ' to tier ' + tier(1, id) + '.');
+  return true;
 }
 
 export function aiLine() { return G.ai.F; }
