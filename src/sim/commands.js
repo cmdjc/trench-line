@@ -11,6 +11,8 @@ import { isTrench, spawn, cost, full, frontLine } from './geometry.js';
 import { canDef, buildDef, buildNest, fortifyAt } from './fortify.js';
 import { tier, raise, nextCost } from './base.js';
 import { BASE } from '../data/base.js';
+import { GUNS } from '../data/guns.js';
+import { fireGun, gunBlock, clampAim } from './gun.js';
 import { swBlock, useSW, swCost } from './superweapons.js';
 
 export { fortifyAt };
@@ -74,12 +76,27 @@ export function buildDefAt(L) {
 export function startAiming() {
   const d = SW[G.nation[0]];
   if (!G.running || !d || d.kind !== 'paris' || swBlock(0)) return false;
-  G.aim = { x: null, y: null };
+  G.aim = { kind: 'paris', x: null, y: null };
+  toast('Tap the field to place the target, then press Confirm. Drag to look around.');
+  bus.emit('hud'); return true;
+}
+
+export function startGunAim() {
+  if (!G.running) return false;
+  G.aim = { kind: 'gun', x: null, y: null };
   toast('Tap the field to place the target, then press Confirm. Drag to look around.');
   bus.emit('hud'); return true;
 }
 
 export function confirmAim() {
+  if (G.aim && G.aim.kind === 'gun') {
+    const g = GUNS[G.nation[0]];
+    if (!G.running || !g || G.aim.x === null || gunBlock(0) || G.S.supplies < g.cost) return false;
+    if (!fireGun(0, clampAim(0, G.aim.x), G.aim.y)) return false;
+    G.S.supplies -= g.cost; G.aim = null;
+    toast(g.name + ' fired.');
+    bus.emit('hud'); return true;
+  }
   const d = SW[G.nation[0]];
   if (!G.running || !d || !G.aim) return false;
   if (G.aim.x === null || G.S.supplies < swCost(0) || swBlock(0)) return false;

@@ -10,6 +10,7 @@ import { stepUnits, puff } from './combat.js';
 import { aiStep } from './ai.js';
 import { stepBase } from './base.js';
 import { stepSW } from './superweapons.js';
+import { stepGun } from './gun.js';
 import { offerCards, pendingOffer } from './cards.js';
 import { awardRun } from './meta.js';
 
@@ -27,7 +28,7 @@ export function tick(dt) {
     S.superT += dt;
     if (S.superT >= SUPER_CARD_T) { S.superT -= SUPER_CARD_T; S.pending++; toast('The super trench has sent you a free card.'); }
   }
-  stepUnits(dt); aiStep(dt); stepBase(dt); stepSW(dt);
+  stepUnits(dt); aiStep(dt); stepBase(dt); stepSW(dt); stepGun(dt);
   for (const a of [G.tracers, G.booms, G.floats]) for (const o of a) o.life -= dt;
   G.tracers = G.tracers.filter(o => o.life > 0); G.booms = G.booms.filter(o => o.life > 0); G.floats = G.floats.filter(o => o.life > 0);
   for (const f of G.floats) f.y -= dt * 22;

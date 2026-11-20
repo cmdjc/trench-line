@@ -201,7 +201,7 @@ describe('commands: Paris Gun aiming', () => {
   it('starts aiming', () => {
     G.S.supplies = 1000;
     expect(C.startAiming()).toBe(true);
-    expect(G.aim).toEqual({ x: null, y: null });
+    expect(G.aim).toEqual({ kind: 'paris', x: null, y: null });
     expect(toasts).toContain('Tap the field to place the target, then press Confirm. Drag to look around.');
   });
   it('is blocked while the gun reloads', () => {
