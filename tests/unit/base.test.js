@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { G, newGame } from '../../src/sim/state.js';
 import { META } from '../../src/sim/meta.js';
 import { BASE_HP } from '../../src/data/units.js';
-import { tier, nextCost, raise, stepBase, infCap, baseIncome } from '../../src/sim/base.js';
+import { startLineFor, tier, nextCost, raise, stepBase, infCap, baseIncome } from '../../src/sim/base.js';
 import { incomeNow } from '../../src/sim/state.js';
 import { aiStep } from '../../src/sim/ai.js';
 import { AI_INCOME } from '../../src/data/nations.js';
 import { TK } from '../../src/data/units.js';
-import { ut } from '../../src/sim/geometry.js';
+import { ut, full, spawn, startX } from '../../src/sim/geometry.js';
 import { buyBase } from '../../src/sim/commands.js';
 
 beforeEach(() => { META.tech = {}; newGame('gb', 'de', 'open', 7); });
@@ -93,5 +93,55 @@ describe('income, repair, caps, cost', () => {
     const n = G.units.length; aiStep(0.001);
     expect(G.units.length).toBe(n + 1);
     expect(G.ai.money).toBeLessThan(1);
+  });
+});
+
+describe('free troops and movers', () => {
+  const mk = (a, b = 'de') => { META.tech = {}; newGame(a, b, 'open', 7); };
+  const rifles = () => G.units.filter(u => u.side === 0 && u.type === 'rifle').length;
+  it('conscripts trickle', () => {
+    mk('ru'); raise(0, 'nat'); const n = rifles();
+    stepBase(20);
+    expect(rifles()).toBe(n + 1);
+  });
+  it('nothing owned means no timers', () => {
+    mk('ru'); const n = G.units.length; stepBase(500);
+    expect(G.units.length).toBe(n); expect(G.base[0].t).toBe(0);
+  });
+  it('respects caps', () => {
+    mk('ru'); raise(0, 'nat');
+    while (!full(0, 'rifle')) spawn(0, 'rifle', 1, true);
+    const n = G.units.length; stepBase(20);
+    expect(G.units.length).toBe(n);
+  });
+  it('fr T3 convoy', () => {
+    mk('fr'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    const n = rifles(); stepBase(45);
+    expect(rifles()).toBe(n + 3);
+    expect(G.base[0].convoyed).toBe(true);
+  });
+  it('teleferica', () => {
+    mk('it'); const old = startX(0, 3, 'rifle');
+    raise(0, 'nat'); G.sel = 3;
+    expect(startX(0, 3, 'rifle')).toBe(G.LX[3] - 14);
+    expect(old).toBe(G.LX[0] - 14);
+  });
+  it('out of range walks', () => {
+    mk('it'); raise(0, 'nat'); G.sel = 5;
+    expect(startX(0, 5, 'rifle')).toBe(G.LX[0] - 14);
+  });
+  it('tanks need T3', () => {
+    mk('it'); raise(0, 'nat');
+    const tk = TK.find(k => ut(0, k));
+    expect(startLineFor(0, tk, 3)).toBe(null);
+    raise(0, 'nat'); raise(0, 'nat');
+    expect(startLineFor(0, tk, 9)).toBe(9);
+    expect(startLineFor(0, 'rifle', 0)).toBe(null);
+  });
+  it('gb T3 tunnels infantry to the selected line', () => {
+    mk('gb'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    expect(startX(0, 8, 'rifle')).toBe(G.LX[8] - 14);
+    const tk = TK.find(k => ut(0, k));
+    expect(startLineFor(0, tk, 8)).toBe(null);
   });
 });

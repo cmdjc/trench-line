@@ -2,10 +2,11 @@
 // (walls, depot, hosp) or 'nat' for the nation's own track.
 
 import { bus } from '../core/events.js';
-import { DEPOT_INC, VOIE_INC, LIB_DEPOT, WALLS_REPAIR, KUK_CAP, BASE_COST, WALLS_HP, HOSP_HEAL, LIB_GROWTH, LIB_TANK, KUK_DMG, KUK_HP, VOIE_SPEED } from '../data/base.js';
+import { DEPOT_INC, VOIE_INC, LIB_DEPOT, WALLS_REPAIR, KUK_CAP, BASE_COST, WALLS_HP, HOSP_HEAL, LIB_GROWTH, LIB_TANK, KUK_DMG, KUK_HP, VOIE_SPEED, TELE_RANGE, CONSCRIPT, CONVOY_T, CONVOY_N } from '../data/base.js';
 import { ORDER, TK, DEPOT_RATE } from '../data/units.js';
 import { NAT } from '../data/nations.js';
-import { G, depots } from './state.js';
+import { G, depots, toast } from './state.js';
+import { spawn, full, ut } from './geometry.js';
 
 export const tier = (side, id) => G.base[side][id];
 export const nextCost = (side, id) => { const t = tier(side, id); return t >= 3 ? null : BASE_COST[t]; };
@@ -45,9 +46,35 @@ export function baseIncome(side) {
 
 export const infCap = side => NAT[G.nation[side]].inf + (G.nation[side] === 'ah' && tier(side, 'nat') >= 3 ? KUK_CAP : 0);
 
+// The line a fresh unit appears at (it teleferica, gb tunnels), or null to start from the HQ.
+export function startLineFor(side, type, L) {
+  const own = side ? G.HQI : 0;
+  if (L === own) return null;
+  const n = G.nation[side], t = tier(side, 'nat'), inf = !ut(side, type).armor;
+  if (n === 'it' && t >= 1 && (side ? G.HQI - L : L) <= TELE_RANGE[t] && (inf || t >= 3)) return L;
+  if (n === 'gb' && t >= 3 && inf) return L;
+  return null;
+}
+
+function freeRifles(side, n) {
+  for (let i = 0; i < n; i++) if (!full(side, 'rifle')) spawn(side, 'rifle', side ? G.ai.F : G.sel);
+}
+
 export function stepBase(dt) {
   for (const side of [0, 1]) {
-    const b = G.bases[side];
+    const b = G.bases[side], bs = G.base[side], n = G.nation[side], t = tier(side, 'nat');
     if (tier(side, 'walls') >= 3 && b.hp > 0) b.hp = Math.min(b.max, b.hp + WALLS_REPAIR * dt);
+    if (n === 'ru' && t >= 1) {
+      bs.t += dt;
+      const c = CONSCRIPT[t];
+      while (bs.t >= c.t) { bs.t -= c.t; freeRifles(side, c.n); }
+    }
+    if (n === 'fr' && t >= 3) {
+      bs.conv += dt;
+      while (bs.conv >= CONVOY_T) {
+        bs.conv -= CONVOY_T; freeRifles(side, CONVOY_N);
+        if (side === 0 && !G.base[0].convoyed) { G.base[0].convoyed = true; toast('A lorry convoy has brought fresh troops up the Voie Sacrée.'); }
+      }
+    }
   }
 }

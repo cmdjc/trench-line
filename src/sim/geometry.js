@@ -6,7 +6,7 @@ import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { rng } from '../core/rng.js';
 import { G, isDbl } from './state.js';
-import { infCap } from './base.js';
+import { infCap, startLineFor } from './base.js';
 
 export const trenchX = (cx, y) => cx + ((Math.floor(y / SEG) % 2) ? 6 : -6);
 
@@ -30,8 +30,10 @@ export function pickLane(side, L) {
 }
 
 /* on maps with a railhead, reinforcements appear one trench behind the line they are sent to */
-export function startX(side, L) {
+export function startX(side, L, type) {
   const dir = side ? -1 : 1, own = side ? G.HQI : 0;
+  const sl = type ? startLineFor(side, type, L) : null;
+  if (sl !== null) return G.LX[sl] - dir * 14;
   if (!MAPS[G.MAP].rail) return G.LX[own] - dir * 14;
   return G.LX[Math.max(0, Math.min(G.HQI, L - dir))] - dir * 14;
 }
@@ -43,7 +45,7 @@ export function spawn(side, type, L, placed) {
   let y = pickLane(side, L); if (T.big) y = Math.max(50, Math.min(WH - 50, y));
   const park = T.armor ? (T.rear ? -((T.park || 38) + 26) : (T.park || 38) + 4) : 0;
   const hp = T.hp * (T.armor ? m.tankHp : m.hp);
-  const u = { id: G.uid++, side, type, T, cd2: 0, flash2: 0, gun: 1, tread: 0, puff: 0, line: L, y, aim: 0, park, x: placed ? posX(side, L, y, park) : startX(side, L), hp, max: hp, cd: rng.float() * T.cd, settled: !!placed, moving: false, walk: rng.float() * 6, flash: 0 };
+  const u = { id: G.uid++, side, type, T, cd2: 0, flash2: 0, gun: 1, tread: 0, puff: 0, line: L, y, aim: 0, park, x: placed ? posX(side, L, y, park) : startX(side, L, type), hp, max: hp, cd: rng.float() * T.cd, settled: !!placed, moving: false, walk: rng.float() * 6, flash: 0 };
   G.units.push(u); return u;
 }
 
