@@ -41,9 +41,9 @@ export const BASE = {
     `Troops resting in your HQ trench recover another ${HOSP_HEAL} health per second.`,
     `Troops resting in your HQ trench recover another ${HOSP_HEAL} health per second.`] },
   gb: { name: 'Tunnelling Company', tiers: [
-    `Every ${TUNNEL_T} seconds, sappers lay a mine in the ground ahead of your front, at a cost of ${MINE_COST} supplies.`,
-    `Mines blast a ${MINE_R} radius, and deal ${MINE_TANK} damage to tanks and ${MINE_NEST} to machine-gun nests.`,
-    `Mines are laid twice as fast.`] },
+    `Mines tunnel in ${TUNNEL_T} seconds and cost ${Math.round((1 - MINE_COST) * 100)}% less.`,
+    `Mines have a wider, stronger blast: ${MINE_R} units across, dealing ${MINE_TANK} damage to tanks and ${MINE_NEST} to machine-gun nests.`,
+    `Newly bought infantry tunnel out at the trench they are sent to, instead of walking from your HQ.`] },
   de: { name: 'Krupp Works', tiers: [
     `Paris Gun: a long-range shell strikes the enemy front every ${PARIS_CD} seconds.`,
     `The shell deals ${PARIS_DMG} damage in a ${PARIS_SPLASH} radius.`,
@@ -59,15 +59,15 @@ export const BASE = {
   ah: { name: 'K.u.K. Officer School', tiers: [
     `Your infantry deal ${pct(KUK_DMG)}% more damage.`,
     `Your infantry have ${pct(KUK_HP)}% more health.`,
-    `Your officers can lead up to ${KUK_CAP} units at once.`] },
+    `Room for ${KUK_CAP} more infantry.`] },
   aq: { name: 'Colossus Drydock', tiers: [
     `Every ${DOCK_CD} seconds, a Colossus ironclad joins your front.`,
     `Colossus ironclads have ${pct(DOCK_HP)}% more health and deal ${pct(DOCK_DMG)}% more damage.`,
     `Each Colossus is ${pct(DOCK_SCALE)}% larger and fires further.`] },
   it: { name: 'Teleferica', tiers: [
-    `Your reinforcements can be sent up to ${TELE_RANGE[1]} trenches from your HQ.`,
-    `Your reinforcements can be sent up to ${TELE_RANGE[2]} trenches from your HQ.`,
-    `Your reinforcements can be sent to any trench.`] },
+    `Newly bought infantry ride a cable car straight to the selected trench, up to ${TELE_RANGE[1]} trenches from your HQ.`,
+    `Newly bought infantry ride a cable car straight to the selected trench, up to ${TELE_RANGE[2]} trenches from your HQ.`,
+    `The cable car reaches any trench and carries tanks too.`] },
   ru: { name: 'Conscription Office', tiers: [
     `Every ${CONSCRIPT[1].t} seconds, ${CONSCRIPT[1].n} free conscript joins your HQ.`,
     `Every ${CONSCRIPT[2].t} seconds, ${CONSCRIPT[2].n} free conscript joins your HQ.`,

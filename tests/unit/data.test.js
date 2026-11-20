@@ -1,11 +1,10 @@
 import { expect, it } from 'vitest';
-import { NATS } from '../../src/data/nations.js';
+import { NATS, NAT } from '../../src/data/nations.js';
 import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
 import { CARDS, CARDTXT } from '../../src/data/cards.js';
 import { TECH, TECH_IDS } from '../../src/data/tech.js';
 import { MAPS } from '../../src/data/maps.js';
 import { BASE, baseIds } from '../../src/data/base.js';
-import { NAT } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
 
 it('every nation has rifle, mg and at least one armour slot', () => {
