@@ -16,6 +16,8 @@ import { takeCard } from '../src/sim/cards.js';
 import { swBlock, aimPoint } from '../src/sim/superweapons.js';
 import { SW } from '../src/data/superweapons.js';
 import { tier, nextCost } from '../src/sim/base.js';
+import { gunBlock, bestTarget } from '../src/sim/gun.js';
+import { GUNS } from '../src/data/guns.js';
 
 const argv = process.argv.slice(2);
 const json = argv.includes('--json');
@@ -34,10 +36,12 @@ bus.on('game:end', d => { end = d; });
 const settledAt = L => G.units.filter(u => u.side === 0 && u.line === L).every(u => u.settled);
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp']; // same rotation as the AI
 const pref = ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
-let want = null, sw = 0;
+let want = null, sw = 0, gunShots = 0, foeGunShots = 0;
 
 for (let sec = 0; sec < MAXS && G.running; sec++) {
+  const foeCd = G.gun[1].cd;
   tick(1);
+  if (G.gun[1].cd > foeCd) foeGunShots++; // enemy gun reload restarted this second
 
   // take a card when offered, preferring unlocks
   if (G.offer) takeCard(G.offer.ids.find(id => id.startsWith('u_')) || G.offer.ids[0]);
@@ -63,6 +67,18 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
     } else if (commands.fireSuperweapon()) sw++;
   }
 
+  // fire the HQ gun when it is ready, well funded, and the target is worth the shell
+  {
+    const gd = GUNS[G.nation[0]];
+    if (gd && !gunBlock(0) && G.S.supplies >= 3 * gd.cost) {
+      const t = bestTarget(0);
+      if (t && t.value >= gd.cost && commands.startGunAim()) {
+        G.aim.x = t.x; G.aim.y = t.y;
+        if (commands.confirmAim()) gunShots++; else G.aim = null;
+      }
+    }
+  }
+
   // sprinkle in fortifications at the selected line
   for (const cmd of [commands.fortifyAt, commands.buildNestAt, commands.buildDefAt]) {
     if (brain() < 0.015) cmd(G.sel);
@@ -86,7 +102,7 @@ const result = {
   me, foe, map, seed,
   won: end ? end.won : null, finished: !!end,
   time: Math.round(G.S.t * 10) / 10, sel: G.sel,
-  kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw,
+  kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw, gunShots, foeGunShots,
   base: BASE_ROT.map(i => tier(0, i)).join(''), foeBase: BASE_ROT.map(i => tier(1, i)).join(''),
   forts: G.fort.join(''), hq: Math.round(G.bases[0].hp) + '/' + Math.round(G.bases[1].hp),
 };

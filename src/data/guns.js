@@ -7,7 +7,7 @@ const rep = (n, s, step = 0) => Array.from({ length: n }, (_, i) => ({ ...s, del
 export const GUNS = {
   gb: { name: 'Stokes mortar battery', range: 3, cost: 40, cd: 8,
     shells: rep(3, { dmg: 55, splash: 28, cov: 0.8, spread: 30, dur: 1.6, arc: 3 }, 0.3) },
-  de: { name: '7.7 cm FK 16', range: 6, cost: 30, cd: 6,
+  de: { name: '7.7 cm FK 16', range: 6, cost: 50, cd: 10,
     shells: rep(1, { dmg: 50, splash: 25, cov: 0.75, spread: 12, dur: 1.2, arc: 1 }) },
   fr: { name: '75 mm battery', range: 5, cost: 60, cd: 12,
     shells: rep(4, { dmg: 45, splash: 25, cov: 0.7, spread: 36, dur: 1.4, arc: 1.5 }, 0.25) },

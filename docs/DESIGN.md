@@ -88,6 +88,29 @@ Chosen by you: in-battle upgrades bought at your HQ, three shared plus one per n
 - **Headless bot**: `scripts/bot.mjs` buys the next tier in the same rotation when supplies are at least twice the cost (`BASEX` changes the multiple). Its JSON now reports `base` and `foeBase` tiers.
 - **Balance check**: each nation against Germany (Germany against Britain) on the open map, seeds 1 to 10, with and without upgrades. No nation's win rate moved more than 20 points. The bot rarely holds 600 supplies, so it buys few tiers at the default setting; at `BASEX=1` about half its battles include a walls tier, and the depot and hospital are bought least. No numbers were changed. The enemy buys about 1.7 tiers a battle.
 
+## 9. Aimable HQ gun
+
+Chosen by you: every nation's HQ has an aimable gun, one per nation, with its own name, range in trenches and shell pattern. Range, names and shell counts are yours. The full intent is in `docs/superpowers/specs/2026-11-20-hq-gun-design.md`.
+
+- **Use**: the gun button starts aiming, you tap a point within range (the aim is clamped to the range line), then Confirm. It spends supplies, then reloads for its cooldown. Shells scatter around the point and cannot hurt the bases.
+- **Enemy**: from 60 seconds on, 10% of its income goes to a separate gun fund (`AI_GUN_SHARE`). When the fund covers the cost and the gun is ready, it fires at the richest cluster of your units in reach. It uses no extra random numbers beyond the shell scatter.
+- **Headless bot**: when the gun is ready, supplies are at least three times its cost, and the best target is worth at least the cost, it fires. Its JSON reports `gunShots` and `foeGunShots`.
+- **Balance check**: each nation against Germany (Germany against Britain) on the open map, seeds 1 to 10, wins out of 10. Chosen by me: only Germany's gun cost and cooldown changed, from 30 / 6 s to 50 / 10 s, because Germany's long range and low price made the enemy gun fire about 15 times a battle and cost the bot up to 30 points. Every nation's change is now within 20 points.
+
+| Nation | Gun (cost / cooldown) | Main | First pass | Final |
+|---|---|---|---|---|
+| Britain | Stokes mortar battery (40 / 8) | 10 | 7 | 9 |
+| Germany | 7.7 cm FK 16 (50 / 10) | 8 | 9 | 8 |
+| France | 75 mm battery (60 / 12) | 8 | 5 | 9 |
+| USA | 155 mm GPF (90 / 20) | 10 | 10 | 10 |
+| Austria-Hungary | Mountain gun battery (50 / 10) | 8 | 8 | 9 |
+| Antarctica | Penguin mortar (35 / 10) | 2 | 4 | 3 |
+| Italy | 210 mm mortar (120 / 30) | 9 | 9 | 9 |
+| Russia | Massed battery (80 / 25) | 7 | 6 | 7 |
+| Germany v Britain | | 2 | 0 | 0 |
+
+The bot rarely holds three times the cost, so it fired mostly with Germany, the USA, Antarctica and Austria-Hungary; the enemy fired 6 to 12 shots a battle. Only the first pass had Germany at 30 / 6 s.
+
 ## Known quirks
 
 - "Super trench" now means two different things: the single neutral one on the Long March (built-in guns, +3 supplies, level 4, free cards) and the two double trenches on the Wide open plain (cover, 5 slots, +1 supply, hedgehogs). In code they are `SUPER` (one line index) and `DBL` (a list).

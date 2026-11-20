@@ -50,7 +50,7 @@ it('every nation has a base upgrade with 3 tier texts; baseIds lists shared + na
 });
 
 it('every nation has an HQ gun matching the design table', () => {
-  const T = { gb: [3, 40, 8, 3], de: [6, 30, 6, 1], fr: [5, 60, 12, 4], us: [9, 90, 20, 1], ah: [4, 50, 10, 1], aq: [3, 35, 10, 5], it: [3, 120, 30, 1], ru: [5, 80, 25, 6] };
+  const T = { gb: [3, 40, 8, 3], de: [6, 50, 10, 1], fr: [5, 60, 12, 4], us: [9, 90, 20, 1], ah: [4, 50, 10, 1], aq: [3, 35, 10, 5], it: [3, 120, 30, 1], ru: [5, 80, 25, 6] };
   expect(Object.keys(GUNS).sort()).toEqual(Object.keys(NAT).sort());
   for (const n in NAT) {
     const g = GUNS[n], [range, cost, cd, count] = T[n];
