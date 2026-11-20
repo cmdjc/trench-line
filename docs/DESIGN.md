@@ -50,7 +50,7 @@ Chosen by you: 45 trenches, fortified belts with wide gaps, same stats, a super 
 
 - Layout: nine belts of five trenches, 150 px apart inside a belt, 520 px of empty ground between belts. World width 10,320 px.
 - The line selector becomes a scrolling strip with gaps marking belts, and recentres on the selected line.
-- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. A drop can only land up to three trenches past your walking front, so it never lands beyond reach of the line.
+- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. The railhead never runs ahead of both your walking front and your unbroken run of held trenches from the HQ, so a trench taken by an airborne drop is not a railhead: troops sent there arrive at your real front and walk.
 - **Super trench** (trench 23): starts empty and neutral at level 0. Whoever takes it first gets three built-in guns (two pillboxes and a 75 mm pit, 1.6 times normal health) that change hands with the trench. Holding it pays **+3 supplies a second** and lets you fortify to **level 4** (cost 320). You get a free card on first capture and then **one every 3 minutes held**; the timer pauses while you do not hold it, and a countdown shows in the supplies area. The enemy gets only the income and the guns.
 
 ## 6. United States of Antarctica
@@ -116,33 +116,34 @@ The bot rarely holds three times the cost, so it fired mostly with Germany, the 
 
 Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the Kettering Bugs. You press the button, tap a highlighted trench, then Confirm. The cost markup (1.1, so 341), the 30 s cooldown and the 4 Thompson / 2 rifle / 2 BAR platoon were yours. The range, fall time, enemy timing and Thompson numbers were my calls. The full intent is in `docs/superpowers/specs/2026-11-20-paratroopers-design.md`.
 
-- **Use**: the target is an enemy-held or empty trench one to three trenches past your walking front (`DROP_RANGE`). The paratroopers land in the trench, fall for 4 seconds (`DROP_FALL`) staggered over 1 more second, and the Thompson gunners can fire while falling. Survivors become ordinary infantry. They are not counted against the infantry cap, so drops stack.
+- **Use**: the target is an enemy-held or empty trench one to three trenches past your walking front (`DROP_RANGE`). The walking front is where your ground troops actually are: for each non-paratrooper it is the lower of its ordered line and the furthest trench it has physically reached, so ordering one rifleman forward does not stretch the range until he gets there. The paratroopers land in the trench, fall for 4 seconds (`DROP_FALL`) staggered over 1 more second, and the Thompson gunners can fire while falling. Survivors become ordinary infantry. They are not counted against the infantry cap, so drops stack.
 - **Cost**: `SW.us.cost` is hard-coded to 341, and a test checks it against `dropCost()`, the unit costs times 1.1.
-- **Enemy**: an enemy USA drops from 120 seconds on (`AI_DROP_T`), other enemy superweapons wait 240. It uses the same ready check and the same random draw as them, so seeded battles stay reproducible.
+- **Enemy**: an enemy USA drops from 120 seconds on (`AI_DROP_T`), other enemy superweapons wait 240. It uses the same ready check and the same random draw as them, so seeded battles stay reproducible. Its paratroopers hold their drop trench: the commander's orders leave them there while it is held or contested, and pick them up again once its own front reaches them.
 - **Headless bot**: when the drop is ready, a target exists and supplies are at least twice the cost, the bot drops on the nearest valid trench. Its JSON reports `drops` and `foeDrops`.
-- **Landing scramble (your decision)**: for 5 seconds after touching down (`DROP_SCRAMBLE`) a paratrooper has no trench cover, and fires at 30% of its accuracy (`DROP_SCRAMBLE_ACC`). Falling Thompsons fire as before. The 5 seconds and 30% are the strongest the brief allows. Defenders in the same trench already ignore cover when shooting, so the lost cover only matters to fire from other trenches and the accuracy cut does most of the work.
-- **Thompson gunner**: the stormtrooper template (hp 50, damage 7, cooldown 0.35 s) is too strong even with the scramble, so it sits at the weakest the brief allows, within 30%: hp 35, damage 4.9, cooldown 0.455 s. Cost stays 45, so the drop price is the same. `DROP_FALL` went from 2 to 4 seconds, which tipped the lone drop under half. Defenders do shoot falling paratroopers (a test covers it).
-- **Balance check**: US against each nation and each nation against the USA, open map, seeds 1 to 10, wins out of 10, against `main` with the Kettering Bugs. No change was larger than 2 wins (20 points). The bot affords a drop rarely (under 1 a battle), while the enemy USA drops about 2 to 10 times a battle.
+- **Landing scramble (your decision)**: for 5 seconds after touching down (`DROP_SCRAMBLE`) a paratrooper fires at 30% of its accuracy (`DROP_SCRAMBLE_ACC`). Falling Thompsons fire as before. The 5 seconds and 30% are the strongest the brief allows.
+- **Exposed paratroopers**: while falling or scrambling (`exposed(u)`) a paratrooper gets no trench cover, gives shooters no fortification accuracy penalty, does not heal and cannot shelter in a bunker. Defenders in the same trench already ignore cover and the fortification penalty, so this only changes fire from other trenches. Measured on the lone drop below (enemy commander active, 100 battles each): without the accuracy cut the drop takes 6 defenders 84 times against Germany and 82 against Britain, exactly as with no scramble at all, so against defenders in the trench the accuracy cut is the whole effect.
+- **Thompson gunner**: the stormtrooper template (hp 50, damage 7, cooldown 0.35 s) is too strong even with the scramble, so it sits at the weakest the brief allows, within 30%: hp 35, damage 4.9, cooldown 0.455 s. Cost stays 45, so the drop price is the same. Like the stormtrooper, its fire ignores the fortification accuracy penalty. `DROP_FALL` is 4 seconds; 2 and 3 seconds were measured and are slightly stronger (56 and 51 captures of 6 German defenders in 100). Defenders do shoot falling paratroopers (a test covers it). The fall, the scramble and the Thompson are all at the weakest setting the brief allows.
+- **Balance check**: US against each nation and each nation against the USA, open map, seeds 1 to 10, wins out of 10, against `main` with the Kettering Bugs. No change was larger than 2 wins (20 points). The bot affords a drop rarely (under 1 a battle), while the enemy USA drops about 1.5 to 7 times a battle.
 
-| Matchup | Main (bugs) | Before scramble | Final |
-|---|---|---|---|
-| USA v Britain | 5 | 4 | 3 |
-| USA v Germany | 10 | 10 | 10 |
-| USA v France | 4 | 6 | 6 |
-| USA v Austria-Hungary | 4 | 3 | 3 |
-| USA v Antarctica | 7 | 9 | 9 |
-| USA v Italy | 8 | 7 | 7 |
-| USA v Russia | 3 | 5 | 5 |
-| Britain v USA | 3 | 4 | 4 |
-| Germany v USA | 0 | 0 | 0 |
-| France v USA | 0 | 0 | 0 |
-| Austria-Hungary v USA | 3 | 5 | 3 |
-| Antarctica v USA | 2 | 2 | 3 |
-| Italy v USA | 1 | 1 | 1 |
-| Russia v USA | 0 | 0 | 0 |
+| Matchup | Main (bugs) | Before scramble | Scramble, before review fixes | Final |
+|---|---|---|---|---|
+| USA v Britain | 5 | 4 | 3 | 3 |
+| USA v Germany | 10 | 10 | 10 | 10 |
+| USA v France | 4 | 6 | 6 | 6 |
+| USA v Austria-Hungary | 4 | 3 | 3 | 3 |
+| USA v Antarctica | 7 | 9 | 9 | 9 |
+| USA v Italy | 8 | 7 | 7 | 7 |
+| USA v Russia | 3 | 5 | 5 | 5 |
+| Britain v USA | 3 | 4 | 4 | 5 |
+| Germany v USA | 0 | 0 | 0 | 1 |
+| France v USA | 0 | 0 | 0 | 1 |
+| Austria-Hungary v USA | 3 | 5 | 3 | 3 |
+| Antarctica v USA | 2 | 2 | 3 | 2 |
+| Italy v USA | 1 | 1 | 1 | 1 |
+| Russia v USA | 0 | 0 | 0 | 0 |
 
-- **Lone drop**: no attack behind it, onto settled riflemen (a quarter of them MGs) at fortification level 1, 100 battles each, with the enemy commander frozen so the defenders stay put. Against 6 defenders it takes the trench 47 times in 100 against Germany and 30 against Britain, and against 8 or 10 never. Before the scramble it took 6, 8 and 10 defenders essentially every time.
-- **Supported drop**: six or eight of your riflemen walking into a trench held by 6 to 10 defenders at fort 1 take it 0 times in 40 alone, and every time in 40 when a drop lands as they go in.
+- **Lone drop**: no attack behind it, onto settled riflemen (a quarter of them MGs) at fortification level 1, 100 battles each. With the enemy commander behaving normally (it keeps buying and, once the paratroopers are dead, usually advances out of the trench), the drop takes 6 defenders 50 times in 100 against Germany and 36 against Britain, 8 defenders once against Germany and never against Britain, and 10 never. With the commander frozen so the defenders stay put: 47 and 30 against 6, never against 8 or 10. Before the scramble it took 6, 8 and 10 defenders essentially every time. Against Germany's 6 defenders the drop wins as often as it loses, which is the edge of the target; the fall, scramble and Thompson knobs are all at their weakest.
+- **Supported drop**: six or eight of your riflemen walking into a trench held by 6 to 10 defenders at fort 1 take it 0 times in 40 alone, and every time in 40 when a drop lands as they go in, with the enemy commander frozen or behaving normally.
 
 ## Known quirks
 
