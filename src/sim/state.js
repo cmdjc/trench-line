@@ -12,8 +12,7 @@ import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 import { has } from './meta.js';
 import { spawn, ut } from './geometry.js';
-import { baseIncome } from './base.js';
-import { raise } from './base.js';
+import { baseIncome, raise } from './base.js';
 
 export const G = {
   /* layout (setLayout fills these in) */
@@ -115,7 +114,7 @@ export function newGame(mine, theirs, map, seed) {
   G.fort = new Array(G.HQI + 1).fill(0); G.jobs = []; G.fields = []; G.garr = new Array(G.HQI + 1).fill(0);
   G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
   G.sel = 1; G.offer = null;
-  G.base = [0, 1].map(() => ({ walls: 0, depot: 0, hosp: 0, nat: 0, t: 0, conv: 0, convoyed: false }));
+  G.base = [0, 1].map(() => ({ walls: 0, depot: 0, hosp: 0, nat: 0, t: 0, conv: 0, convoyed: false, libT: 0 }));
   applyTech();
   for (const [pre, id] of [['bw', 'walls'], ['bd', 'depot'], ['bh', 'hosp'], ['bn', 'nat']]) {
     const n = has(pre + '2') ? 2 : has(pre + '1') ? 1 : 0;

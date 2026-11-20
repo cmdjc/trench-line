@@ -57,7 +57,7 @@ export const BASE = {
     `Every ${CONVOY_T} seconds, a lorry convoy brings ${CONVOY_N} free troops to the front.`] },
   us: { name: 'Liberty Depot', tiers: [
     `Your supply income grows by ${LIB_GROWTH} per second every minute.`,
-    `Supply Depots yield ${pct(LIB_DEPOT)}% more.`,
+    `Your supply depot emplacements yield ${pct(LIB_DEPOT)}% more.`,
     `Your tanks cost ${Math.round((1 - LIB_TANK) * 100)}% less.`] },
   ah: { name: 'K.u.K. Officer School', tiers: [
     `Your infantry deal ${pct(KUK_DMG)}% more damage.`,

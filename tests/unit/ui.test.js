@@ -34,6 +34,24 @@ beforeEach(() => {
   game();
 });
 
+describe('base research start tiers', () => {
+  it('starting a longer map with base research owned does not throw', () => {
+    META.tech = { bw1: 1, bd1: 1, bh1: 1, bn1: 1 };
+    game();                                   // strip built for 'open'
+    expect(() => newGame('gb', 'de', 'plain', 7)).not.toThrow();
+    expect(G.running).toBe(true);
+  });
+});
+
+describe('mine button text', () => {
+  it('shows the researched tunnel time once gb nat tier 1 is owned', () => {
+    G.S.supplies = 5000; refresh();
+    expect($('swBtn').textContent).toContain('25 seconds');
+    G.base[0].nat = 1; refresh();
+    expect($('swBtn').textContent).toContain('15 seconds');
+  });
+});
+
 describe('base panel', () => {
   it('shows on the HQ line with four upgrade buttons and hides elsewhere', () => {
     expect($('basePanel').hidden).toBe(true);

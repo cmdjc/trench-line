@@ -9,6 +9,7 @@ import { isTrench, ut, full, spawn, frontLine, power } from './geometry.js';
 import { canDef, freeSlot, buildNest, buildDef } from './fortify.js';
 import { swBlock, useSW, swCost } from './superweapons.js';
 import { rng } from '../core/rng.js';
+import { bus } from '../core/events.js';
 import { baseIncome, tier, nextCost, raise } from './base.js';
 import { BASE, AI_BASE_SHARE } from '../data/base.js';
 
@@ -69,7 +70,7 @@ function aiBase() {
   const id = BASE_ROT.find(i => tier(1, i) === low);
   const cost = nextCost(1, id);
   if (cost === null || ai.fund < cost) return false;
-  ai.fund -= cost; raise(1, id); ai.baseT = G.S.t + BASE_GAP;
+  ai.fund -= cost; raise(1, id); bus.emit('hud'); ai.baseT = G.S.t + BASE_GAP;
   const name = id === 'nat' ? BASE[G.nation[1]].name : BASE[id].name;
   toast('The enemy has raised its ' + name + ' to tier ' + tier(1, id) + '.');
   return true;

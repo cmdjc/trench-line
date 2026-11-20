@@ -4,6 +4,7 @@ import { META } from '../../src/sim/meta.js';
 import { BASE_HP } from '../../src/data/units.js';
 import { startLineFor, tier, nextCost, raise, stepBase, infCap, baseIncome } from '../../src/sim/base.js';
 import { incomeNow } from '../../src/sim/state.js';
+import { bus } from '../../src/core/events.js';
 import { aiStep } from '../../src/sim/ai.js';
 import { AI_INCOME } from '../../src/data/nations.js';
 import { TK } from '../../src/data/units.js';
@@ -64,10 +65,30 @@ describe('income, repair, caps, cost', () => {
     const m0 = G.ai.money; aiStep(0.1);
     expect(G.ai.money - m0).toBeCloseTo((AI_INCOME + 0.6) * 0.1, 6);
   });
-  it('enemy us T1 growth', () => {
-    newGame('gb', 'de', 'open', 7); G.nation[1] = 'us'; G.S.t = 120;
-    raise(1, 'nat');
-    expect(baseIncome(1)).toBeCloseTo(0.6, 6);
+  it('us T1 growth is not retroactive, for both sides', () => {
+    newGame('gb', 'de', 'open', 7); G.nation[0] = 'us'; G.nation[1] = 'us';
+    for (const side of [0, 1]) {
+      G.S.t = 600;
+      const before = baseIncome(side);
+      raise(side, 'nat');
+      expect(baseIncome(side) - before).toBeCloseTo(0, 6);
+      G.S.t = 660;
+      expect(baseIncome(side) - before).toBeCloseTo(0.3, 6);
+    }
+  });
+  it('buyBase with an unknown id is refused', () => {
+    G.S.supplies = 1000;
+    expect(buyBase('bogus')).toBe(false);
+    expect(buyBase('hasOwnProperty')).toBe(false);
+    expect(G.S.supplies).toBe(1000);
+  });
+  it('enemy purchase refreshes the hud', () => {
+    G.S.t = 200; G.ai.fund = 5000; G.ai.baseT = 0; G.ai.buyT = 0; G.ai.thinkT = 999;
+    let n = 0; const off = bus.on('hud', () => n++);
+    aiStep(0.1);
+    expect(G.base[1].walls + G.base[1].nat + G.base[1].depot + G.base[1].hosp).toBe(1);
+    expect(n).toBeGreaterThan(0);
+    off && off();
   });
   it('walls T3 repairs', () => {
     for (let i = 0; i < 3; i++) raise(0, 'walls');

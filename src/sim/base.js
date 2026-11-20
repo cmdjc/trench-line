@@ -1,7 +1,6 @@
 // Base upgrade tiers. Browser-free, no rng draws. `id` is a shared id
 // (walls, depot, hosp) or 'nat' for the nation's own track.
 
-import { bus } from '../core/events.js';
 import { DEPOT_INC, VOIE_INC, LIB_DEPOT, WALLS_REPAIR, KUK_CAP, BASE_COST, WALLS_HP, HOSP_HEAL, LIB_GROWTH, LIB_TANK, KUK_DMG, KUK_HP, VOIE_SPEED, TELE_RANGE, CONSCRIPT, CONVOY_T, CONVOY_N } from '../data/base.js';
 import { ORDER, TK, DEPOT_RATE } from '../data/units.js';
 import { NAT } from '../data/nations.js';
@@ -20,27 +19,25 @@ export function raise(side, id) {
   else if (id === 'hosp') m.heal += HOSP_HEAL;
   else if (id === 'nat') {
     const n = G.nation[side], T = t + 1;
-    if (n === 'us' && T === 1 && side === 0) m.growth += LIB_GROWTH;
+    if (n === 'us' && T === 1) G.base[side].libT = G.S.t;
     else if (n === 'us' && T === 3) for (const k of TK) m.cost[k] = (m.cost[k] ?? 1) * LIB_TANK;
     else if (n === 'ah' && T === 1) for (const k of ORDER) { if (!TK.includes(k)) m.dmg[k] = (m.dmg[k] ?? 1) * KUK_DMG; }
     else if (n === 'ah' && T === 2) {
       m.hp *= KUK_HP;
-      for (const u of G.units) if (u.side === side && !TK.includes(u.type)) { u.hp *= KUK_HP; u.max *= KUK_HP; }
+      for (const u of G.units) if (u.side === side && !u.T.armor) { u.hp *= KUK_HP; u.max *= KUK_HP; }
     }
     else if (n === 'fr' && T === 1) m.speed *= VOIE_SPEED;
   }
-  bus.emit('hud');
   return true;
 }
 
-// Extra supplies/s from base upgrades. The player's us T1 growth is already in
-// G.M[0].growth; the AI has its own income formula, so it gets that term here.
+// Extra supplies/s from base upgrades, including Liberty Depot T1 growth since it was bought.
 export function baseIncome(side) {
   const n = G.nation[side];
   let v = DEPOT_INC * tier(side, 'depot');
   if (n === 'fr' && tier(side, 'nat') >= 2) v += VOIE_INC;
   if (n === 'us' && tier(side, 'nat') >= 2) v += depots(side) * DEPOT_RATE * (LIB_DEPOT - 1);
-  if (side === 1 && n === 'us' && tier(side, 'nat') >= 1) v += LIB_GROWTH * G.S.t / 60;
+  if (n === 'us' && tier(side, 'nat') >= 1) v += LIB_GROWTH * (G.S.t - G.base[side].libT) / 60;
   return v;
 }
 

@@ -107,6 +107,7 @@ export function fireSuperweapon() {
 }
 
 export function buyBase(id) {
+  if (!['walls', 'depot', 'hosp', 'nat'].includes(id)) return false;
   const c = nextCost(0, id);
   if (!G.running || c === null || G.S.supplies < c) return false;
   G.S.supplies -= c; raise(0, id);

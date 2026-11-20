@@ -9,7 +9,7 @@ import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/unit
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
 import { infCap, tier, nextCost } from '../sim/base.js';
-import { BASE, baseIds } from '../data/base.js';
+import { BASE, baseIds, TUNNEL_T } from '../data/base.js';
 import { freeSlot, canDef } from '../sim/fortify.js';
 import { swBlock, swCost } from '../sim/superweapons.js';
 import * as commands from '../sim/commands.js';
@@ -83,7 +83,7 @@ export function refresh() {
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
     if (G.aim && (!d || swBlock(0))) G.aim = null;
     if (d && G.aim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
-    else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + swCost(0) + '</b><small>' + (why || d.text) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < swCost(0)); }
+    else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + swCost(0) + '</b><small>' + (why || (d.kind === 'mine' && tier(0, 'nat') >= 1 ? d.text.replace('25', TUNNEL_T) : d.text)) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < swCost(0)); }
     $('aimCancel').hidden = !G.aim; }
   refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
