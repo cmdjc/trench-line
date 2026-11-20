@@ -9,10 +9,13 @@ import { isTrench, ut, full, spawn, frontLine, power } from './geometry.js';
 import { canDef, freeSlot, buildNest, buildDef } from './fortify.js';
 import { swBlock, useSW } from './superweapons.js';
 import { rng } from '../core/rng.js';
+import { baseIncome } from './base.js';
+
+const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
 
 export function aiStep(dt) {
   const ai = G.ai;
-  ai.money += (AI_INCOME * (1 + G.S.t / AI_RAMP) * (G.nation[1] === 'us' ? Math.min(1.8, 0.75 + G.S.t / 400) : G.nation[1] === 'aq' ? Math.min(2, 0.6 + G.S.t / 300) : 1) + depots(1) * DEPOT_RATE + (G.owner[G.SUPER] === 1 ? SUPER_INC : 0) + dblHeld(1) * DBL_RATE) * dt;
+  ai.money += (AI_INCOME * (1 + G.S.t / AI_RAMP) * (G.nation[1] === 'us' ? Math.min(1.8, 0.75 + G.S.t / 400) : G.nation[1] === 'aq' ? Math.min(2, 0.6 + G.S.t / 300) : 1) + depots(1) * DEPOT_RATE + (G.owner[G.SUPER] === 1 ? SUPER_INC : 0) + dblHeld(1) * DBL_RATE + baseIncome(1)) * dt;
   ai.buyT -= dt;
   if (ai.buyT <= 0) {
     ai.buyT = 0.5;
@@ -40,12 +43,12 @@ export function aiStep(dt) {
         else if (ai.money >= dc) { ai.money -= dc; buildDef(1, F); ai.want = null; }
       } else {
         if (!ai.want) {
-          let tot = 0; const ok = ORDER.filter(k => ut(1, k) && G.S.t >= AI_UNLOCK[k] && !full(1, k) && ut(1, k).cost <= ai.money * 2 + 60);
+          let tot = 0; const ok = ORDER.filter(k => ut(1, k) && G.S.t >= AI_UNLOCK[k] && !full(1, k) && aiCost(k) <= ai.money * 2 + 60);
           for (const k of ok) tot += AI_W[k];
           let r = rng.float() * tot; for (const k of ok) { r -= AI_W[k]; if (r <= 0) { ai.want = k; break; } }
         }
         if (!ai.want || full(1, ai.want)) ai.want = null;
-        else if (ai.money >= ut(1, ai.want).cost) { ai.money -= ut(1, ai.want).cost; spawn(1, ai.want, aiLine()); ai.want = null; }
+        else if (ai.money >= aiCost(ai.want)) { ai.money -= aiCost(ai.want); spawn(1, ai.want, aiLine()); ai.want = null; }
       }
     }
   }

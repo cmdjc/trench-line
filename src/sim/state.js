@@ -12,6 +12,7 @@ import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 import { has } from './meta.js';
 import { spawn, ut } from './geometry.js';
+import { baseIncome } from './base.js';
 import { raise } from './base.js';
 
 export const G = {
@@ -37,7 +38,7 @@ export const lineName = L => (L === 0 ? 'your HQ' : L === G.HQI ? 'the enemy HQ'
 export const isDbl = L => G.DBL.indexOf(L) >= 0;
 export const dblHeld = side => { let n = 0; for (const L of G.DBL) if (G.owner && G.owner[L] === side) n++; return n; };
 export const depots = side => { let n = 0; for (const u of G.units) if (u.T.depot && u.side === side) n++; return n; };
-export const incomeNow = () => G.M[0].income + G.M[0].growth * G.S.t / 60 + depots(0) * DEPOT_RATE + (G.owner && G.owner[G.SUPER] === 0 ? SUPER_INC : 0) + dblHeld(0) * DBL_RATE;
+export const incomeNow = () => G.M[0].income + G.M[0].growth * G.S.t / 60 + depots(0) * DEPOT_RATE + (G.owner && G.owner[G.SUPER] === 0 ? SUPER_INC : 0) + dblHeld(0) * DBL_RATE + baseIncome(0);
 export const nestCost = side => utOf(G.nation[side], NAT[G.nation[side]].nest).cost;
 
 export function setLayout(key) {

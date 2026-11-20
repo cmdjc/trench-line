@@ -2,9 +2,10 @@
 // (walls, depot, hosp) or 'nat' for the nation's own track.
 
 import { bus } from '../core/events.js';
-import { BASE_COST, WALLS_HP, HOSP_HEAL, LIB_GROWTH, LIB_TANK, KUK_DMG, KUK_HP, VOIE_SPEED } from '../data/base.js';
-import { ORDER, TK } from '../data/units.js';
-import { G } from './state.js';
+import { DEPOT_INC, VOIE_INC, LIB_DEPOT, WALLS_REPAIR, KUK_CAP, BASE_COST, WALLS_HP, HOSP_HEAL, LIB_GROWTH, LIB_TANK, KUK_DMG, KUK_HP, VOIE_SPEED } from '../data/base.js';
+import { ORDER, TK, DEPOT_RATE } from '../data/units.js';
+import { NAT } from '../data/nations.js';
+import { G, depots } from './state.js';
 
 export const tier = (side, id) => G.base[side][id];
 export const nextCost = (side, id) => { const t = tier(side, id); return t >= 3 ? null : BASE_COST[t]; };
@@ -29,4 +30,24 @@ export function raise(side, id) {
   }
   bus.emit('hud');
   return true;
+}
+
+// Extra supplies/s from base upgrades. The player's us T1 growth is already in
+// G.M[0].growth; the AI has its own income formula, so it gets that term here.
+export function baseIncome(side) {
+  const n = G.nation[side];
+  let v = DEPOT_INC * tier(side, 'depot');
+  if (n === 'fr' && tier(side, 'nat') >= 2) v += VOIE_INC;
+  if (n === 'us' && tier(side, 'nat') >= 2) v += depots(side) * DEPOT_RATE * (LIB_DEPOT - 1);
+  if (side === 1 && n === 'us' && tier(side, 'nat') >= 1) v += LIB_GROWTH * G.S.t / 60;
+  return v;
+}
+
+export const infCap = side => NAT[G.nation[side]].inf + (G.nation[side] === 'ah' && tier(side, 'nat') >= 3 ? KUK_CAP : 0);
+
+export function stepBase(dt) {
+  for (const side of [0, 1]) {
+    const b = G.bases[side];
+    if (tier(side, 'walls') >= 3 && b.hp > 0) b.hp = Math.min(b.max, b.hp + WALLS_REPAIR * dt);
+  }
 }

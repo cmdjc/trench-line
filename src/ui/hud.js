@@ -8,6 +8,7 @@ import { CARDS } from '../data/cards.js';
 import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/units.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
+import { infCap } from '../sim/base.js';
 import { freeSlot, canDef } from '../sim/fortify.js';
 import { swBlock } from '../sim/superweapons.js';
 import * as commands from '../sim/commands.js';
@@ -33,7 +34,7 @@ export function refresh() {
   $('supplies').textContent = Math.floor(S.supplies);
   $('rate').textContent = '+' + incomeNow().toFixed(1) + ' a second';
   const n = count(0);
-  $('army').textContent = 'Infantry ' + n + ' of ' + NAT[G.nation[0]].inf + (anyTank() ? (G.nation[0] === 'ah' ? ', siege guns ' : ', armour ') + fmt(tanks(0)) + ' of ' + NAT[G.nation[0]].tanks : '');
+  $('army').textContent = 'Infantry ' + n + ' of ' + infCap(0) + (anyTank() ? (G.nation[0] === 'ah' ? ', siege guns ' : ', armour ') + fmt(tanks(0)) + ' of ' + NAT[G.nation[0]].tanks : '');
   { const si = $('superInfo'), held = G.SUPER > 0 && G.owner[G.SUPER] === 0; si.hidden = !held; if (held) { const r = Math.max(0, Math.ceil(SUPER_CARD_T - S.superT)); si.textContent = 'Super trench: next free card in ' + Math.floor(r / 60) + ':' + (r % 60 < 10 ? '0' : '') + (r % 60); } }
   { const left = Math.max(1, Math.ceil(S.need - S.cardKills)); $('cardText').textContent = 'Next card in about ' + left + (left === 1 ? ' kill' : ' kills'); }
   const m = Math.floor(S.t / 60), s = Math.floor(S.t % 60); $('clock').textContent = m + ':' + (s < 10 ? '0' : '') + s;

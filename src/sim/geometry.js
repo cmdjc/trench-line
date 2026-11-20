@@ -6,6 +6,7 @@ import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { rng } from '../core/rng.js';
 import { G, isDbl } from './state.js';
+import { infCap } from './base.js';
 
 export const trenchX = (cx, y) => cx + ((Math.floor(y / SEG) % 2) ? 6 : -6);
 
@@ -50,7 +51,7 @@ export const count = side => { let n = 0; for (const u of G.units) if (u.side ==
 export const tanks = side => { let n = 0; for (const u of G.units) if (u.side === side && u.T.armor && !u.T.sup) n += u.T.w || 1; return n; };
 export const anyTank = () => TK.some(k => G.S.unlocked[k] && ut(0, k));
 export const tkCan = k => !!ut(0, k) && !G.S.unlocked[k] && (k === 'tkL' || !tkPrev(G.nation[0], k) || !!G.S.unlocked[tkPrev(G.nation[0], k)]);
-export const full = (side, type) => { const T = ut(side, type); return T.armor ? tanks(side) + (T.w || 1) > NAT[G.nation[side]].tanks + 1e-6 : count(side) >= NAT[G.nation[side]].inf; };
+export const full = (side, type) => { const T = ut(side, type); return T.armor ? tanks(side) + (T.w || 1) > NAT[G.nation[side]].tanks + 1e-6 : count(side) >= infCap(side); };
 export const countAt = (side, L) => { let n = 0; for (const u of G.units) if (u.side === side && u.line === L && !u.fixed) n++; return n; };
 export const power = (side, L) => { let p = 0; for (const u of G.units) if (u.side === side && u.line === L) p += u.T.cost; return p; };
 export const cost = type => Math.round(ut(0, type).cost * G.M[0].cost[type]);
