@@ -110,7 +110,7 @@ Chosen by you: every nation's HQ has an aimable gun, one per nation, with its ow
 | Russia | Massed battery (80 / 25) | 7 | 6 | 7 |
 | Germany v Britain | | 2 | 0 | 0 |
 
-The bot rarely holds three times the cost, so it fired mostly with Germany, the USA, Antarctica and Austria-Hungary; in the open-map matrix above, the enemy fired 6 to 12 shots a battle (range across the matrix). Only the first pass had Germany at 30 / 6 s.
+The bot rarely holds three times the cost, so it fired mostly with Germany, the USA, Antarctica and Austria-Hungary; in the open-map matrix above, the enemy fired about 3 to 13 shots a battle, and under 1 a battle when Germany played against Britain. Only the first pass had Germany at 30 / 6 s.
 
 ## Known quirks
 
