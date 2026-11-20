@@ -166,3 +166,27 @@ describe('falling', () => {
     expect(a.hp).toBeLessThan(hp);
   });
 });
+
+describe('landing and ownership', () => {
+  beforeEach(game);
+  it('empty trench stays unowned while all are falling, then flips once they land', () => {
+    spawnDrop(0, 3);
+    expect(G.owner[3]).toBe(-1);
+    for (let i = 0; i < 15; i++) stepUnits(0.1);
+    expect(paras().some(u => u.fall > 0)).toBe(true);
+    expect(G.owner[3]).toBe(-1);
+    for (let i = 0; i < 20; i++) stepUnits(0.1);
+    expect(paras().every(u => !(u.fall > 0))).toBe(true);
+    expect(G.owner[3]).toBe(0);
+  });
+  it('a falling tommy fires over several ticks, a falling rifle never does', () => {
+    G.units = [];
+    const t = spawn(0, 'tommy', 3, true), r = spawn(0, 'rifle', 3, true);
+    for (const u of [t, r]) { u.para = true; u.fall = 5; u.cd = 0; }
+    const e = spawn(1, 'rifle', 3, true); e.cd = 99; e.x = t.x + 30; e.y = t.y; e.hp = e.max = 1e6;
+    r.y = t.y; r.x = t.x;
+    let shots = 0, last = t.cd;
+    for (let i = 0; i < 20; i++) { stepUnits(0.1); if (t.cd > last) shots++; last = t.cd; expect(r.cd).toBeLessThanOrEqual(0); }
+    expect(shots).toBeGreaterThan(2);
+  });
+});

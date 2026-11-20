@@ -13,10 +13,10 @@ import { TUNNEL_T, MINE_COST, MINE_R, MINE_TANK, MINE_NEST, PARIS_CD, PARIS_DMG,
 
 export function targetFor(side) {
   if (side === 0) {
-    for (let L = G.sel + 1; L <= G.NT; L++) if (G.units.some(u => u.side === 1 && u.line === L && u.settled)) return L;
+    for (let L = G.sel + 1; L <= G.NT; L++) if (G.units.some(u => u.side === 1 && u.line === L && u.settled && !(u.fall > 0))) return L;
     return G.HQI;
   }
-  for (let L = G.ai.F - 1; L >= 1; L--) if (G.units.some(u => u.side === 0 && u.line === L && u.settled)) return L;
+  for (let L = G.ai.F - 1; L >= 1; L--) if (G.units.some(u => u.side === 0 && u.line === L && u.settled && !(u.fall > 0))) return L;
   return 0;
 }
 

@@ -220,7 +220,7 @@ export function stepUnits(dt) {
   G.units = G.units.filter(u => u.hp > 0);
   // who holds what
   for (let L = 1; L <= G.NT; L++) {
-    let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !u.fixed) { if (u.side) b++; else a++; }
+    let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !(u.fall > 0) && !u.fixed) { if (u.side) b++; else a++; }
     if (a && !b) G.owner[L] = 0; else if (b && !a) G.owner[L] = 1;
   }
   if (G.SUPER > 0 && G.owner[G.SUPER] !== G.S.superOwner) {
@@ -235,14 +235,14 @@ export function stepUnits(dt) {
   }
   for (const n of G.units) {
     if (!n.T.nest) continue;
-    let a = 0, b = 0; for (const u of G.units) if (!u.fixed && u.line === n.line && u.settled) { if (u.side === n.side) a++; else b++; }
+    let a = 0, b = 0; for (const u of G.units) if (!u.fixed && u.line === n.line && u.settled && !(u.fall > 0)) { if (u.side === n.side) a++; else b++; }
     if (b && !a) { n.side = 1 - n.side; n.hp = Math.max(n.hp, n.max * 0.5); n.cd = 1; toast(n.side === 0 ? 'You captured a ' + n.T.name + ' at trench ' + n.line + '.' : 'The enemy captured your ' + n.T.name + ' at trench ' + n.line + '.'); }
   }
   for (let sd = 0; sd < 2; sd++) {
     if (G.nation[sd] !== 'ah') continue;
     for (let L = 1; L <= G.NT; L++) {
       if (G.fort[L] >= maxFort(L)) { G.garr[L] = 0; continue; }
-      let n = 0; for (const u of G.units) if (u.side === sd && u.line === L && u.settled && !u.fixed && !u.T.armor) n++;
+      let n = 0; for (const u of G.units) if (u.side === sd && u.line === L && u.settled && !(u.fall > 0) && !u.fixed && !u.T.armor) n++;
       if (n < 3) continue;
       G.garr[L] += dt;
       if (G.garr[L] >= GARR_T[G.fort[L]]) { G.garr[L] = 0; G.fort[L]++; if (sd === 0) toast('Your garrison has fortified trench ' + L + ' to level ' + G.fort[L] + '.'); }
