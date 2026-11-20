@@ -8,6 +8,7 @@ import { spawn, count, tanks } from '../../src/sim/geometry.js';
 import { aiStep, aiThink } from '../../src/sim/ai.js';
 import { NAT, AI_INCOME, AI_RAMP } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
+import { GUNS } from '../../src/data/guns.js';
 import { DEPOT_RATE, SUPER_INC } from '../../src/data/units.js';
 
 const toasts = [];
@@ -208,5 +209,36 @@ describe('enemy base upgrades', () => {
   it('draws no rng on a base purchase', () => {
     game(); calm(); G.S.t = 150; G.ai.fund = 1000; rng.reseed(5); tick();
     const a = rng.float(); rng.reseed(5); expect(a).toBe(rng.float());
+  });
+});
+
+describe('enemy HQ gun', () => {
+  const cost = () => GUNS[G.nation[1]].cost;
+  function setup() {
+    game(); quiet(); clearEnemy(); G.S.t = 100; G.ai.money = 1000; G.ai.fund = 0; G.ai.want = null; G.gun[1].cd = 0;
+    const x = G.bases[1].x - 100;
+    for (let i = 0; i < 4; i++) { const u = spawn(0, 'rifle', 1); u.x = x + i * 5; u.y = 200 + i * 5; }
+    G.ai.F = 0; rng.reseed(seedWhere(() => true));
+  }
+  function fireTicks(n = 40) { for (let i = 0; i < n && G.gun[1].cd <= 0; i++) tick(); }
+  it('never fires before 60 s', () => {
+    setup(); G.S.t = 50; fireTicks(200);
+    expect(G.gun[1].cd).toBeLessThanOrEqual(0);
+  });
+  it('fires at a cluster in range, paying from money, with no toast', () => {
+    setup(); const m0 = G.ai.money; fireTicks(200);
+    expect(G.gun[1].cd).toBeGreaterThan(0);
+    expect(G.shells.length).toBeGreaterThan(0);
+    expect(m0 - G.ai.money).toBeGreaterThanOrEqual(cost());
+    expect(toasts.length).toBe(0);
+  });
+  it('does not fire with nothing in range', () => {
+    setup(); G.units = G.units.filter(u => u.side !== 0); fireTicks(200);
+    expect(G.gun[1].cd).toBeLessThanOrEqual(0);
+  });
+  it('does not fire with money under 3x cost', () => {
+    setup(); G.ai.money = cost() * 3 - 1; G.ai.fund = 0; G.ai.buyT = 0;
+    const m = G.ai.money; for (let i = 0; i < 200; i++) { G.ai.money = Math.min(G.ai.money, cost() * 3 - 1); tick(0); }
+    expect(G.gun[1].cd).toBeLessThanOrEqual(0); expect(m).toBeLessThan(cost() * 3);
   });
 });

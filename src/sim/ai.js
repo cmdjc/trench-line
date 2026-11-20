@@ -11,6 +11,8 @@ import { swBlock, useSW, swCost } from './superweapons.js';
 import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 import { baseIncome, tier, nextCost, raise } from './base.js';
+import { gunBlock, fireGun, bestTarget } from './gun.js';
+import { GUNS } from '../data/guns.js';
 import { BASE, AI_BASE_SHARE } from '../data/base.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
@@ -54,9 +56,20 @@ export function aiStep(dt) {
         else if (ai.money >= aiCost(ai.want)) { ai.money -= aiCost(ai.want); spawn(1, ai.want, aiLine()); ai.want = null; }
       }
     }
+    aiGun();
   }
   ai.thinkT -= dt;
   if (ai.thinkT <= 0) { ai.thinkT = 3; aiThink(); }
+}
+
+// HQ gun: after 60 s, when ready and money covers 3x the shot, fire at the richest cluster in reach.
+// Cheap checks first; the only rng draw is the last gate.
+function aiGun() {
+  const ai = G.ai, d = GUNS[G.nation[1]];
+  if (!d || G.S.t < 60 || gunBlock(1) || ai.money < d.cost * 3) return;
+  const t = bestTarget(1);
+  if (!t || t.value < d.cost || rng.float() >= 0.25) return;
+  ai.money -= d.cost; fireGun(1, t.x, t.y);
 }
 
 const BASE_GAP = 90; // seconds between enemy base purchases
