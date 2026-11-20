@@ -193,6 +193,19 @@ describe('enemy base upgrades', () => {
     G.S.t = 239; tick(); expect(G.base[1].nat).toBe(0);
     G.S.t = 240; tick(); expect(G.base[1].nat).toBe(1); expect(G.base[1].walls).toBe(1);
   });
+  it('saves for the upgrade instead of spending on units', () => {
+    game(); calm(); G.S.t = 150; G.ai.money = 100; tick();
+    expect(G.ai.want).toBe('base'); expect(G.base[1].walls).toBe(0);
+    const n = G.units.length; G.ai.money = 299; G.ai.buyT = 0; tick();
+    expect(G.units.length).toBe(n); expect(G.base[1].walls).toBe(0);
+    G.ai.money = 300; G.ai.buyT = 0; tick();
+    expect(G.base[1].walls).toBe(1); expect(G.ai.want).toBe(null);
+  });
+  it('stops wanting once every tier is 3', () => {
+    game(); calm(); for (const i of ['walls', 'depot', 'hosp', 'nat']) G.base[1][i] = 3;
+    G.S.t = 150; tick();
+    expect(G.ai.want).not.toBe('base'); expect(G.ai.baseT).toBe(Infinity);
+  });
   it('draws no rng on a base purchase', () => {
     game(); calm(); G.S.t = 150; G.ai.money = 1000; rng.reseed(5); tick();
     const a = rng.float(); rng.reseed(5); expect(a).toBe(rng.float());

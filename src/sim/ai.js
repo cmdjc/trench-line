@@ -56,16 +56,22 @@ export function aiStep(dt) {
   if (ai.thinkT <= 0) { ai.thinkT = 3; aiThink(); }
 }
 
+const BASE_GAP = 90; // seconds between enemy base purchases
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp'];
-// Level base upgrades: buys the next id in rotation once affordable (150% of cost). No rng.
+// Level base upgrades. When it is time and the AI has nothing else in mind, 'base' becomes a
+// real want: it holds off other purchases and saves until it can pay. No rng.
 function aiBase() {
   const ai = G.ai;
-  if (ai.want || G.S.t < ai.baseT) return false;
+  if (ai.want !== 'base') {
+    if (ai.want || G.S.t < ai.baseT) return false;
+    ai.want = 'base';
+  }
   const low = Math.min(...BASE_ROT.map(i => tier(1, i)));
   const id = BASE_ROT.find(i => tier(1, i) === low);
   const cost = nextCost(1, id);
-  if (cost === null || ai.money < cost * 1.5) return false;
-  ai.money -= cost; raise(1, id); ai.baseT = G.S.t + 90;
+  if (cost === null) { ai.want = null; ai.baseT = Infinity; return false; }
+  if (ai.money < cost) return true;
+  ai.money -= cost; raise(1, id); ai.baseT = G.S.t + BASE_GAP; ai.want = null;
   const name = id === 'nat' ? BASE[G.nation[1]].name : BASE[id].name;
   toast('The enemy has raised its ' + name + ' to tier ' + tier(1, id) + '.');
   return true;
