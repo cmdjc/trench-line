@@ -4,3 +4,4 @@ coverage/
 *.png
 !docs/**/*.png
 .DS_Store
+.superpowers/
