@@ -13,8 +13,11 @@ import { TECH } from '../../src/data/tech.js';
 import { bus } from '../../src/core/events.js';
 import { cam, vw, resize, focusLine, metrics } from '../../src/ui/camera.js';
 import { clampAim } from '../../src/sim/gun.js';
+import { WH } from '../../src/data/units.js';
 import { GUNS } from '../../src/data/guns.js';
 import * as commands from '../../src/sim/commands.js';
+import { swCost } from '../../src/sim/superweapons.js';
+import { nearestDrop } from '../../src/sim/drop.js';
 import { refresh } from '../../src/ui/hud.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 
@@ -219,6 +222,44 @@ describe('HQ gun button', () => {
     G.S.supplies = 500; commands.startGunAim(); bus.emit('hud');
     $('swBtn').click();
     expect(G.sw[0].tunnel).toBeTruthy();
+  });
+});
+
+describe('airborne drop aiming', () => {
+  beforeEach(() => { newGame('us', 'de', 'open', 7); G.S.supplies = 1000; bus.emit('hud'); });
+  it('swBtn starts a drop aim and shows the unplaced prompt', () => {
+    $('swBtn').click();
+    expect(G.aim.kind).toBe('drop');
+    expect($('swBtn').textContent).toContain('Confirm drop, ' + swCost(0));
+    expect($('swBtn').textContent).toContain('Tap a trench to mark the drop zone.');
+    expect($('swBtn').disabled).toBe(true);
+    expect($('aimCancel').hidden).toBe(false);
+  });
+  it('a placed aim names the trench; confirm charges once', () => {
+    $('swBtn').click();
+    G.aim.line = nearestDrop(0, G.LX[2]); G.aim.x = G.LX[G.aim.line]; bus.emit('hud');
+    expect($('swBtn').textContent).toContain('Drop on trench ' + G.aim.line + '.');
+    expect($('swBtn').disabled).toBe(false);
+    $('swBtn').click();
+    expect(G.S.supplies).toBe(1000 - swCost(0));
+    expect(G.aim).toBeNull();
+  });
+  it('explains short supplies', () => {
+    $('swBtn').click(); G.aim.line = nearestDrop(0, G.LX[1]); G.aim.x = G.LX[G.aim.line];
+    G.S.supplies = swCost(0) - 1; bus.emit('hud');
+    expect($('swBtn').textContent).toContain('Not enough supplies yet.');
+    expect($('swBtn').disabled).toBe(true);
+  });
+  it('a gun aim and a drop aim replace each other', () => {
+    commands.startGunAim(); expect(G.aim.kind).toBe('gun');
+    $('swBtn').click(); expect(G.aim.kind).toBe('drop');
+    commands.startGunAim(); expect(G.aim.kind).toBe('gun');
+  });
+  it('the aim clears when no trench is valid any more', () => {
+    commands.startAiming(); expect(G.aim.kind).toBe('drop');
+    for (let L = 1; L <= G.NT; L++) G.owner[L] = 0;
+    bus.emit('hud');
+    expect(G.aim).toBeNull();
   });
 });
 
@@ -460,6 +501,23 @@ describe('pointer input', () => {
     ptr('pointerup', G.WW - 5, 120);
     expect(G.aim.x).toBe(clampAim(0, G.WW - 5));
     expect(G.aim.x).toBeLessThan(G.WW - 5);
+  });
+  describe('drop aim taps', () => {
+    beforeEach(() => { newGame('us', 'de', 'open', 7); });
+    it('a tap snaps the aim to the nearest valid trench', () => {
+      G.aim = { kind: 'drop', x: null, y: null, line: -1 };
+      const L = nearestDrop(0, 300);
+      ptr('pointerdown', 300, 120); ptr('pointerup', 300, 120);
+      expect(G.aim.line).toBe(L);
+      expect(G.aim.x).toBe(G.LX[L]);
+      expect(G.aim.y).toBe(WH / 2);
+    });
+    it('a tap with no valid trench leaves the aim unplaced', () => {
+      for (let L = 1; L <= G.NT; L++) G.owner[L] = 0;
+      G.aim = { kind: 'drop', x: null, y: null, line: -1 };
+      ptr('pointerdown', 300, 120); ptr('pointerup', 300, 120);
+      expect(G.aim ? G.aim.x : null).toBeNull();   // never placed (the HUD may also auto-clear it)
+    });
   });
 });
 

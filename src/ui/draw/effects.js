@@ -3,6 +3,7 @@ import { circle, oval, line, ctx } from './helpers.js';
 import { G } from '../../sim/state.js';
 import { GUNS } from '../../data/guns.js';
 import { gunMaxX } from '../../sim/gun.js';
+import { validDrop } from '../../sim/drop.js';
 import { WH } from '../../data/units.js';
 
 function capShape(col, main) {
@@ -82,9 +83,22 @@ export function drawWarnings(vis) {
   }
 }
 
+// Drop aim: faint outline on every valid trench, solid highlight on the chosen one.
+function drawDropAim(aim) {
+  for (let L = 1; L <= G.NT; L++) {
+    if (!validDrop(0, L)) continue;
+    const x = G.LX[L], on = L === aim.line;
+    if (on) { ctx.fillStyle = 'rgba(226,185,59,.14)'; ctx.fillRect(x - 24, 0, 48, WH); }
+    ctx.strokeStyle = on ? 'rgba(226,185,59,.95)' : 'rgba(226,185,59,.3)';
+    ctx.lineWidth = on ? 2 : 1; ctx.setLineDash(on ? [10, 6] : [4, 6]);
+    ctx.strokeRect(x - 24, 1, 48, WH - 2); ctx.setLineDash([]);
+  }
+}
+
 export function drawAim() {
   const aim = G.aim;
   if (!aim) return;
+  if (aim.kind === 'drop') { drawDropAim(aim); return; }
   let rad = 90;
   if (aim.kind === 'gun') {
     const gd = GUNS[G.nation[0]];

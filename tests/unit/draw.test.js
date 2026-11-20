@@ -119,6 +119,27 @@ describe('gun aim drawing', () => {
   });
 });
 
+describe('airborne drawing', () => {
+  it('draws falling paratroopers and a drop aim without throwing', () => {
+    setCtx(stubCtx);
+    newGame('us', 'de', 'open', 3);
+    const u = spawn(0, 'tommy', 2, true); u.para = true; u.fall = 1.5;
+    const v = spawn(0, 'rifle', 2, true); v.para = true; v.fall = 0.01;
+    const w = spawn(0, 'mg', 2, true); w.para = true; w.fall = 0;
+    const e = spawn(1, 'tommy', 2, true); e.para = true; e.fall = 1;
+    G.aim = { kind: 'drop', x: null, y: null, line: -1 };
+    expect(() => draw()).not.toThrow();
+    G.aim = { kind: 'drop', x: G.LX[2], y: 150, line: 2 };
+    expect(() => draw()).not.toThrow();
+  });
+  it('draws a tommy on the ground', () => {
+    setCtx(stubCtx);
+    newGame('us', 'de', 'open', 3);
+    const u = spawn(0, 'tommy', 2, true); u.flash = 0.05; u.moving = true; u.walk = 1;
+    expect(() => draw()).not.toThrow();
+  });
+});
+
 describe('renderer', () => {
   beforeEach(() => {
     setCtx(stubCtx);
