@@ -23,6 +23,18 @@ describe('save codes', () => {
     const ok = 'TL1-5-3-0-0';                       // mask 3 = marks+kit
     expect(readCode(ok + '-' + codeCheck(ok)).tech).toEqual({ marks: 1, kit: 1 });
   });
+  it('round-trips the base branch bits', () => {
+    META.tech = { bw1: 1, bw2: 1, bn1: 1 };
+    expect(readCode(makeCode()).tech).toEqual({ bw1: 1, bw2: 1, bn1: 1 });
+  });
+  it('old codes still load', () => {
+    const ok = 'TL1-5-3-0-0';
+    expect(readCode(ok + '-' + codeCheck(ok)).tech).toEqual({ marks: 1, kit: 1 });
+  });
+  it('prunes bw2 without bw1', () => {
+    META.tech = { bw2: 1 };
+    expect(readCode(makeCode()).tech).toEqual({});
+  });
 });
 
 describe('two-slot recovery', () => {
