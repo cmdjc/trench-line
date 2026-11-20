@@ -112,7 +112,7 @@ export function newGame(mine, theirs, map, seed) {
   relabelCards();
   G.units = []; G.aim = null; G.planes = []; G.tracers = []; G.shells = []; G.booms = []; G.floats = []; G.scorch = []; G.smoke = []; G.wrecks = [];
   G.bases = [{ x: G.LX[0], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }, { x: G.LX[G.HQI], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }];
-  G.ai = { money: 40, fund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
+  G.ai = { money: 40, fund: 0, gunFund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
   G.fort = new Array(G.HQI + 1).fill(0); G.jobs = []; G.fields = []; G.garr = new Array(G.HQI + 1).fill(0);
   G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
   G.sel = 1; G.offer = null;

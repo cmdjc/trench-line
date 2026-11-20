@@ -22,3 +22,6 @@ export const GUNS = {
   ru: { name: 'Massed battery', range: 5, cost: 80, cd: 25,
     shells: rep(6, { dmg: 70, splash: 35, cov: 0.8, spread: 70, dur: 1.8, arc: 2 }, 0.35) },
 };
+
+// Share of the enemy's income diverted to its gun fund once the gun is allowed to fire (t >= 60 s).
+export const AI_GUN_SHARE = 0.1;

@@ -12,7 +12,7 @@ import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 import { baseIncome, tier, nextCost, raise } from './base.js';
 import { gunBlock, fireGun, bestTarget } from './gun.js';
-import { GUNS } from '../data/guns.js';
+import { GUNS, AI_GUN_SHARE } from '../data/guns.js';
 import { BASE, AI_BASE_SHARE } from '../data/base.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
@@ -21,7 +21,12 @@ export function aiStep(dt) {
   const ai = G.ai;
   const inc = (AI_INCOME * (1 + G.S.t / AI_RAMP) * (G.nation[1] === 'us' ? Math.min(1.8, 0.75 + G.S.t / 400) : G.nation[1] === 'aq' ? Math.min(2, 0.6 + G.S.t / 300) : 1) + depots(1) * DEPOT_RATE + (G.owner[G.SUPER] === 1 ? SUPER_INC : 0) + dblHeld(1) * DBL_RATE + baseIncome(1)) * dt;
   const share = G.S.t >= 150 && BASE_ROT.some(i => tier(1, i) < 3) ? AI_BASE_SHARE : 0;
-  ai.fund += inc * share; ai.money += inc * (1 - share);
+  const gshare = G.S.t >= 60 && GUNS[G.nation[1]] ? AI_GUN_SHARE : 0;
+  ai.fund += inc * share; ai.money += inc * (1 - share - gshare);
+  if (gshare) {
+    const d = GUNS[G.nation[1]]; ai.gunFund += inc * gshare;
+    if (ai.gunFund > d.cost * 2) { ai.money += ai.gunFund - d.cost * 2; ai.gunFund = d.cost * 2; }
+  }
   ai.buyT -= dt;
   if (ai.buyT <= 0) {
     ai.buyT = 0.5;
@@ -62,14 +67,14 @@ export function aiStep(dt) {
   if (ai.thinkT <= 0) { ai.thinkT = 3; aiThink(); }
 }
 
-// HQ gun: after 60 s, when ready and money covers 3x the shot, fire at the richest cluster in reach.
+// HQ gun: after 60 s, when ready and the gun fund covers the shot, fire at the richest cluster in reach.
 // Cheap checks first; the only rng draw is the last gate.
 function aiGun() {
   const ai = G.ai, d = GUNS[G.nation[1]];
-  if (!d || G.S.t < 60 || gunBlock(1) || ai.money < d.cost * 3) return;
+  if (!d || G.S.t < 60 || gunBlock(1) || ai.gunFund < d.cost) return;
   const t = bestTarget(1);
   if (!t || t.value < d.cost || rng.float() >= 0.25) return;
-  ai.money -= d.cost; fireGun(1, t.x, t.y);
+  ai.gunFund -= d.cost; fireGun(1, t.x, t.y);
 }
 
 const BASE_GAP = 90; // seconds between enemy base purchases
