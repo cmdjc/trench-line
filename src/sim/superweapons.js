@@ -7,6 +7,8 @@ import { G, lineName, toast } from './state.js';
 import { isTrench, spawn } from './geometry.js';
 import { die, boom } from './combat.js';
 import { rng } from '../core/rng.js';
+import { tier } from './base.js';
+import { TUNNEL_T, MINE_COST, MINE_R, MINE_TANK, MINE_NEST, PARIS_CD, PARIS_DMG, PARIS_SPLASH, PARIS_GAP, DOCK_CD, DOCK_HP, DOCK_DMG, DOCK_SCALE } from '../data/base.js';
 
 export function targetFor(side) {
   if (side === 0) {
@@ -28,6 +30,12 @@ export function aimPoint(side) {
   return best ? { x: best.x, y: best.y } : { x: G.bases[foe].x, y: WH / 2 };
 }
 
+/* Supplies a superweapon costs this side: the nation's price, less the gb tunnellers' discount. */
+export function swCost(side) {
+  const n = G.nation[side], d = SW[n]; if (!d) return 0;
+  return n === 'gb' && tier(side, 'nat') >= 1 ? Math.round(d.cost * MINE_COST) : d.cost;
+}
+
 export function swBlock(side) {
   const d = SW[G.nation[side]], st = G.sw[side];
   if (!d) return 'none';
@@ -41,15 +49,18 @@ export function swBlock(side) {
 }
 
 export function useSW(side, at) {
+  const nat = tier(side, 'nat');
   const d = SW[G.nation[side]]; if (!d || swBlock(side)) return false;
   const st = G.sw[side], dir = side ? -1 : 1, own = G.bases[side], foe = G.bases[1 - side], T = targetFor(side), atHQ = !isTrench(T);
   const tx = atHQ ? foe.x - dir * 24 : G.LX[T];
   if (d.kind === 'paris') {
     const a = at || aimPoint(side), x = Math.max(0, Math.min(G.WW, a.x)), y = Math.max(0, Math.min(WH, a.y));
-    G.shells.push({ x0: own.x, y0: WH / 2, x1: x, y1: y, t: 0, dur: 4.5, side, type: 'barrage', dmg: 700, splash: 90, cov: 0.8, rz: 80, arc: 3.2, big: true, huge: true });
+    const shell = { x0: own.x, y0: WH / 2, x1: x, y1: y, t: 0, dur: 4.5, side, type: 'barrage', dmg: nat >= 2 ? PARIS_DMG : 700, splash: nat >= 2 ? PARIS_SPLASH : 90, cov: 0.8, rz: 80, arc: 3.2, big: true, huge: true };
+    G.shells.push(shell);
+    if (nat >= 3) G.shells.push({ ...shell, t: -PARIS_GAP });
     if (side === 1) { let nl = 1; for (let L = 1; L <= G.NT; L++) if (Math.abs(G.LX[L] - x) < Math.abs(G.LX[nl] - x)) nl = L; toast('The enemy Paris Gun has fired at the area near trench ' + nl + '. Look for the red circle.'); }
   } else if (d.kind === 'mine') {
-    st.tunnel = { line: T, t: 25 };
+    st.tunnel = { line: T, t: nat >= 1 ? TUNNEL_T : 25 };
   } else if (d.kind === 'char2c') {
     spawn(side, 'char2c', side ? G.ai.F : G.sel);
     if (side === 1) toast('The enemy has sent out a Char 2C.');
@@ -57,7 +68,9 @@ export function useSW(side, at) {
     spawn(side, 'tsar', side ? G.ai.F : G.sel);
     if (side === 1) toast('The enemy has sent out a Tsar Tank.');
   } else if (d.kind === 'colossus') {
-    spawn(side, 'colossus', side ? G.ai.F : G.sel);
+    const u = spawn(side, 'colossus', side ? G.ai.F : G.sel);
+    if (nat >= 2) { u.hp *= DOCK_HP; u.max *= DOCK_HP; }
+    if (nat >= 3) { u.dmgMul = DOCK_DMG; u.scale = DOCK_SCALE; }
     if (side === 1) toast('The enemy has sent out a Southern Colossus.');
   } else if (d.kind === 'bugs') {
     for (let i = 0; i < 4; i++) G.shells.push({ x0: own.x, y0: 50 + i * 66, x1: tx + (rng.float() - 0.5) * 44, y1: 30 + rng.float() * (WH - 60), t: -i * 0.7, dur: Math.min(7, Math.max(1.5, Math.abs(tx - own.x) / 230)), side, type: 'barrage', dmg: atHQ ? 70 : 110, splash: 42, cov: 0.7, arc: 0, plane: true, base: atHQ });
@@ -71,15 +84,17 @@ export function useSW(side, at) {
     for (let i = 0; i < 3; i++) G.shells.push({ x0: own.x, y0: WH / 2, x1: tx + (rng.float() - 0.5) * 16, y1: 50 + i * 100 + (rng.float() - 0.5) * 40, t: -i * 1.3, dur: 3, side, type: 'barrage', dmg: atHQ ? 120 : 180, splash: 70, cov: 0.85, arc: 3, big: true, raze: true, base: atHQ });
     if (side === 1) toast('42 cm shells are falling on ' + lineName(T) + '.');
   }
-  st.cd = d.cd; return true;
+  st.cd = d.kind === 'paris' && nat >= 1 ? PARIS_CD : d.kind === 'colossus' && nat >= 1 ? DOCK_CD : d.cd;
+  return true;
 }
 
 export function detonate(side, L) {
   let any = false;
+  const big = G.nation[side] === 'gb' && tier(side, 'nat') >= 2, R = big ? MINE_R : 70;
   for (const e of G.units) {
-    if (e.side === side || e.hp <= 0 || e.line !== L || Math.abs(e.x - G.LX[L]) > 70) continue;
+    if (e.side === side || e.hp <= 0 || e.line !== L || Math.abs(e.x - G.LX[L]) > R) continue;
     any = true;
-    const d = e.T.armor ? 300 : e.T.nest ? 400 : 1e6;
+    const d = e.T.armor ? (big ? MINE_TANK : 300) : e.T.nest ? (big ? MINE_NEST : 400) : 1e6;
     e.hp -= d; if (e.hp <= 0) die(e);
   }
   if (G.owner[L] !== side) { G.fort[L] = 0; G.fields = G.fields.filter(f => f.side === side || f.line !== L); }

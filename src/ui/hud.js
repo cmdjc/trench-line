@@ -10,7 +10,7 @@ import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
 import { infCap } from '../sim/base.js';
 import { freeSlot, canDef } from '../sim/fortify.js';
-import { swBlock } from '../sim/superweapons.js';
+import { swBlock, swCost } from '../sim/superweapons.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
 import { focusLine } from './camera.js';
@@ -61,8 +61,8 @@ export function refresh() {
   $('advBtn').disabled = G.sel >= G.HQI || !here; $('backBtn').disabled = G.sel <= 0 || !here;
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
     if (G.aim && (!d || swBlock(0))) G.aim = null;
-    if (d && G.aim) { b.innerHTML = '<b>Confirm target, ' + d.cost + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < d.cost ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < d.cost; }
-    else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + d.cost + '</b><small>' + (why || d.text) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < d.cost); }
+    if (d && G.aim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
+    else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + swCost(0) + '</b><small>' + (why || d.text) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < swCost(0)); }
     $('aimCancel').hidden = !G.aim; }
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
   const held = Object.keys(S.taken).map(id => { const c = CARDS.find(x => x.id === id); return c.name + (S.taken[id] > 1 ? ' ×' + S.taken[id] : ''); });

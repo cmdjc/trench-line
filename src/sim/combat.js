@@ -137,7 +137,7 @@ export function stepUnits(dt) {
       }
     }
     if (u.cd > 0 || T.noFire || (u.moving && !T.moveFire)) continue;
-    const dmg = T.dmg * m.dmg[u.type];
+    const dmg = T.dmg * m.dmg[u.type] * (u.dmgMul || 1);
     let ox = u.x, oy = u.y;
     if (T.armor) {
       const hit = best && bd <= T.range, gx = hit ? best.x : G.bases[1 - u.side].x, gy = hit ? best.y : WH / 2;

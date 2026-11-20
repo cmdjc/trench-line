@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { newGame, G } from '../../src/sim/state.js';
 import { spawn, tanks } from '../../src/sim/geometry.js';
-import { targetFor, aimPoint, swBlock, useSW, detonate, stepSW } from '../../src/sim/superweapons.js';
+import { targetFor, aimPoint, swBlock, useSW, detonate, stepSW, swCost } from '../../src/sim/superweapons.js';
 import { WH } from '../../src/data/units.js';
+import { raise } from '../../src/sim/base.js';
+import { fireSuperweapon } from '../../src/sim/commands.js';
 import { bus } from '../../src/core/events.js';
 
 const toasts = [];
@@ -309,5 +311,60 @@ describe('detonate (direct)', () => {
     const e = spawn(1, 'rifle', L, true); e.x = G.LX[L] + 2;
     detonate(0, L);
     expect(e.hp).toBeLessThanOrEqual(0);
+  });
+});
+
+describe('national superweapon upgrades', () => {
+  const up = (n, k = 'nat') => { for (let i = 0; i < n; i++) raise(0, k); };
+
+  it('de T1 cooldown is 65; T3 fires two shells 1.5 s apart', () => {
+    game('de', 'gb'); up(1);
+    G.shells = [];
+    expect(useSW(0, { x: 300, y: 100 })).toBe(true);
+    expect(G.sw[0].cd).toBe(65);
+    expect(G.shells).toHaveLength(1);
+    expect(G.shells[0].dmg).toBe(700);
+    game('de', 'gb'); up(3);
+    G.shells = [];
+    useSW(0, { x: 300, y: 100 });
+    expect(G.shells).toHaveLength(2);
+    expect(G.shells[0].dmg).toBe(900); expect(G.shells[0].splash).toBe(110);
+    expect(G.shells[1].t).toBe(-1.5);
+    expect(G.shells[1].dmg).toBe(900);
+  });
+
+  it('gb T1 tunnel is 15 s and costs 360; T2 blast is wider and stronger', () => {
+    game('gb', 'de'); up(1);
+    expect(swCost(0)).toBe(360);
+    G.S.supplies = 1000; const before = G.S.supplies;
+    expect(fireSuperweapon()).toBe(true);
+    expect(G.S.supplies).toBe(before - 360);
+    expect(G.sw[0].tunnel.t).toBe(15);
+    game('gb', 'de');
+    expect(swCost(0)).toBe(450);
+    game('gb', 'de'); up(2);
+    const L = 3, t = spawn(1, 'tkH', L, true); t.x = G.LX[L] + 90; t.hp = 1000;
+    detonate(0, L);
+    expect(t.hp).toBe(500);
+  });
+
+  it('aq T2 Colossus has max hp 11700; T3 sets damage and scale', () => {
+    game('aq', 'gb'); up(2);
+    useSW(0);
+    let c = G.units.find(u => u.type === 'colossus');
+    expect(c.max).toBe(11700); expect(c.hp).toBe(11700);
+    expect(G.sw[0].cd).toBe(100);
+    expect(c.dmgMul).toBeUndefined();
+    game('aq', 'gb'); up(3);
+    useSW(0);
+    c = G.units.find(u => u.type === 'colossus');
+    expect(c.dmgMul).toBe(1.3); expect(c.scale).toBe(1.15);
+  });
+
+  it('the bonus survives buying before 4:00', () => {
+    game('de', 'gb'); G.S.t = 10; up(1);
+    G.S.t = 300; G.shells = [];
+    expect(useSW(0, { x: 300, y: 100 })).toBe(true);
+    expect(G.sw[0].cd).toBe(65);
   });
 });
