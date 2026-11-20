@@ -145,6 +145,17 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   expect(T.info().n[0]).toBe(n0 + 2);
   expect(T.info().sup).toBeLessThan(1000 + sup0 - 20); // charged
 
+  // -- HQ gun: aim with a field tap, confirm, supplies drop
+  T.give(1000);
+  frames(2);
+  click('#gunBtn');
+  expect(d.getElementById('gunBtn').textContent).toContain('Confirm target');
+  tap(300, 150);
+  frames(1);
+  const gunSup = T.info().sup;
+  click('#gunBtn');
+  expect(T.info().sup).toBeLessThan(gunSup - 30);
+
   // -- upgrade the HQ walls from the HQ panel, then return to trench 1
   click('#map button[data-line="0"]');
   expect(d.getElementById('basePanel').hidden).toBe(false);

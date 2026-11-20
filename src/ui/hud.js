@@ -12,6 +12,8 @@ import { infCap, tier, nextCost } from '../sim/base.js';
 import { BASE, baseIds, TUNNEL_T } from '../data/base.js';
 import { freeSlot, canDef } from '../sim/fortify.js';
 import { swBlock, swCost } from '../sim/superweapons.js';
+import { GUNS } from '../data/guns.js';
+import { gunBlock } from '../sim/gun.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
 import { focusLine } from './camera.js';
@@ -81,10 +83,15 @@ export function refresh() {
   $('advBtn').textContent = G.sel === G.NT ? 'Storm the HQ' : 'Advance';
   $('advBtn').disabled = G.sel >= G.HQI || !here; $('backBtn').disabled = G.sel <= 0 || !here;
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
-    if (G.aim && (!d || swBlock(0))) G.aim = null;
-    if (d && G.aim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
+    if (G.aim && G.aim.kind === 'paris' && (!d || swBlock(0))) G.aim = null;
+    const parisAim = !!G.aim && G.aim.kind === 'paris';
+    if (d && parisAim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
     else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + swCost(0) + '</b><small>' + (why || (d.kind === 'mine' && tier(0, 'nat') >= 1 ? d.text.replace('25', TUNNEL_T) : d.text)) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < swCost(0)); }
     $('aimCancel').hidden = !G.aim; }
+  { const gd = GUNS[G.nation[0]], gb = $('gunBtn'), gunAim = !!G.aim && G.aim.kind === 'gun';
+    gb.hidden = !gd;
+    if (gd && gunAim) { gb.textContent = 'Confirm target, ' + gd.cost; gb.disabled = G.aim.x === null || S.supplies < gd.cost || !!gunBlock(0); }
+    else if (gd) { const cd = G.gun[0].cd; gb.textContent = cd > 0 ? gd.name + ': ready in ' + Math.ceil(cd) + ' s' : 'Aim ' + gd.name + ': ' + gd.cost; gb.disabled = !!gunBlock(0) || S.supplies < gd.cost; } }
   refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
   const held = Object.keys(S.taken).map(id => { const c = CARDS.find(x => x.id === id); return c.name + (S.taken[id] > 1 ? ' ×' + S.taken[id] : ''); });
@@ -101,11 +108,15 @@ export function initHud() {
   $('defBtn').addEventListener('click', () => commands.buildDefAt(G.sel));
   $('basePanel').addEventListener('click', ev => { const b = ev.target.closest('button[data-base]'); if (b) commands.buyBase(b.dataset.base === G.nation[0] ? 'nat' : b.dataset.base); });
   $('aimCancel').addEventListener('click', () => commands.cancelAim());
+  $('gunBtn').addEventListener('click', () => {
+    if (G.aim && G.aim.kind === 'gun') commands.confirmAim();
+    else commands.startGunAim();
+  });
   $('swBtn').addEventListener('click', () => {
-    if (G.aim) { commands.confirmAim(); return; }
+    if (G.aim && G.aim.kind === 'paris') { commands.confirmAim(); return; }
     const d = SW[G.nation[0]];
     if (d && d.kind === 'paris') commands.startAiming();
-    else commands.fireSuperweapon();
+    else if (commands.fireSuperweapon() && G.aim) G.aim = null;   // a fired superweapon replaces a gun aim
   });
   $('pauseBtn').addEventListener('click', () => { G.userPaused = !G.userPaused; $('pauseBtn').textContent = G.userPaused ? 'Resume' : 'Pause'; });
   $('speedBtn').addEventListener('click', () => { G.speed = G.speed === 1 ? 2 : 1; $('speedBtn').textContent = 'Speed ' + G.speed + '×'; });
