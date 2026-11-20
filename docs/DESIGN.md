@@ -75,6 +75,19 @@ Two versions of the game had diverged. The larger one (sections 1 to 6) is the b
 - **Russia**, as chosen by you in that session: the Tsar Tank is a superweapon with its own button (900, one at a time, 60 s cooldown, does not use the armour limit), and Russia needs the tank card like everyone else.
   - Chosen by me to fit the variant system: the **Vezdekhod** moved from the light slot to the signature slot (110, 200 health, machine gun only, limit use 1) and Russia has no separate light tank; the **Mendeleev** stays as the heavy but its limit use went from 0.8 to 2; the armour limit went from 2 to 10.
 
+## 8. Base upgrades
+
+Chosen by you: in-battle upgrades bought at your HQ, three shared plus one per nation, three straight tiers, bought instantly, nothing new to command, the enemy buys them too, and the HQ drawing changes as tiers rise. The full intent is in `docs/superpowers/specs/2026-11-20-base-upgrades-design.md`.
+
+- **Panel**: tap your HQ to see each upgrade, its tier, the next tier's effect and its cost. Tiers cost 300, 550 and 900 supplies and cannot be skipped. Upgrades last for the battle.
+- **Shared**: HQ Walls (+500 HQ health a tier; tier 3 repairs 4 a second), Supply Depot (+0.6 supplies a second a tier), Field Hospital (troops resting in a trench heal 0.8 a second a tier).
+- **National**: Tunnelling Company (Britain), Krupp Works (Germany), Voie Sacree (France), Liberty Depot (USA), K.u.K. Officer School (Austria-Hungary), Colossus Drydock (Antarctica), Teleferica (Italy), Conscription Office (Russia). The exact effects are in `src/data/base.js`. Krupp Works and Colossus Drydock can be bought before the superweapon unlocks; the bonus waits.
+- **Stacking**: the existing Concrete HQ, Aid posts and Light railway research nodes still apply on top.
+- **Research**: four small branches (HQ Walls, Supply Depot, Field Hospital, National works) let a battle start with Walls, Depot, Hospital or the national upgrade at tier 1 or 2. Tier 3 is always bought in battle. New nodes were appended to the tech mask, so old save codes still load.
+- **Enemy**: every 90 seconds, once it holds 150% of the next cost, it buys the lowest tier in the rotation walls, national, depot, hospital, with a toast. It uses no random numbers, so seeded battles stay reproducible. It starts at tier 0 and gets no research.
+- **Headless bot**: `scripts/bot.mjs` buys the next tier in the same rotation when supplies are at least twice the cost (`BASEX` changes the multiple). Its JSON now reports `base` and `foeBase` tiers.
+- **Balance check**: each nation against Germany (Germany against Britain) on the open map, seeds 1 to 10, with and without upgrades. No nation's win rate moved more than 20 points. The bot rarely holds 600 supplies, so it buys few tiers at the default setting; at `BASEX=1` about half its battles include a walls tier, and the depot and hospital are bought least. No numbers were changed.
+
 ## Known quirks
 
 - "Super trench" now means two different things: the single neutral one on the Long March (built-in guns, +3 supplies, level 4, free cards) and the two double trenches on the Wide open plain (cover, 5 slots, +1 supply, hedgehogs). In code they are `SUPER` (one line index) and `DBL` (a list).
