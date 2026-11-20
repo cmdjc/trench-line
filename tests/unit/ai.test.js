@@ -118,6 +118,24 @@ describe('want state machine', () => {
     expect(G.sw[1].cd).toBe(SW.de.cd);
     expect(toasts.some(m => m.includes('Paris Gun'))).toBe(true);
   });
+  it('sw (us): wants from t=120 and fires an airborne drop of 8 paras', () => {
+    game('gb', 'us'); quiet(); G.ai.baseT = 1e9; G.sw[1].cd = 0;
+    G.units = []; spawn(1, 'rifle', 8, true); G.owner[7] = 1; G.owner[6] = 0;
+    G.S.t = 130; G.ai.money = 600;
+    rng.reseed(seedWhere(d => d >= 0.05, d => d < 0.025)); tick(); // first draw skips the build roll
+    expect(G.ai.want).toBeNull();
+    const ps = G.units.filter(u => u.side === 1 && u.para);
+    expect(ps).toHaveLength(8); expect(ps.every(u => u.line === 6)).toBe(true);
+    expect(G.ai.money).toBeCloseTo(600 - 341, 1);
+    expect(toasts).toContain('Enemy paratroopers are landing at trench 6.');
+  });
+  it('sw gate stays at t=240 for a non-us enemy', () => {
+    game('de', 'de'); quiet(); G.ai.baseT = 1e9; G.owner[9] = 0; G.S.t = 130; G.ai.money = 600;
+    rng.reseed(seedWhere(d => d < 0.025)); tick();
+    expect(G.shells).toHaveLength(0); expect(G.ai.want).toBeNull();
+    G.S.t = 250; rng.reseed(seedWhere(d => d < 0.025)); tick();
+    expect(G.shells).toHaveLength(1);
+  });
   it('sw 60% rule (aq): wants only at cost·0.6, saves, then fires the Colossus', () => {
     game('de', 'aq'); quiet(); G.owner[9] = 0; G.S.t = 300;
     expect(SW.aq.cost).toBeGreaterThanOrEqual(1500);

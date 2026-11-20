@@ -13,6 +13,7 @@ import { bus } from '../core/events.js';
 import { baseIncome, tier, nextCost, raise } from './base.js';
 import { gunBlock, fireGun, bestTarget } from './gun.js';
 import { GUNS, AI_GUN_SHARE } from '../data/guns.js';
+import { AI_DROP_T } from '../data/drop.js';
 import { BASE, AI_BASE_SHARE } from '../data/base.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
@@ -37,7 +38,7 @@ export function aiStep(dt) {
         else if (canDef(1, F) && rng.float() < 0.5) ai.want = 'def';
         else if (freeSlot(F) >= 0) ai.want = 'nest';
       }
-      if (!ai.want && G.S.t > 240 && SW[G.nation[1]] && !swBlock(1) && (SW[G.nation[1]].cost < 1500 || ai.money >= swCost(1) * 0.6) && rng.float() < 0.025) ai.want = 'sw';
+      if (!ai.want && G.S.t > (SW[G.nation[1]]?.kind === 'drop' ? AI_DROP_T : 240) && SW[G.nation[1]] && !swBlock(1) && (SW[G.nation[1]].cost < 1500 || ai.money >= swCost(1) * 0.6) && rng.float() < 0.025) ai.want = 'sw';
       if (ai.want === 'sw') {
         if (swBlock(1)) ai.want = null;
         else if (ai.money >= swCost(1)) { if (useSW(1)) ai.money -= swCost(1); ai.want = null; }
