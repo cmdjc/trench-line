@@ -244,6 +244,14 @@ describe('airborne drop aiming', () => {
     expect(G.S.supplies).toBe(1000 - swCost(0));
     expect(G.aim).toBeNull();
   });
+  it('a stale target disables Confirm and asks for another trench', () => {
+    $('swBtn').click();
+    const L = nearestDrop(0, G.LX[3]); G.aim.line = L; G.aim.x = G.LX[L];
+    G.owner[L] = 0; bus.emit('hud');
+    expect(G.aim).not.toBeNull();
+    expect($('swBtn').textContent).toContain('Trench ' + L + ' is no longer a drop zone. Tap another.');
+    expect($('swBtn').disabled).toBe(true);
+  });
   it('explains short supplies', () => {
     $('swBtn').click(); G.aim.line = nearestDrop(0, G.LX[1]); G.aim.x = G.LX[G.aim.line];
     G.S.supplies = swCost(0) - 1; bus.emit('hud');

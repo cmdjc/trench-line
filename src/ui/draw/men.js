@@ -2,6 +2,7 @@
 import { circle, oval, line, ctx, bagArc, BAG, TR } from './helpers.js';
 import { NAT } from '../../data/nations.js';
 import { G } from '../../sim/state.js';
+import { FALL_LIFT } from '../../data/drop.js';
 
 export function drawPillbox(u) {
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(-10, -9, 26, 24);
@@ -110,7 +111,7 @@ export function drawSoldier(u) {
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,.18)'; oval(2, 2.5, 3.2, 5.4);    // ground shadow stays put
     const s = 1 + Math.min(1, u.fall / 2) * 0.12;
-    ctx.translate(0, -u.fall * 14); ctx.scale(s, s);
+    ctx.translate(0, -u.fall * FALL_LIFT); ctx.scale(s, s);
     drawChute(u);
     drawSoldierBody(u);
     ctx.restore();

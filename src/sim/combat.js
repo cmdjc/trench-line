@@ -6,10 +6,10 @@
 
 import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_INC } from '../data/units.js';
 import { G, isDbl, toast } from './state.js';
-import { isTrench, posX } from './geometry.js';
+import { isTrench, posX, exposed } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
 import { rng } from '../core/rng.js';
-import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC } from '../data/drop.js';
+import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT } from '../data/drop.js';
 
 export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.hp <= 0) return;
@@ -19,7 +19,7 @@ export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.T.nest) mult = (e.T.ncov || NESTCOV)[atk];
   else if (e.T.soft) mult = 0.6;
   else if (e.T.armor) mult = ARM[atk] * (e.T.thin && ARM[atk] < 0.5 ? 2 : 1);
-  else if (e.settled && !(e.scramble > 0)) {
+  else if (e.settled && !exposed(e)) {
     if (isTrench(e.line)) { if (atk !== 'raider' && !(attacker && attacker.settled && attacker.line === e.line)) mult = (cov || COV[atk]) * G.M[e.side].cover * FORTD[G.fort[e.line]] * (isDbl(e.line) ? 0.55 : 1); }
     else if (e.line === (e.side ? G.HQI : 0)) mult = 0.5;
   }
@@ -31,9 +31,10 @@ export function hurt(e, dmg, atk, attacker, cov, area) {
 /* static stand-in used when a base fires: it is nobody's unit */
 export const HQG = { type: 'base', settled: false, line: -1 };
 
-/* fortified trenches are harder to hit */
+/* fortified trenches are harder to hit, unless the target is a paratrooper still exposed after its drop;
+   raider-class fire (stormtroopers, Thompsons) ignores the penalty */
 export function accVs(u, e) {
-  return (e.settled && !e.T.armor && !e.T.nest && isTrench(e.line) && G.fort[e.line] && u.type !== 'raider' && !(u.settled && u.line === e.line)) ? FORTA[G.fort[e.line]] : 1;
+  return (e.settled && !exposed(e) && !e.T.armor && !e.T.nest && isTrench(e.line) && G.fort[e.line] && ((u.T && u.T.atk) || u.type) !== 'raider' && !(u.settled && u.line === e.line)) ? FORTA[G.fort[e.line]] : 1;
 }
 
 export function die(e) {
@@ -121,7 +122,7 @@ export function stepUnits(dt) {
       u.moving = false;
       if (Math.abs(dx) <= 1.5 && Math.abs(dy) <= 1.5) { u.x = tx; u.settled = true; }
     }
-    if (u.settled && m.heal && isTrench(u.line) && u.hp < u.max) u.hp = Math.min(u.max, u.hp + m.heal * dt);
+    if (u.settled && m.heal && isTrench(u.line) && u.hp < u.max && !exposed(u)) u.hp = Math.min(u.max, u.hp + m.heal * dt);
     u.cd -= dt; u.flash -= dt;
     const dir = u.side ? -1 : 1;
     if (T.armor) {
@@ -144,6 +145,7 @@ export function stepUnits(dt) {
     if (u.cd > 0 || T.noFire || (falling && !T.fallFire) || (u.moving && !T.moveFire)) continue;
     const dmg = T.dmg * m.dmg[u.type] * (u.dmgMul || 1);
     let ox = u.x, oy = u.y;
+    const fy = falling ? Math.max(0, u.fall) * FALL_LIFT : 0; // falling men are drawn this far up the screen
     if (T.armor) {
       const hit = best && bd <= T.range, gx = hit ? best.x : G.bases[1 - u.side].x, gy = hit ? best.y : WH / 2;
       u.gun = -u.gun;
@@ -154,8 +156,8 @@ export function stepUnits(dt) {
     if (best && bd <= T.range) {
       u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
       if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: best.x, y1: best.y, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg, splash: T.splash, cov: T.cov, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
-      else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x + dir * 9, u.y, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
-      else tracer(u.x + dir * 9, u.y, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
+      else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x + dir * 9, u.y - fy, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
+      else tracer(u.x + dir * 9, u.y - fy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
       if (T.jam && rng.float() < T.jam) u.cd = 2.4;
       if (T.mag) { u.shots = (u.shots || 0) + 1; if (u.shots >= T.mag) { u.shots = 0; u.cd = T.reload; } }
     } else {
@@ -164,7 +166,7 @@ export function stepUnits(dt) {
         u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
         const by = WH / 2 + (rng.float() - 0.5) * 70;
         if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: b.x - dir * 20, y1: by, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg: dmg * 1.5, base: true, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
-        else { tracer(u.x + dir * 9, u.y, b.x - dir * 25, by, 1, '#ffe9a8'); hurtBase(1 - u.side, dmg * (u.type !== 'raider' && d > 120 ? 0.25 : 1)); }
+        else { tracer(u.x + dir * 9, u.y - fy, b.x - dir * 25, by, 1, '#ffe9a8'); hurtBase(1 - u.side, dmg * (u.type !== 'raider' && d > 120 ? 0.25 : 1)); }
       }
     }
   }

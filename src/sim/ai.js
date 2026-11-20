@@ -97,26 +97,35 @@ function aiBase() {
 
 export function aiLine() { return G.ai.F; }
 
+/* An enemy paratrooper stays on its drop line while that trench is still held or contested and the commander's
+   front has not caught up with it; otherwise it takes the commander's orders like anyone else. */
+function holdsDrop(u, F) {
+  if (!u.para || !isTrench(u.line) || u.line >= F) return false;
+  return G.owner[u.line] !== 0 || G.units.some(e => e.side === 1 && e.hp > 0 && !e.fixed && e.line === u.line && (e.settled || e.fall > 0));
+}
+/* order the enemy's troops to line L, leaving paratroopers in a held drop trench where they are */
+function orderAll(us, L) { for (const u of us) if (!holdsDrop(u, L)) u.line = L; }
+
 export function aiThink() {
   const ai = G.ai;
   const pf = frontLine();
   let held = 0, ps = 0; for (const u of G.units) if (u.line === ai.F && u.settled && !u.fixed) { if (u.side) held++; else ps++; }
   if (!held && G.S.t - ai.lastAdv > 12 && (ps > 0 || pf > ai.F)) ai.F = Math.min(G.HQI, pf + 1);
   const F = ai.F, us = G.units.filter(u => u.side === 1 && !u.fixed);
-  for (const u of us) u.line = F;
+  orderAll(us, F);
   let engaged = 0; for (const u of G.units) if (u.side === 0 && u.line === F && Math.abs(u.x - G.LX[F]) < 260) engaged++;
   if (!us.length || F <= 0 || engaged > 0) return;
   let ready = 0, mine = 0;
   for (const u of us) { if (u.settled) ready++; mine += u.T.cost; }
   const T = F - 1, foe = power(0, T) + (T === 0 ? 140 : 0), beyond = T > 0 ? power(0, T - 1) : 0, since = G.S.t - ai.lastAdv;
-  if (foe > 0 && F < G.HQI && since > 8 && mine < foe * 0.45) { ai.F = F + 1; for (const u of us) u.line = F + 1; ai.lastAdv = G.S.t; return; }
+  if (foe > 0 && F < G.HQI && since > 8 && mine < foe * 0.45) { ai.F = F + 1; orderAll(us, F + 1); ai.lastAdv = G.S.t; return; }
   if (ready < us.length * 0.7) return;
   let go;
   if (foe > 0) go = mine > foe * Math.max(1, ai.aggr - G.S.t / 300) && since > 15;
   else if (beyond > 0) go = mine >= beyond * 0.8 && since > 20;
   else go = mine >= 80 && since > 10;
   if (!go) return;
-  ai.F = T; for (const u of us) u.line = T;
+  ai.F = T; orderAll(us, T);
   ai.lastAdv = G.S.t; ai.aggr = 2 + rng.float() * 0.9;
   if (foe > 0) toast(T === 0 ? 'The enemy is storming your HQ.' : 'The enemy is attacking trench ' + T + '.');
 }

@@ -92,7 +92,17 @@ it('no source file mentions the bugs or Kettering', () => {
   const walk = d => readdirSync(d).flatMap(f => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
   for (const f of walk('src')) {
     const s = readFileSync(f, 'utf8');
-    expect(s.includes("'bugs'"), f).toBe(false);
+    expect(/['"`]bugs['"`]/.test(s), f).toBe(false);
     expect(/kettering/i.test(s), f).toBe(false);
   }
+});
+
+it('the drop range in the button text and the blocked reason both follow DROP_RANGE', async () => {
+  expect(SW.us.text).toContain('up to ' + DROP_RANGE + ' trenches past your front');
+  const { newGame, G } = await import('../../src/sim/state.js');
+  const { swBlock } = await import('../../src/sim/superweapons.js');
+  newGame('us', 'de', 'open', 7);
+  G.units = G.units.filter(u => u.side === 0 && !u.fixed);
+  for (let L = 1; L <= G.NT; L++) G.owner[L] = 0;
+  expect(swBlock(0)).toBe('No enemy or empty trench within ' + DROP_RANGE + ' trenches of your front.');
 });

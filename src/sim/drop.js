@@ -3,20 +3,12 @@
 // skips u.para) and fall for a moment before they can move or (mostly) fire.
 
 import { G } from './state.js';
-import { isTrench, spawn, posX } from './geometry.js';
+import { isTrench, spawn, posX, walkFront } from './geometry.js';
 import { rng } from '../core/rng.js';
 import { WH } from '../data/units.js';
 import { DROP_MIX, DROP_RANGE, DROP_FALL, DROP_STAGGER } from '../data/drop.js';
 
-/* The furthest line the side's ground troops (not paratroopers) have reached. */
-export function walkFront(side) {
-  let f = null;
-  for (const u of G.units) {
-    if (u.side !== side || u.fixed || u.para) continue;
-    f = f === null ? u.line : side ? Math.min(f, u.line) : Math.max(f, u.line);
-  }
-  return f === null ? (side ? G.HQI : 0) : f;
-}
+export { walkFront }; // lives in geometry.js so the railhead (startX) can use it too
 
 export function validDrop(side, L) {
   if (!isTrench(L)) return false;

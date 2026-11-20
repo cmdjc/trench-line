@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { newGame, G } from '../../src/sim/state.js';
-import { spawn, count, full } from '../../src/sim/geometry.js';
-import { stepUnits, hurt } from '../../src/sim/combat.js';
+import { spawn, count, full, exposed } from '../../src/sim/geometry.js';
+import { stepUnits, hurt, accVs } from '../../src/sim/combat.js';
+import { stepBunkers } from '../../src/sim/fortify.js';
 import { swBlock, useSW } from '../../src/sim/superweapons.js';
 import { walkFront, validDrop, dropTarget, nearestDrop, spawnDrop } from '../../src/sim/drop.js';
-import { startAiming, confirmAim, fireSuperweapon } from '../../src/sim/commands.js';
+import { startAiming, confirmAim, fireSuperweapon, select, buyUnit } from '../../src/sim/commands.js';
 import { infCap } from '../../src/sim/base.js';
-import { DROP_FALL, DROP_STAGGER, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC } from '../../src/data/drop.js';
+import { DROP_FALL, DROP_STAGGER, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, DROP_RANGE } from '../../src/data/drop.js';
+import { FORTA } from '../../src/data/units.js';
 import { bus } from '../../src/core/events.js';
 
 const toasts = [];
@@ -210,11 +212,13 @@ describe('landing scramble', () => {
   beforeEach(game);
   /* damage a settled defender-side man takes from a rifle shot fired from another trench */
   const shot = e => { const h = e.hp; hurt(e, 10, 'rifle', null); return h - e.hp; };
-  it('has no cover for DROP_SCRAMBLE seconds after landing, then normal cover', () => {
+  it('has no cover while falling and for DROP_SCRAMBLE seconds after landing, then normal cover', () => {
     G.units = []; G.fort[3] = 1;
-    const u = spawn(0, 'rifle', 3, true); u.para = true; u.fall = 0.1; u.hp = u.max = 1e6;
+    const u = spawn(0, 'rifle', 3, true); u.para = true; u.hp = u.max = 1e6;
     const covered = shot(u);
     expect(covered).toBeLessThan(10);
+    u.fall = 0.1;
+    expect(shot(u)).toBe(10); // falling: no cover either
     stepUnits(0.2);
     expect(u.scramble).toBe(DROP_SCRAMBLE);
     expect(shot(u)).toBe(10);
@@ -245,5 +249,124 @@ describe('landing scramble', () => {
     stepUnits(1);
     expect(u.scramble).toBeUndefined();
     expect(shot(u)).toBeLessThan(10);
+  });
+});
+
+describe('walking front is measured by position (no leapfrog via fresh orders)', () => {
+  beforeEach(game);
+  it('a unit ordered forward counts only for the trenches it has physically crossed', () => {
+    const u = spawn(0, 'rifle', 1, true);
+    u.line = 4; u.settled = false;          // ordered on, still standing at trench 1
+    expect(walkFront(0)).toBe(1);
+    u.x = (G.LX[2] + G.LX[3]) / 2;          // walked past trench 2
+    expect(walkFront(0)).toBe(2);
+    u.x = G.LX[4];
+    expect(walkFront(0)).toBe(4);
+  });
+  it('mirrors for side 1', () => {
+    G.units = [];
+    const u = spawn(1, 'rifle', 8, true);
+    u.line = 5; u.settled = false;
+    expect(walkFront(1)).toBe(8);
+    u.x = (G.LX[6] + G.LX[7]) / 2;
+    expect(walkFront(1)).toBe(7);
+  });
+  it('a rifle bought for the drop trench does not grow drop range until it gets there (open)', () => {
+    G.owner[2] = 1; G.owner[3] = 1;
+    startAiming(); G.aim.line = 4; expect(confirmAim()).toBe(true);
+    expect(select(4)).toBe(true);
+    expect(buyUnit('rifle')).toBe(true);
+    const r = G.units[G.units.length - 1];
+    G.sw[0].cd = 0;
+    expect(walkFront(0)).toBe(1);
+    expect(validDrop(0, 5)).toBe(false);
+    for (let i = 0; i < 2000 && !r.settled; i++) stepUnits(0.1);
+    expect(Math.abs(r.x - G.LX[4])).toBeLessThan(10);
+    expect(walkFront(0)).toBe(4);
+    expect(validDrop(0, 4 + DROP_RANGE)).toBe(true);
+  });
+  it('on march the railhead does not move forward to the drop trench', () => {
+    newGame('us', 'de', 'march', 7);
+    G.units = []; spawn(0, 'rifle', 1, true);
+    G.owner.fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.HQI] = 1;
+    G.owner[2] = 1; G.owner[3] = 1;
+    G.S.supplies = 1000; G.sw[0].cd = 0;
+    startAiming(); G.aim.line = 4; expect(confirmAim()).toBe(true);
+    select(4); expect(buyUnit('rifle')).toBe(true);
+    const r = G.units[G.units.length - 1];
+    expect(r.x).toBeLessThanOrEqual(G.LX[1]);
+    expect(walkFront(0)).toBe(1);
+    expect(validDrop(0, 5)).toBe(false);
+  });
+});
+
+describe('exposed paratroopers (falling or scrambling)', () => {
+  beforeEach(game);
+  const states = { falling: u => { u.fall = 2; }, scrambling: u => { u.fall = 0; u.scramble = 2; } };
+  it('exposed() is true only while falling or scrambling', () => {
+    const u = spawn(0, 'rifle', 3, true);
+    expect(exposed(u)).toBe(false);
+    states.falling(u); expect(exposed(u)).toBe(true);
+    states.scrambling(u); expect(exposed(u)).toBe(true);
+    u.scramble = 0; expect(exposed(u)).toBe(false);
+  });
+  for (const [k, set] of Object.entries(states)) {
+    it(k + ': no trench cover against fire from another trench', () => {
+      G.fort[3] = 2;
+      const u = spawn(0, 'rifle', 3, true); u.para = true; set(u); u.hp = u.max = 1e6;
+      const shooter = spawn(1, 'rifle', 5, true), h = u.hp;
+      hurt(u, 10, 'rifle', shooter);
+      expect(h - u.hp).toBe(10);
+    });
+    it(k + ': shooters take no fortification accuracy penalty', () => {
+      G.fort[3] = 2;
+      const u = spawn(0, 'rifle', 3, true); u.para = true; set(u);
+      expect(accVs(spawn(1, 'rifle', 5, true), u)).toBe(1);
+    });
+    it(k + ': does not heal', () => {
+      G.M[0].heal = 5;
+      const u = spawn(0, 'rifle', 3, true); u.para = true; set(u); u.hp = u.max / 2;
+      if (u.fall > 0) u.fall = 50; else u.scramble = 50;
+      stepUnits(0.5);
+      expect(u.hp).toBe(u.max / 2);
+    });
+    it(k + ': cannot shelter in a bunker', () => {
+      const b = spawn(0, 'bunker', 3, true); b.fixed = true; b.x = b.tx = G.LX[3]; b.y = 100;
+      const u = spawn(0, 'rifle', 3, true); u.para = true; set(u);
+      stepBunkers();
+      expect(u.shelter).toBeFalsy();
+    });
+  }
+  it('non-para units are unchanged: cover, fort penalty, healing, shelter', () => {
+    G.fort[3] = 2; G.M[0].heal = 5;
+    const u = spawn(0, 'rifle', 3, true), shooter = spawn(1, 'rifle', 5, true);
+    u.hp = u.max = 1e6;
+    const h = u.hp; hurt(u, 10, 'rifle', shooter);
+    expect(h - u.hp).toBeLessThan(10);
+    expect(accVs(shooter, u)).toBe(FORTA[2]);
+    G.units = G.units.filter(e => e !== shooter);
+    u.hp = u.max / 2; stepUnits(0.5);
+    expect(u.hp).toBeGreaterThan(u.max / 2);
+    const b = spawn(0, 'bunker', 3, true); b.fixed = true; b.x = b.tx = G.LX[3]; b.y = 100;
+    stepBunkers();
+    expect(u.shelter).toBe(b);
+  });
+  it('a landed paratrooper whose scramble is over is treated like any other unit', () => {
+    G.fort[3] = 2;
+    const u = spawn(0, 'rifle', 3, true); u.para = true; u.fall = 0; u.scramble = 0;
+    expect(accVs(spawn(1, 'rifle', 5, true), u)).toBe(FORTA[2]);
+  });
+});
+
+describe('falling tracers', () => {
+  beforeEach(game);
+  it('start at the drawn height of a falling Thompson', () => {
+    G.units = [];
+    const a = spawn(0, 'tommy', 3, true); a.para = true; a.fall = 3; a.cd = 0;
+    const e = spawn(1, 'rifle', 3, true); e.cd = 99; e.x = a.x + 30; e.y = a.y; e.hp = e.max = 1e6;
+    G.tracers.length = 0;
+    stepUnits(0.1);
+    expect(G.tracers.length).toBe(1);
+    expect(G.tracers[0].y1).toBeCloseTo(a.y - a.fall * 14, 6);
   });
 });

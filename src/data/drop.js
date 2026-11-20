@@ -10,5 +10,7 @@ export const DROP_STAGGER = 1;
 export const DROP_SCRAMBLE = 5;
 export const DROP_SCRAMBLE_ACC = 0.3;
 export const AI_DROP_T = 120;
+// A falling paratrooper is drawn this many pixels up the screen per second of fall left (tracers start there too).
+export const FALL_LIFT = 14;
 
 export const dropCost = () => Math.round(DROP_MIX.reduce((s, [k, n]) => s + utOf('us', k).cost * n, 0) * DROP_MARKUP);

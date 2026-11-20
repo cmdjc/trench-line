@@ -86,10 +86,9 @@ function populate(n) {
   G.wrecks.push({ x: wx, y: 180, side: 1, nat: 'de', t: 2, puff: 0, d: null });
   G.wrecks.push({ x: wx, y: 220, side: 0, nat: 'aq', t: 2, puff: 0, d: { L: 24, W: 11 } });
   G.wrecks.push({ x: wx, y: 250, side: 1, nat: 'it', t: 12, puff: 0, d: { L: 24, W: 11 } });
-  // shells: mortar arc, huge paris (warning ring), flying bug
+  // shells: mortar arc, huge paris (warning ring)
   G.shells.push({ x0: G.LX[L], y0: 150, x1: G.LX[L] + 200, y1: 120, t: 0.5, dur: 1.2, splash: 30, arc: 1 });
   G.shells.push({ x0: 0, y0: 0, x1: 600, y1: 150, t: 2, dur: 4.5, splash: 90, arc: 3.2, huge: true, cov: 0.8 });
-  G.shells.push({ x0: 200, y0: 0, x1: 700, y1: 100, t: 0.4, dur: 2, splash: 40, arc: 0, plane: true });
   G.shells.push({ x0: 0, y0: 0, x1: 600, y1: 150, t: -1, dur: 4.5, splash: 90, arc: 3.2, huge: true });
   // caproni plane
   G.planes.push({ x: 600, y: 120, t: 1, dur: 3.6, vy: 110 });

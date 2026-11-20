@@ -1,5 +1,5 @@
 // Transient battle effects: smoke, shells, planes, warnings, aim, tracers, booms, floats.
-import { circle, oval, line, ctx } from './helpers.js';
+import { circle, line, ctx } from './helpers.js';
 import { G } from '../../sim/state.js';
 import { GUNS } from '../../data/guns.js';
 import { gunMaxX } from '../../sim/gun.js';
@@ -42,13 +42,6 @@ export function drawShells(vis) {
     if (s.t < 0) continue;
     const q = s.t / s.dur, x = s.x0 + (s.x1 - s.x0) * q, y = s.y0 + (s.y1 - s.y0) * q;
     if (!vis(x)) continue;
-    if (s.plane) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(s.y1 - s.y0, s.x1 - s.x0));
-      ctx.fillStyle = 'rgba(0,0,0,.2)'; oval(6, 9, 7, 1.6); oval(7, 9, 2, 7);
-      ctx.fillStyle = '#d9d2b8'; oval(0, 0, 8, 1.7); oval(1.5, 0, 2.2, 8.5); oval(-6.5, 0, 1.2, 3.4);
-      ctx.fillStyle = '#3a3a30'; circle(7.5, 0, 1.3);
-      ctx.restore(); continue;
-    }
     const h = Math.sin(q * Math.PI) * s.arc;
     if (s.huge) {
       ctx.fillStyle = 'rgba(0,0,0,.25)'; circle(x + h * 5, y + h * 7, 4 + h * 1.6);
