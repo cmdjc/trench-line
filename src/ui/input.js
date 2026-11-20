@@ -7,6 +7,7 @@ import { WH } from '../data/units.js';
 import { G } from '../sim/state.js';
 import { posX } from '../sim/geometry.js';
 import { clampAim } from '../sim/gun.js';
+import { nearestDrop } from '../sim/drop.js';
 import * as commands from '../sim/commands.js';
 import { cam, clampCam, metrics } from './camera.js';
 import { $ } from './dom.js';
@@ -27,6 +28,11 @@ export function initInput() {
     if (!drag) return;
     if (!drag.moved && ev.type === 'pointerup') {
       const r = cv.getBoundingClientRect(), wx = cam.x + (ev.clientX - r.left) / metrics().K;
+      if (G.aim && G.aim.kind === 'drop') {
+        const L = nearestDrop(0, wx);
+        if (L >= 0) { G.aim.line = L; G.aim.x = G.LX[L]; G.aim.y = WH / 2; }
+        bus.emit('hud'); drag = null; return;
+      }
       if (G.aim) { { const ax = Math.max(0, Math.min(G.WW, wx)); G.aim.x = G.aim.kind === 'gun' ? clampAim(0, ax) : ax; } G.aim.y = Math.max(0, Math.min(WH, (ev.clientY - r.top) / metrics().K)); bus.emit('hud'); drag = null; return; }
       let best = -1, bd = 70;
       for (let L = 0; L <= G.HQI; L++) { const d = Math.abs(posX(0, L, 150, false) - wx); if (d < bd) { bd = d; best = L; } }

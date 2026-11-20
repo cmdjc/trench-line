@@ -2,6 +2,7 @@
 import { circle, oval, line, ctx, bagArc, BAG, TR } from './helpers.js';
 import { NAT } from '../../data/nations.js';
 import { G } from '../../sim/state.js';
+import { FALL_LIFT } from '../../data/drop.js';
 
 export function drawPillbox(u) {
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(-10, -9, 26, 24);
@@ -87,7 +88,39 @@ export function drawNest(u, N) {
   }
 }
 
+// Parachute: canopy and rigging above a falling unit. Drawn in unit-local space
+// (+x faces forward), so "above" is toward -y after the caller's flip; the view is top-down
+// and the canopy is a muted off-white dome with panel seams.
+function drawChute(u) {
+  const k = Math.min(1, u.fall / 2);
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = 'rgba(40,36,26,.7)'; ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  for (const dx of [-8, -3, 3, 8]) { ctx.moveTo(0, 0); ctx.lineTo(dx, -13 - 2 * k); }
+  ctx.stroke();
+  ctx.fillStyle = '#cfc7a8'; ctx.beginPath(); ctx.ellipse(0, -16 - 2 * k, 10, 5, 0, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = 'rgba(60,54,38,.5)'; ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  for (const dx of [-5, 0, 5]) { ctx.moveTo(dx * 0.4, -16 - 2 * k); ctx.lineTo(dx, -16 - 2 * k - 4.4 * (1 - Math.abs(dx) / 10)); }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
 export function drawSoldier(u) {
+  if (u.fall > 0) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.18)'; oval(2, 2.5, 3.2, 5.4);    // ground shadow stays put
+    const s = 1 + Math.min(1, u.fall / 2) * 0.12;
+    ctx.translate(0, -u.fall * FALL_LIFT); ctx.scale(s, s);
+    drawChute(u);
+    drawSoldierBody(u);
+    ctx.restore();
+    return;
+  }
+  drawSoldierBody(u);
+}
+
+function drawSoldierBody(u) {
   const N = NAT[G.nation[u.side]], t = u.type;
   if (u.T.nest) { drawNest(u, N); return; }
   ctx.fillStyle = 'rgba(0,0,0,.25)'; oval(2, 2.5, 3.2, 5.4);
@@ -108,6 +141,11 @@ export function drawSoldier(u) {
   } else if (t === 'mg') {
     line(-2, -4, 5, 0, 1, '#15150f'); line(-2, 4, 5, 0, 1, '#15150f'); line(1, 0, 14, 0, 2.6, '#15150f');
   } else if (t === 'sniper') line(1, 2.4, 15, 2.4, 1.1, '#15150f');
+  else if (t === 'tommy') {
+    line(1, 2.4, 8, 2.4, 2.6, '#3d3426');            // short chunky body
+    ctx.fillStyle = '#15150f'; circle(4.5, 4.6, 2.2); // drum magazine
+    ctx.fillStyle = '#5a5a48'; circle(4.5, 4.6, 0.9);
+  }
   else if (t === 'raider') { line(1, 3, 6, 3, 1.6, '#15150f'); line(2, -3.4, 7, -4.4, 1.8, '#d9cfa8'); }
   else if (t === 'mortar' && !sp) {
     ctx.fillStyle = '#15150f'; circle(8, 0, 3.4);
@@ -153,6 +191,6 @@ export function drawSoldier(u) {
   if (u.flash > 0 && (t !== 'mortar' || sp)) {
     ctx.fillStyle = '#fff1b8';
     if (u.T.muzzle) circle(u.T.muzzle + 1.5, 0, sp === 'gun75' ? 3.2 : 2.2);
-    else circle(t === 'mg' ? 15 : 11.5, t === 'mg' ? 0 : 2.4, 2.2);
+    else circle(t === 'mg' ? 15 : t === 'tommy' ? 9.5 : 11.5, t === 'mg' ? 0 : 2.4, 2.2);
   }
 }

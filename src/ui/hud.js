@@ -12,6 +12,7 @@ import { infCap, tier, nextCost } from '../sim/base.js';
 import { BASE, baseIds, TUNNEL_T } from '../data/base.js';
 import { freeSlot, canDef } from '../sim/fortify.js';
 import { swBlock, swCost } from '../sim/superweapons.js';
+import { validDrop } from '../sim/drop.js';
 import { GUNS } from '../data/guns.js';
 import { gunBlock } from '../sim/gun.js';
 import * as commands from '../sim/commands.js';
@@ -83,9 +84,10 @@ export function refresh() {
   $('advBtn').textContent = G.sel === G.NT ? 'Storm the HQ' : 'Advance';
   $('advBtn').disabled = G.sel >= G.HQI || !here; $('backBtn').disabled = G.sel <= 0 || !here;
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
-    if (G.aim && G.aim.kind === 'paris' && (!d || swBlock(0))) G.aim = null;
-    const parisAim = !!G.aim && G.aim.kind === 'paris';
-    if (d && parisAim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
+    if (G.aim && (G.aim.kind === 'paris' || G.aim.kind === 'drop') && (!d || swBlock(0))) G.aim = null;
+    const parisAim = !!G.aim && G.aim.kind === 'paris', dropAim = !!G.aim && G.aim.kind === 'drop';
+    if (d && dropAim) { const tapped = G.aim.line >= 0, placed = tapped && validDrop(0, G.aim.line), short = S.supplies < swCost(0); b.innerHTML = '<b>Confirm drop, ' + swCost(0) + '</b><small>' + (!tapped ? 'Tap a trench to mark the drop zone.' : !placed ? 'Trench ' + G.aim.line + ' is no longer a drop zone. Tap another.' : short ? 'Not enough supplies yet.' : 'Drop on trench ' + G.aim.line + '.') + '</small>'; b.disabled = !placed || short; }
+    else if (d && parisAim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
     else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + swCost(0) + '</b><small>' + (why || (d.kind === 'mine' && tier(0, 'nat') >= 1 ? d.text.replace('25', TUNNEL_T) : d.text)) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < swCost(0)); }
     $('aimCancel').hidden = !G.aim; }
   { const gd = GUNS[G.nation[0]], gb = $('gunBtn'), gunAim = !!G.aim && G.aim.kind === 'gun';
@@ -113,9 +115,9 @@ export function initHud() {
     else commands.startGunAim();
   });
   $('swBtn').addEventListener('click', () => {
-    if (G.aim && G.aim.kind === 'paris') { commands.confirmAim(); return; }
+    if (G.aim && (G.aim.kind === 'paris' || G.aim.kind === 'drop')) { commands.confirmAim(); return; }
     const d = SW[G.nation[0]];
-    if (d && d.kind === 'paris') commands.startAiming();
+    if (d && (d.kind === 'paris' || d.kind === 'drop')) commands.startAiming();
     else commands.fireSuperweapon();
   });
   $('pauseBtn').addEventListener('click', () => { G.userPaused = !G.userPaused; $('pauseBtn').textContent = G.userPaused ? 'Resume' : 'Pause'; });

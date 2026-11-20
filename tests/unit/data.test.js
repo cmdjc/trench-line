@@ -64,3 +64,45 @@ it('every nation has an HQ gun matching the design table', () => {
   expect(GUNS.ru.shells.every(s => s.spread >= 60)).toBe(true);
   expect(GUNS.gb.name).toBe('Stokes mortar battery');
 });
+
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { ORDER } from '../../src/data/units.js';
+import { AI_W } from '../../src/data/nations.js';
+import { dropCost, DROP_MIX, DROP_MARKUP, DROP_RANGE, DROP_FALL, DROP_STAGGER, AI_DROP_T, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC } from '../../src/data/drop.js';
+
+it('US superweapon is the Airborne drop', () => {
+  expect(SW.us.kind).toBe('drop');
+  expect(SW.us.cost).toBe(341);
+  expect(SW.us.cd).toBe(30);
+  expect(SW.us.cost).toBe(dropCost());
+});
+it('drop constants and cost', () => {
+  expect(DROP_MIX).toEqual([['tommy', 4], ['rifle', 2], ['mg', 2]]);
+  expect([DROP_MARKUP, DROP_RANGE, DROP_FALL, DROP_STAGGER, AI_DROP_T, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC]).toEqual([1.1, 3, 4, 1, 120, 5, 0.3]);
+  expect(dropCost()).toBe(341);
+});
+it('Thompson gunner is a special, fall-firing, unbuyable unit', () => {
+  expect(SPECIAL.tommy.fallFire).toBe(true);
+  expect(SPECIAL.tommy.speed).toBe(STATS.us.rifle.speed);
+  expect(ORDER).not.toContain('tommy');
+  expect(Object.keys(AI_W)).not.toContain('tommy');
+});
+it('no source file mentions the bugs or Kettering', () => {
+  const walk = d => readdirSync(d).flatMap(f => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
+  for (const f of walk('src')) {
+    const s = readFileSync(f, 'utf8');
+    expect(/['"`]bugs['"`]/.test(s), f).toBe(false);
+    expect(/kettering/i.test(s), f).toBe(false);
+  }
+});
+
+it('the drop range in the button text and the blocked reason both follow DROP_RANGE', async () => {
+  expect(SW.us.text).toContain('up to ' + DROP_RANGE + ' trenches past your front');
+  const { newGame, G } = await import('../../src/sim/state.js');
+  const { swBlock } = await import('../../src/sim/superweapons.js');
+  newGame('us', 'de', 'open', 7);
+  G.units = G.units.filter(u => u.side === 0 && !u.fixed);
+  for (let L = 1; L <= G.NT; L++) G.owner[L] = 0;
+  expect(swBlock(0)).toBe('No enemy or empty trench within ' + DROP_RANGE + ' trenches of your front.');
+});

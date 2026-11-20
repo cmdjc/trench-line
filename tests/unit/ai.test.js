@@ -6,6 +6,7 @@ import { bus } from '../../src/core/events.js';
 import { G, newGame, nestCost } from '../../src/sim/state.js';
 import { spawn, count, tanks } from '../../src/sim/geometry.js';
 import { aiStep, aiThink } from '../../src/sim/ai.js';
+import { spawnDrop } from '../../src/sim/drop.js';
 import { NAT, AI_INCOME, AI_RAMP } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
 import { GUNS, AI_GUN_SHARE } from '../../src/data/guns.js';
@@ -117,6 +118,43 @@ describe('want state machine', () => {
     expect(G.shells).toHaveLength(1); expect(G.shells[0].huge).toBe(true);
     expect(G.sw[1].cd).toBe(SW.de.cd);
     expect(toasts.some(m => m.includes('Paris Gun'))).toBe(true);
+  });
+  it('sw (us): wants from t=120 and fires an airborne drop of 8 paras', () => {
+    game('gb', 'us'); quiet(); G.ai.baseT = 1e9; G.sw[1].cd = 0;
+    G.units = []; spawn(1, 'rifle', 8, true); G.owner[7] = 1; G.owner[6] = 0;
+    G.S.t = 130; G.ai.money = 600;
+    rng.reseed(seedWhere(d => d >= 0.05, d => d < 0.025)); tick(); // first draw skips the build roll
+    expect(G.ai.want).toBeNull();
+    const ps = G.units.filter(u => u.side === 1 && u.para);
+    expect(ps).toHaveLength(8); expect(ps.every(u => u.line === 6)).toBe(true);
+    expect(G.ai.money).toBeCloseTo(600 - 341, 1);
+    expect(toasts).toContain('Enemy paratroopers are landing at trench 6.');
+  });
+  it('aiThink leaves enemy paratroopers on their drop line while it is held or contested', () => {
+    game('gb', 'us'); quiet();
+    G.units = []; for (let i = 0; i < 4; i++) spawn(1, 'rifle', 8, true);
+    G.ai.F = 8; G.ai.lastAdv = G.S.t = 130; G.owner[7] = 1; G.owner[6] = 0;
+    spawnDrop(1, 6);
+    spawn(0, 'rifle', 6, true);                    // contested by a defender
+    const ps = G.units.filter(u => u.para);
+    for (let i = 0; i < 5; i++) { G.S.t += 3; aiThink(); expect(ps.every(u => u.line === 6), 'cycle ' + i).toBe(true); }
+    expect(G.ai.F).toBe(8);
+    expect(G.units.filter(u => u.side === 1 && !u.para).every(u => u.line === 8)).toBe(true);
+  });
+  it('enemy paratroopers rejoin the commander once its front reaches or passes them', () => {
+    game('gb', 'us'); quiet();
+    G.units = []; for (let i = 0; i < 4; i++) spawn(1, 'rifle', 8, true);
+    G.ai.F = 8; G.ai.lastAdv = G.S.t = 130; G.owner[7] = 1; G.owner[6] = 0;
+    spawnDrop(1, 6);
+    G.ai.F = 5; aiThink();
+    expect(G.units.filter(u => u.para).every(u => u.line === 5)).toBe(true);
+  });
+  it('sw gate stays at t=240 for a non-us enemy', () => {
+    game('de', 'de'); quiet(); G.ai.baseT = 1e9; G.owner[9] = 0; G.S.t = 130; G.ai.money = 600;
+    rng.reseed(seedWhere(d => d < 0.025)); tick();
+    expect(G.shells).toHaveLength(0); expect(G.ai.want).toBeNull();
+    G.S.t = 250; rng.reseed(seedWhere(d => d < 0.025)); tick();
+    expect(G.shells).toHaveLength(1);
   });
   it('sw 60% rule (aq): wants only at cost·0.6, saves, then fires the Colossus', () => {
     game('de', 'aq'); quiet(); G.owner[9] = 0; G.S.t = 300;

@@ -5,7 +5,7 @@
 import { SLOTS, SLOTS5, WH, FORT_COST, maxFort, SPECIAL, BUNKER_CAP, BUNKER_MAX } from '../data/units.js';
 import { NAT } from '../data/nations.js';
 import { G, isDbl, toast } from './state.js';
-import { isTrench, spawn } from './geometry.js';
+import { isTrench, spawn, exposed } from './geometry.js';
 import { hurt, boom } from './combat.js';
 import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
@@ -64,7 +64,7 @@ export function stepBunkers() {
     let occ = 0; for (const u of G.units) if (u.shelter === b) occ++;
     for (const u of G.units) {
       if (occ >= BUNKER_CAP) break;
-      if (u.shelter || u.side !== b.side || u.line !== b.line || u.T.armor || u.T.nest || u.fixed || !u.settled || u.hp <= 0) continue;
+      if (u.shelter || u.side !== b.side || u.line !== b.line || u.T.armor || u.T.nest || u.fixed || !u.settled || exposed(u) || u.hp <= 0) continue;
       u.shelter = b; u.ly0 = u.ly === undefined ? u.y : u.ly; u.tx = b.x; u.ly = b.y + (rng.float() - 0.5) * 14; occ++;
     }
     b.occ = occ;

@@ -9,6 +9,6 @@ export const MAPS = {
            rivers: [{ x0: 1149, x1: 1221, b: [72, 228] }, { x0: 1379, x1: 1451, b: [72, 228] }] },
   plain: { name: 'Wide open plain', blurb: 'A long front: 17 trenches and no cover between them. Trenches 4 and 14 are super trenches, a double line with a wall between: far stronger cover, room for 5 emplacements, 1 extra supply a second for whoever holds them, and belts of steel hedgehogs that stop the attacker\u2019s tanks until infantry take the trench.',
            rivers: [], n: 17, dbl: [4, 14] },
-  march: { name: 'The Long March', blurb: '45 trenches in nine fortified belts with wide empty ground between them, and a super trench in the middle. New troops arrive one trench behind the line you send them to.',
+  march: { name: 'The Long March', blurb: '45 trenches in nine fortified belts with wide empty ground between them, and a super trench in the middle. New troops arrive one trench behind your front, never ahead of the troops already on the march.',
            rivers: [], belts: 9, per: 5, tight: 150, gap: 520, super: true, rail: true }
 };

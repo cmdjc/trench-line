@@ -6,16 +6,18 @@ import { WH } from '../data/units.js';
 import { G, lineName, toast } from './state.js';
 import { isTrench, spawn } from './geometry.js';
 import { die, boom } from './combat.js';
+import { dropTarget, validDrop, spawnDrop } from './drop.js';
+import { DROP_RANGE } from '../data/drop.js';
 import { rng } from '../core/rng.js';
 import { tier } from './base.js';
 import { TUNNEL_T, MINE_COST, MINE_R, MINE_TANK, MINE_NEST, PARIS_CD, PARIS_DMG, PARIS_SPLASH, PARIS_GAP, DOCK_CD, DOCK_HP, DOCK_DMG, DOCK_SCALE } from '../data/base.js';
 
 export function targetFor(side) {
   if (side === 0) {
-    for (let L = G.sel + 1; L <= G.NT; L++) if (G.units.some(u => u.side === 1 && u.line === L && u.settled)) return L;
+    for (let L = G.sel + 1; L <= G.NT; L++) if (G.units.some(u => u.side === 1 && u.line === L && u.settled && !(u.fall > 0))) return L;
     return G.HQI;
   }
-  for (let L = G.ai.F - 1; L >= 1; L--) if (G.units.some(u => u.side === 0 && u.line === L && u.settled)) return L;
+  for (let L = G.ai.F - 1; L >= 1; L--) if (G.units.some(u => u.side === 0 && u.line === L && u.settled && !(u.fall > 0))) return L;
   return 0;
 }
 
@@ -42,6 +44,7 @@ export function swBlock(side) {
   if (st.tunnel) return 'Tunnelling under trench ' + st.tunnel.line + ': ' + Math.ceil(st.tunnel.t) + ' seconds to go.';
   if (st.cd > 0) return 'Ready again in ' + Math.ceil(st.cd) + ' seconds.';
   if (d.kind === 'mine' && !isTrench(targetFor(side))) return 'No enemy-held trench ahead of the selected one.';
+  if (d.kind === 'drop' && dropTarget(side) < 0) return 'No enemy or empty trench within ' + DROP_RANGE + ' trenches of your front.';
   if (d.kind === 'char2c' && G.units.some(u => u.side === side && u.type === 'char2c')) return 'Already in the field.';
   if (d.kind === 'colossus' && G.units.some(u => u.side === side && u.type === 'colossus')) return 'Already in the field.';
   if (d.kind === 'tsar' && G.units.some(u => u.side === side && u.type === 'tsar')) return 'Already in the field.';
@@ -72,9 +75,11 @@ export function useSW(side, at) {
     if (nat >= 2) { u.hp *= DOCK_HP; u.max *= DOCK_HP; }
     if (nat >= 3) { u.dmgMul = DOCK_DMG; u.scale = DOCK_SCALE; }
     if (side === 1) toast('The enemy has sent out a Southern Colossus.');
-  } else if (d.kind === 'bugs') {
-    for (let i = 0; i < 4; i++) G.shells.push({ x0: own.x, y0: 50 + i * 66, x1: tx + (rng.float() - 0.5) * 44, y1: 30 + rng.float() * (WH - 60), t: -i * 0.7, dur: Math.min(7, Math.max(1.5, Math.abs(tx - own.x) / 230)), side, type: 'barrage', dmg: atHQ ? 70 : 110, splash: 42, cov: 0.7, arc: 0, plane: true, base: atHQ });
-    if (side === 1) toast('Flying bombs are heading for ' + lineName(T) + '.');
+  } else if (d.kind === 'drop') {
+    const L = at && validDrop(side, at.line) ? at.line : dropTarget(side);
+    if (L < 0) return false;
+    spawnDrop(side, L);
+    if (side === 1) toast('Enemy paratroopers are landing at trench ' + L + '.');
   } else if (d.kind === 'caproni') {
     const vy = 110, y0 = -50;
     G.planes.push({ x: tx, y: y0, vy, side, t: 0, dur: (WH + 100) / vy });

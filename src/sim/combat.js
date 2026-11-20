@@ -6,9 +6,10 @@
 
 import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_INC } from '../data/units.js';
 import { G, isDbl, toast } from './state.js';
-import { isTrench, posX } from './geometry.js';
+import { isTrench, posX, exposed } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
 import { rng } from '../core/rng.js';
+import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT } from '../data/drop.js';
 
 export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.hp <= 0) return;
@@ -18,7 +19,7 @@ export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.T.nest) mult = (e.T.ncov || NESTCOV)[atk];
   else if (e.T.soft) mult = 0.6;
   else if (e.T.armor) mult = ARM[atk] * (e.T.thin && ARM[atk] < 0.5 ? 2 : 1);
-  else if (e.settled) {
+  else if (e.settled && !exposed(e)) {
     if (isTrench(e.line)) { if (atk !== 'raider' && !(attacker && attacker.settled && attacker.line === e.line)) mult = (cov || COV[atk]) * G.M[e.side].cover * FORTD[G.fort[e.line]] * (isDbl(e.line) ? 0.55 : 1); }
     else if (e.line === (e.side ? G.HQI : 0)) mult = 0.5;
   }
@@ -30,9 +31,10 @@ export function hurt(e, dmg, atk, attacker, cov, area) {
 /* static stand-in used when a base fires: it is nobody's unit */
 export const HQG = { type: 'base', settled: false, line: -1 };
 
-/* fortified trenches are harder to hit */
+/* fortified trenches are harder to hit, unless the target is a paratrooper still exposed after its drop;
+   raider-class fire (stormtroopers, Thompsons) ignores the penalty */
 export function accVs(u, e) {
-  return (e.settled && !e.T.armor && !e.T.nest && isTrench(e.line) && G.fort[e.line] && u.type !== 'raider' && !(u.settled && u.line === e.line)) ? FORTA[G.fort[e.line]] : 1;
+  return (e.settled && !exposed(e) && !e.T.armor && !e.T.nest && isTrench(e.line) && G.fort[e.line] && ((u.T && u.T.atk) || u.type) !== 'raider' && !(u.settled && u.line === e.line)) ? FORTA[G.fort[e.line]] : 1;
 }
 
 export function die(e) {
@@ -63,7 +65,10 @@ export function tracer(x1, y1, x2, y2, w, col) { G.tracers.push({ x1, y1, x2, y2
 export function stepUnits(dt) {
   for (const u of G.units) {
     if (u.hp <= 0) continue;
-    const T = u.T, m = G.M[u.side], minR = T.min || 0;
+    const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
+    if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
+    else if (u.scramble > 0) u.scramble -= dt;
+    const sacc = u.scramble > 0 ? DROP_SCRAMBLE_ACC : 1;
     let best = null, bd = 1e9, blocked = false;
     for (const e of G.units) {
       if (e.side === u.side || e.hp <= 0) continue;
@@ -94,7 +99,8 @@ export function stepUnits(dt) {
       }
     }
     const dy = ty - u.y;
-    if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
+    if (falling) u.moving = false;
+    else if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
       const sp = T.speed * (T.armor ? 1 : m.speed) * dt * wireSlow(u);
       let nx = u.x + sgn * Math.min(sp, Math.abs(dx));
       if (limX !== null) nx = sgn > 0 ? Math.min(nx, Math.max(u.x, limX)) : Math.max(nx, Math.min(u.x, limX));
@@ -116,7 +122,7 @@ export function stepUnits(dt) {
       u.moving = false;
       if (Math.abs(dx) <= 1.5 && Math.abs(dy) <= 1.5) { u.x = tx; u.settled = true; }
     }
-    if (u.settled && m.heal && isTrench(u.line) && u.hp < u.max) u.hp = Math.min(u.max, u.hp + m.heal * dt);
+    if (u.settled && m.heal && isTrench(u.line) && u.hp < u.max && !exposed(u)) u.hp = Math.min(u.max, u.hp + m.heal * dt);
     u.cd -= dt; u.flash -= dt;
     const dir = u.side ? -1 : 1;
     if (T.armor) {
@@ -136,9 +142,10 @@ export function stepUnits(dt) {
         }
       }
     }
-    if (u.cd > 0 || T.noFire || (u.moving && !T.moveFire)) continue;
+    if (u.cd > 0 || T.noFire || (falling && !T.fallFire) || (u.moving && !T.moveFire)) continue;
     const dmg = T.dmg * m.dmg[u.type] * (u.dmgMul || 1);
     let ox = u.x, oy = u.y;
+    const fy = falling ? Math.max(0, u.fall) * FALL_LIFT : 0; // falling men are drawn this far up the screen
     if (T.armor) {
       const hit = best && bd <= T.range, gx = hit ? best.x : G.bases[1 - u.side].x, gy = hit ? best.y : WH / 2;
       u.gun = -u.gun;
@@ -149,8 +156,8 @@ export function stepUnits(dt) {
     if (best && bd <= T.range) {
       u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
       if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: best.x, y1: best.y, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg, splash: T.splash, cov: T.cov, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
-      else if (rng.float() < T.acc * accVs(u, best)) { tracer(u.x + dir * 9, u.y, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
-      else tracer(u.x + dir * 9, u.y, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
+      else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x + dir * 9, u.y - fy, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
+      else tracer(u.x + dir * 9, u.y - fy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
       if (T.jam && rng.float() < T.jam) u.cd = 2.4;
       if (T.mag) { u.shots = (u.shots || 0) + 1; if (u.shots >= T.mag) { u.shots = 0; u.cd = T.reload; } }
     } else {
@@ -159,7 +166,7 @@ export function stepUnits(dt) {
         u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
         const by = WH / 2 + (rng.float() - 0.5) * 70;
         if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: b.x - dir * 20, y1: by, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg: dmg * 1.5, base: true, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
-        else { tracer(u.x + dir * 9, u.y, b.x - dir * 25, by, 1, '#ffe9a8'); hurtBase(1 - u.side, dmg * (u.type !== 'raider' && d > 120 ? 0.25 : 1)); }
+        else { tracer(u.x + dir * 9, u.y - fy, b.x - dir * 25, by, 1, '#ffe9a8'); hurtBase(1 - u.side, dmg * (u.type !== 'raider' && d > 120 ? 0.25 : 1)); }
       }
     }
   }
@@ -218,7 +225,7 @@ export function stepUnits(dt) {
   G.units = G.units.filter(u => u.hp > 0);
   // who holds what
   for (let L = 1; L <= G.NT; L++) {
-    let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !u.fixed) { if (u.side) b++; else a++; }
+    let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !(u.fall > 0) && !u.fixed) { if (u.side) b++; else a++; }
     if (a && !b) G.owner[L] = 0; else if (b && !a) G.owner[L] = 1;
   }
   if (G.SUPER > 0 && G.owner[G.SUPER] !== G.S.superOwner) {
@@ -233,14 +240,14 @@ export function stepUnits(dt) {
   }
   for (const n of G.units) {
     if (!n.T.nest) continue;
-    let a = 0, b = 0; for (const u of G.units) if (!u.fixed && u.line === n.line && u.settled) { if (u.side === n.side) a++; else b++; }
+    let a = 0, b = 0; for (const u of G.units) if (!u.fixed && u.line === n.line && u.settled && !(u.fall > 0)) { if (u.side === n.side) a++; else b++; }
     if (b && !a) { n.side = 1 - n.side; n.hp = Math.max(n.hp, n.max * 0.5); n.cd = 1; toast(n.side === 0 ? 'You captured a ' + n.T.name + ' at trench ' + n.line + '.' : 'The enemy captured your ' + n.T.name + ' at trench ' + n.line + '.'); }
   }
   for (let sd = 0; sd < 2; sd++) {
     if (G.nation[sd] !== 'ah') continue;
     for (let L = 1; L <= G.NT; L++) {
       if (G.fort[L] >= maxFort(L)) { G.garr[L] = 0; continue; }
-      let n = 0; for (const u of G.units) if (u.side === sd && u.line === L && u.settled && !u.fixed && !u.T.armor) n++;
+      let n = 0; for (const u of G.units) if (u.side === sd && u.line === L && u.settled && !(u.fall > 0) && !u.fixed && !u.T.armor) n++;
       if (n < 3) continue;
       G.garr[L] += dt;
       if (G.garr[L] >= GARR_T[G.fort[L]]) { G.garr[L] = 0; G.fort[L]++; if (sd === 0) toast('Your garrison has fortified trench ' + L + ' to level ' + G.fort[L] + '.'); }

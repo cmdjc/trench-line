@@ -228,3 +228,18 @@ describe('hurtBase — HQ damage and the warning toast', () => {
     off();
   });
 });
+
+describe('accVs: raider-class fire ignores the fortification penalty', () => {
+  it('a US Thompson (atk raider) ignores it like the German stormtrooper; a rifle does not', () => {
+    newGame('us', 'de', 'open', 1);
+    G.fort[3] = 2;
+    const target = mk(1, 'rifle', 3);
+    expect(accVs(mk(0, 'tommy', 5), target)).toBe(1);
+    expect(accVs(mk(0, 'rifle', 5), target)).toBeLessThan(1);
+    newGame('de', 'us', 'open', 1);
+    G.fort[3] = 2;
+    const t2 = mk(1, 'rifle', 3);
+    expect(accVs(mk(0, 'raider', 5), t2)).toBe(1);
+    expect(accVs(HQG, t2)).toBeLessThan(1);
+  });
+});
