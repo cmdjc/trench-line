@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { newGame, G } from '../../src/sim/state.js';
 import { spawn, tanks } from '../../src/sim/geometry.js';
+import { stepUnits } from '../../src/sim/combat.js';
 import { targetFor, aimPoint, swBlock, useSW, detonate, stepSW, swCost } from '../../src/sim/superweapons.js';
 import { WH } from '../../src/data/units.js';
 import { raise } from '../../src/sim/base.js';
@@ -359,6 +360,23 @@ describe('national superweapon upgrades', () => {
     useSW(0);
     c = G.units.find(u => u.type === 'colossus');
     expect(c.dmgMul).toBe(1.3); expect(c.scale).toBe(1.15);
+  });
+
+  it('T3 Colossus machine-gun hit and crush scale with dmgMul', () => {
+    const mg = (n, gap, dt) => {
+      game('aq', 'gb'); up(n);
+      G.units = []; useSW(0);
+      const c = G.units.find(u => u.type === 'colossus'); c.cd = 99;
+      const e = spawn(1, 'rifle', c.line, true); e.x = c.x + gap; e.y = c.y; e.hp = e.max = 1e6;
+      c.cd2 = 0; const h0 = e.hp;
+      for (let i = 0; i < 2000 && e.hp === h0; i++) { G.units.forEach(u => { if (u !== c && u !== e) u.hp = 0; }); stepUnits(dt); }
+      return h0 - e.hp;
+    };
+    for (const [gap, dt] of [[250, 0.01], [30, 0.01]]) {
+      const base = mg(0, gap, dt), t3 = mg(3, gap, dt);
+      expect(base).toBeGreaterThan(0);
+      expect(t3).toBeCloseTo(base * 1.3, 5);
+    }
   });
 
   it('the bonus survives buying before 4:00', () => {

@@ -1,6 +1,8 @@
 // Base upgrades: three shared tracks plus one national track, each with 3 tiers.
 // Browser-free data only; the effects live in src/sim.
 
+import { SW } from './superweapons.js';
+
 export const BASE_COST = [300, 550, 900];
 export const SHARED = ['walls', 'depot', 'hosp'];
 
@@ -37,21 +39,21 @@ export const BASE = {
     `Another +${DEPOT_INC} supplies every second.`,
     `Another +${DEPOT_INC} supplies every second.`] },
   hosp: { name: 'Field Hospital', tiers: [
-    `Troops resting in your HQ trench recover ${HOSP_HEAL} health per second.`,
-    `Troops resting in your HQ trench recover another ${HOSP_HEAL} health per second.`,
-    `Troops resting in your HQ trench recover another ${HOSP_HEAL} health per second.`] },
+    `Troops resting in a trench recover ${HOSP_HEAL} health per second.`,
+    `Troops resting in a trench recover another ${HOSP_HEAL} health per second.`,
+    `Troops resting in a trench recover another ${HOSP_HEAL} health per second.`] },
   gb: { name: 'Tunnelling Company', tiers: [
-    `Mines tunnel in ${TUNNEL_T} seconds and cost ${Math.round((1 - MINE_COST) * 100)}% less.`,
-    `Mines have a wider, stronger blast: a radius of ${MINE_R}, dealing ${MINE_TANK} damage to tanks and ${MINE_NEST} to machine-gun nests.`,
+    `Your Messines mine tunnels in ${TUNNEL_T} seconds and costs ${Math.round((1 - MINE_COST) * 100)}% less.`,
+    `Your Messines mine has a wider, stronger blast: a radius of ${MINE_R}, dealing ${MINE_TANK} damage to tanks and ${MINE_NEST} to emplacements.`,
     `Newly bought infantry tunnel out at the trench they are sent to, instead of walking from your HQ.`] },
   de: { name: 'Krupp Works', tiers: [
-    `Paris Gun: a long-range shell strikes the enemy front every ${PARIS_CD} seconds.`,
-    `The shell deals ${PARIS_DMG} damage in a ${PARIS_SPLASH} radius.`,
+    `The Paris Gun is ready to fire again after ${PARIS_CD} seconds instead of ${SW.de.cd}.`,
+    `Paris Gun shells deal ${PARIS_DMG} damage in a wider ${PARIS_SPLASH} radius.`,
     `The Paris Gun fires two shells, ${PARIS_GAP} seconds apart.`] },
   fr: { name: 'Voie Sacrée', tiers: [
     `Your infantry move ${pct(VOIE_SPEED)}% faster.`,
     `+${VOIE_INC} supplies every second.`,
-    `Every ${CONVOY_T} seconds, a convoy delivers ${CONVOY_N} free riflemen to your HQ.`] },
+    `Every ${CONVOY_T} seconds, a lorry convoy brings ${CONVOY_N} free troops to the front.`] },
   us: { name: 'Liberty Depot', tiers: [
     `Your supply income grows by ${LIB_GROWTH} per second every minute.`,
     `Supply Depots yield ${pct(LIB_DEPOT)}% more.`,
@@ -61,17 +63,17 @@ export const BASE = {
     `Your infantry have ${pct(KUK_HP)}% more health.`,
     `Room for ${KUK_CAP} more infantry.`] },
   aq: { name: 'Colossus Drydock', tiers: [
-    `Every ${DOCK_CD} seconds, a Colossus ironclad joins your front.`,
-    `Colossus ironclads have ${pct(DOCK_HP)}% more health and deal ${pct(DOCK_DMG)}% more damage.`,
-    `Each Colossus is ${pct(DOCK_SCALE)}% larger and fires further.`] },
+    `The Southern Colossus is ready again after ${DOCK_CD} seconds instead of ${SW.aq.cd}.`,
+    `The Southern Colossus has ${pct(DOCK_HP)}% more health.`,
+    `The Southern Colossus is ${pct(DOCK_SCALE)}% bigger and deals ${pct(DOCK_DMG)}% more damage.`] },
   it: { name: 'Teleferica', tiers: [
     `Newly bought infantry ride a cable car straight to the selected trench, up to ${TELE_RANGE[1]} trenches from your HQ.`,
     `Newly bought infantry ride a cable car straight to the selected trench, up to ${TELE_RANGE[2]} trenches from your HQ.`,
     `The cable car reaches any trench and carries tanks too.`] },
   ru: { name: 'Conscription Office', tiers: [
-    `Every ${CONSCRIPT[1].t} seconds, ${CONSCRIPT[1].n} free conscript joins your HQ.`,
-    `Every ${CONSCRIPT[2].t} seconds, ${CONSCRIPT[2].n} free conscript joins your HQ.`,
-    `Every ${CONSCRIPT[3].t} seconds, ${CONSCRIPT[3].n} free conscripts join your HQ.`] }
+    `Every ${CONSCRIPT[1].t} seconds, ${CONSCRIPT[1].n} free conscript joins your army.`,
+    `Every ${CONSCRIPT[2].t} seconds, ${CONSCRIPT[2].n} free conscript joins your army.`,
+    `Every ${CONSCRIPT[3].t} seconds, ${CONSCRIPT[3].n} free conscripts join your army.`] }
 };
 
 export const baseIds = nation => [...SHARED, nation];
