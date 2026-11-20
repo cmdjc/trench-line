@@ -2,6 +2,7 @@
 import { circle, oval, line, at, bagArc, ctx, BAGD, TR } from './helpers.js';
 import { WH, SEG, HEDGE, BW } from '../../data/units.js';
 import { G, isDbl } from '../../sim/state.js';
+import { NAT } from '../../data/nations.js';
 import { decor } from '../../core/rng.js';
 
 let patches = [];
@@ -225,6 +226,36 @@ export function flag(n, x, y) {
   line(x, y - 2, x, y + h + 10, 1.6, '#1b1b14');
 }
 
+// Extra HQ layers per upgrade tier; nothing is drawn at tier 0.
+function upgrades(B, nation) {
+  if (!B) return;
+  if (B.walls >= 1) bagArc(0, 0, 88, -Math.PI * 0.36, Math.PI * 0.36);
+  if (B.walls >= 2) bagArc(0, 0, 112, -Math.PI * 0.34, Math.PI * 0.34);
+  if (B.walls >= 3) {
+    ctx.lineCap = 'butt'; ctx.beginPath(); ctx.arc(0, 0, 94, -Math.PI * 0.3, Math.PI * 0.3);
+    ctx.strokeStyle = '#8c8a80'; ctx.lineWidth = 4; ctx.stroke();
+  }
+  for (let i = 0; i < B.depot; i++) {
+    const x = -34 + i * 20;
+    ctx.fillStyle = '#6b5433'; ctx.fillRect(x, -88, 16, 14); ctx.fillRect(x + 2, -100, 12, 12);
+    ctx.fillStyle = '#8a7146'; ctx.fillRect(x + 2, -86, 12, 4); ctx.fillRect(x + 4, -98, 8, 4);
+  }
+  for (let i = 0; i < B.hosp; i++) {
+    const x = -30 + i * 28;
+    ctx.fillStyle = '#c9c3a8'; ctx.beginPath(); ctx.moveTo(x - 12, 100); ctx.lineTo(x, 80); ctx.lineTo(x + 12, 100); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8a8670'; ctx.fillRect(x - 1, 90, 2, 10);
+    if (i === 0) { ctx.fillStyle = '#a3301b'; ctx.fillRect(x - 1.5, 83, 3, 9); ctx.fillRect(x - 4.5, 86, 9, 3); }
+  }
+  if (B.nat > 0) {
+    const w = 12 + B.nat * 8, h = 10 + B.nat * 8, x = -62 - w, y = -h / 2;
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x + 3, y + 3, w, h);
+    ctx.fillStyle = '#807e74'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = NAT[nation].hat; ctx.fillRect(x, y, w, 5);
+    ctx.fillStyle = '#14140e'; ctx.fillRect(x + w / 2 - 2, y + h - 8, 4, 8);
+    for (let i = 1; i < B.nat; i++) ctx.fillRect(x + 4 + (i - 1) * 10, y + 8, 3, 4);
+  }
+}
+
 export function drawBase(s) {
   const b = G.bases[s];
   at(b.x, WH / 2, s === 1, () => {
@@ -239,6 +270,7 @@ export function drawBase(s) {
     ctx.fillStyle = '#8a7146'; ctx.fillRect(-76, -94, 10, 7);
     ctx.lineCap = 'round'; ctx.fillStyle = '#17170f'; ctx.fillRect(-8, 104, 6, 3.5); ctx.fillRect(-8, 117, 6, 3.5);
     line(-18, 112, -4, 112, 2.4, '#2c2c1e'); line(-4, 112, 14, 112, 2.8, '#2c2c1e');
+    upgrades(G.base[s], G.nation[s]);
     if (b.hp < b.max * 0.5) { ctx.fillStyle = 'rgba(20,14,8,.55)'; circle(-20, -14, 14); circle(0, 22, 10); }
   });
   flag(G.nation[s], b.x + (s ? 28 : -52), WH / 2 - 104);

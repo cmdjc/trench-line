@@ -145,6 +145,14 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   expect(T.info().n[0]).toBe(n0 + 2);
   expect(T.info().sup).toBeLessThan(1000 + sup0 - 20); // charged
 
+  // -- upgrade the HQ walls from the HQ panel, then return to trench 1
+  click('#map button[data-line="0"]');
+  expect(d.getElementById('basePanel').hidden).toBe(false);
+  click('#basePanel button[data-base="walls"]');
+  expect(d.getElementById('basePanel').textContent).toContain('Tier 1 of 3');
+  click('#map button[data-line="1"]');
+  expect(d.getElementById('basePanel').hidden).toBe(true);
+
   // -- advance to trench 2
   click('#advBtn');
   expect(T.info().sel).toBe(2);
