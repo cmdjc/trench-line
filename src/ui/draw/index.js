@@ -115,7 +115,7 @@ export function draw() {
   for (const w of G.wrecks) if (vis(w.x)) at(w.x, w.y, w.side === 1, () => drawWreck(w));
   for (const u of G.units) {
     if (u.T.armor && vis(u.x)) {
-      at(u.x, u.y, u.side === 1, () => drawTank(u));
+      at(u.x, u.y, u.side === 1, () => { if (u.scale) ctx.scale(u.scale, u.scale); drawTank(u); });
       const bw = u.T.bar ? u.T.bar[0] : 30, by = u.T.bar ? u.T.bar[1] : -23;
       ctx.fillStyle = 'rgba(20,20,14,.75)'; ctx.fillRect(u.x - bw / 2 - 1, u.y + by - 1, bw + 2, 4);
       ctx.fillStyle = u.side ? '#e0583e' : '#9fc05a';

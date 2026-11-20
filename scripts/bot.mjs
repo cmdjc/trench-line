@@ -15,6 +15,7 @@ import { power, cost, full } from '../src/sim/geometry.js';
 import { takeCard } from '../src/sim/cards.js';
 import { swBlock, aimPoint } from '../src/sim/superweapons.js';
 import { SW } from '../src/data/superweapons.js';
+import { tier, nextCost } from '../src/sim/base.js';
 
 const argv = process.argv.slice(2);
 const json = argv.includes('--json');
@@ -22,6 +23,7 @@ const [me = 'gb', foe = 'de', map = 'open', seedArg = '1', ratioArg = '2.5'] = a
 const seed = Number(seedArg) >>> 0 || 1;
 const ratio = Number(ratioArg) || 2.5;
 const MAXS = Number(process.env.MAXS || 1800);
+const BASEX = Number(process.env.BASEX || 2); // buy base tiers at this multiple of the cost
 
 newGame(me, foe, map, seed);
 const brain = makeRng((seed ^ 0xB07) >>> 0); // decisions stay off the battle stream
@@ -30,6 +32,7 @@ let end = null;
 bus.on('game:end', d => { end = d; });
 
 const settledAt = L => G.units.filter(u => u.side === 0 && u.line === L).every(u => u.settled);
+const BASE_ROT = ['walls', 'nat', 'depot', 'hosp']; // same rotation as the AI
 const pref = ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
 let want = null, sw = 0;
 
@@ -44,6 +47,14 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
   if (!G.S.unlocked[want] && want !== 'rifle' && want !== 'mg') want = null; // still card-locked
   else if (full(0, want) && G.S.supplies > 300) want = null; // at the cap, pick fresh
   else if (G.S.supplies >= cost(want)) { if (commands.buyUnit(want)) want = null; }
+
+  // level base upgrades in rotation once supplies are at least twice the next cost
+  {
+    const low = Math.min(...BASE_ROT.map(i => tier(0, i)));
+    const id = BASE_ROT.find(i => tier(0, i) === low);
+    const c = nextCost(0, id);
+    if (c !== null && G.S.supplies >= c * BASEX) commands.buyBase(id);
+  }
 
   // fire the superweapon on a whim when it is ready
   if (brain() < 0.1 && !swBlock(0) && G.S.supplies >= SW[G.nation[0]].cost) {
@@ -76,6 +87,7 @@ const result = {
   won: end ? end.won : null, finished: !!end,
   time: Math.round(G.S.t * 10) / 10, sel: G.sel,
   kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw,
+  base: BASE_ROT.map(i => tier(0, i)).join(''), foeBase: BASE_ROT.map(i => tier(1, i)).join(''),
   forts: G.fort.join(''), hq: Math.round(G.bases[0].hp) + '/' + Math.round(G.bases[1].hp),
 };
 if (json) console.log(JSON.stringify(result));

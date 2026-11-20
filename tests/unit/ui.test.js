@@ -12,6 +12,7 @@ import { META, makeCode, readCode } from '../../src/sim/meta.js';
 import { TECH } from '../../src/data/tech.js';
 import { bus } from '../../src/core/events.js';
 import { cam, vw, resize, focusLine, metrics } from '../../src/ui/camera.js';
+import { refresh } from '../../src/ui/hud.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 
 const $ = id => document.getElementById(id);
@@ -31,6 +32,57 @@ beforeEach(() => {
   localStorage.clear();
   META.points = 0; META.tech = {}; META.runs = 0; META.wins = 0; META.rev = 0;
   game();
+});
+
+describe('base research start tiers', () => {
+  it('starting a longer map with base research owned does not throw', () => {
+    META.tech = { bw1: 1, bd1: 1, bh1: 1, bn1: 1 };
+    game();                                   // strip built for 'open'
+    expect(() => newGame('gb', 'de', 'plain', 7)).not.toThrow();
+    expect(G.running).toBe(true);
+  });
+});
+
+describe('mine button text', () => {
+  it('shows the researched tunnel time once gb nat tier 1 is owned', () => {
+    G.S.supplies = 5000; refresh();
+    expect($('swBtn').textContent).toContain('25 seconds');
+    G.base[0].nat = 1; refresh();
+    expect($('swBtn').textContent).toContain('15 seconds');
+  });
+});
+
+describe('base panel', () => {
+  it('shows on the HQ line with four upgrade buttons and hides elsewhere', () => {
+    expect($('basePanel').hidden).toBe(true);
+    document.querySelector('#map button[data-line="0"]').click();
+    expect($('basePanel').hidden).toBe(false);
+    const btns = [...document.querySelectorAll('#basePanel button[data-base]')];
+    expect(btns.length).toBe(4);
+    expect(btns[0].textContent).toBe('Upgrade: 300');
+    document.querySelector('#map button[data-line="1"]').click();
+    expect($('basePanel').hidden).toBe(true);
+  });
+
+  it('buying walls raises the tier and updates the text', () => {
+    document.querySelector('#map button[data-line="0"]').click();
+    G.S.supplies = 1000; refresh();
+    expect($('basePanel').textContent).toContain('Tier 0 of 3');
+    document.querySelector('#basePanel button[data-base="walls"]').click();
+    expect(G.base[0].walls).toBe(1);
+    expect($('basePanel').textContent).toContain('Tier 1 of 3');
+    expect(document.querySelector('#basePanel button[data-base="walls"]').textContent).toBe('Upgrade: 550');
+  });
+
+  it('national row buys the nation upgrade and maxed rows are disabled', () => {
+    document.querySelector('#map button[data-line="0"]').click();
+    G.S.supplies = 5000; refresh();
+    const nat = () => document.querySelector('#basePanel button[data-base="gb"]');
+    for (let i = 0; i < 3; i++) nat().click();
+    expect(G.base[0].nat).toBe(3);
+    expect(nat().textContent).toBe('Fully upgraded');
+    expect(nat().disabled).toBe(true);
+  });
 });
 
 describe('hud', () => {

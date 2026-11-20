@@ -12,6 +12,8 @@ Every nation plays differently: Britain's wire and mines, Germany's Paris Gun an
 
 Four battlefields: open ground, a river crossing with two bridges, a wide plain with double super trenches, and the Long March — 45 trenches with a super trench in the middle.
 
+Tap your HQ to buy base upgrades with supplies: three shared ones (HQ Walls, Supply Depot, Field Hospital) and one national upgrade, each with three tiers. They take effect at once and cost troops you could have bought, so choose when to spend. The enemy buys them too. Base branches in the research tree let a battle start with some of them already at tier 1 or 2.
+
 Research points carry between battles. Spend them on a permanent tree, or carry your progress with a save code.
 
 ## Controls

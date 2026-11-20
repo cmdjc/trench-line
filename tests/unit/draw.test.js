@@ -133,6 +133,17 @@ describe('renderer', () => {
     }
   });
 
+  it('draws the HQ at every upgrade tier on both sides for every nation', () => {
+    for (const n of NATS) {
+      newGame(n, 'de', 'open', 7);
+      populate(n);
+      for (let t = 0; t <= 3; t++) {
+        for (const s of [0, 1]) for (const k of ['walls', 'depot', 'hosp', 'nat']) G.base[s][k] = t;
+        expect(() => draw(), `${n} tier ${t}`).not.toThrow();
+      }
+    }
+  });
+
   it('culls entities outside the camera window via vis()', () => {
     newGame('gb', 'de', 'open', 7);
     populate('gb');

@@ -8,8 +8,10 @@ import { CARDS } from '../data/cards.js';
 import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/units.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
+import { infCap, tier, nextCost } from '../sim/base.js';
+import { BASE, baseIds, TUNNEL_T } from '../data/base.js';
 import { freeSlot, canDef } from '../sim/fortify.js';
-import { swBlock } from '../sim/superweapons.js';
+import { swBlock, swCost } from '../sim/superweapons.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
 import { focusLine } from './camera.js';
@@ -27,13 +29,33 @@ export function buildMap() {
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
 }
 
+let baseKey = '';
+function refreshBase() {
+  const el = $('basePanel'), show = G.sel === 0;
+  el.hidden = !show;
+  if (!show) return;
+  const nation = G.nation[0], ids = baseIds(nation), key = G.MAP + nation;
+  if (key !== baseKey || el.children.length !== ids.length) {   // rebuild only when the rows change, so focus stays on a clicked button
+    baseKey = key;
+    el.innerHTML = ids.map(id => '<div class="brow"><h3>' + BASE[id].name + ' <span class="tier"></span></h3><p></p><button data-base="' + id + '"></button></div>').join('');
+  }
+  ids.forEach((id, i) => {
+    const key = id === nation ? 'nat' : id, t = tier(0, key), c = nextCost(0, key), row = el.children[i];
+    row.querySelector('.tier').textContent = 'Tier ' + t + ' of 3';
+    row.querySelector('p').textContent = c === null ? BASE[id].tiers[2] : BASE[id].tiers[t];
+    const b = row.querySelector('button');
+    b.textContent = c === null ? 'Fully upgraded' : 'Upgrade: ' + c;
+    b.disabled = c === null || G.S.supplies < c;
+  });
+}
+
 export function refresh() {
   if (!G.S) return;
   const S = G.S;
   $('supplies').textContent = Math.floor(S.supplies);
   $('rate').textContent = '+' + incomeNow().toFixed(1) + ' a second';
   const n = count(0);
-  $('army').textContent = 'Infantry ' + n + ' of ' + NAT[G.nation[0]].inf + (anyTank() ? (G.nation[0] === 'ah' ? ', siege guns ' : ', armour ') + fmt(tanks(0)) + ' of ' + NAT[G.nation[0]].tanks : '');
+  $('army').textContent = 'Infantry ' + n + ' of ' + infCap(0) + (anyTank() ? (G.nation[0] === 'ah' ? ', siege guns ' : ', armour ') + fmt(tanks(0)) + ' of ' + NAT[G.nation[0]].tanks : '');
   { const si = $('superInfo'), held = G.SUPER > 0 && G.owner[G.SUPER] === 0; si.hidden = !held; if (held) { const r = Math.max(0, Math.ceil(SUPER_CARD_T - S.superT)); si.textContent = 'Super trench: next free card in ' + Math.floor(r / 60) + ':' + (r % 60 < 10 ? '0' : '') + (r % 60); } }
   { const left = Math.max(1, Math.ceil(S.need - S.cardKills)); $('cardText').textContent = 'Next card in about ' + left + (left === 1 ? ' kill' : ' kills'); }
   const m = Math.floor(S.t / 60), s = Math.floor(S.t % 60); $('clock').textContent = m + ':' + (s < 10 ? '0' : '') + s;
@@ -60,9 +82,10 @@ export function refresh() {
   $('advBtn').disabled = G.sel >= G.HQI || !here; $('backBtn').disabled = G.sel <= 0 || !here;
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
     if (G.aim && (!d || swBlock(0))) G.aim = null;
-    if (d && G.aim) { b.innerHTML = '<b>Confirm target, ' + d.cost + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < d.cost ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < d.cost; }
-    else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + d.cost + '</b><small>' + (why || d.text) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < d.cost); }
+    if (d && G.aim) { b.innerHTML = '<b>Confirm target, ' + swCost(0) + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < swCost(0) ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; b.disabled = G.aim.x === null || S.supplies < swCost(0); }
+    else if (d) { const why = swBlock(0); b.innerHTML = '<b>Superweapon: ' + d.name + ', ' + swCost(0) + '</b><small>' + (why || (d.kind === 'mine' && tier(0, 'nat') >= 1 ? d.text.replace('25', TUNNEL_T) : d.text)) + '</small>'; b.disabled = !!why || (d.kind !== 'paris' && S.supplies < swCost(0)); }
     $('aimCancel').hidden = !G.aim; }
+  refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
   const held = Object.keys(S.taken).map(id => { const c = CARDS.find(x => x.id === id); return c.name + (S.taken[id] > 1 ? ' ×' + S.taken[id] : ''); });
   $('held').textContent = held.length ? 'Cards: ' + held.join(', ') + '.' : 'No cards yet. Kills earn them.';
@@ -76,6 +99,7 @@ export function initHud() {
   $('fortBtn').addEventListener('click', () => commands.fortifyAt(G.sel));
   $('nestBtn').addEventListener('click', () => commands.buildNestAt(G.sel));
   $('defBtn').addEventListener('click', () => commands.buildDefAt(G.sel));
+  $('basePanel').addEventListener('click', ev => { const b = ev.target.closest('button[data-base]'); if (b) commands.buyBase(b.dataset.base === G.nation[0] ? 'nat' : b.dataset.base); });
   $('aimCancel').addEventListener('click', () => commands.cancelAim());
   $('swBtn').addEventListener('click', () => {
     if (G.aim) { commands.confirmAim(); return; }

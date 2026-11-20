@@ -12,6 +12,7 @@ import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 import { has } from './meta.js';
 import { spawn, ut } from './geometry.js';
+import { baseIncome, raise } from './base.js';
 
 export const G = {
   /* layout (setLayout fills these in) */
@@ -36,7 +37,7 @@ export const lineName = L => (L === 0 ? 'your HQ' : L === G.HQI ? 'the enemy HQ'
 export const isDbl = L => G.DBL.indexOf(L) >= 0;
 export const dblHeld = side => { let n = 0; for (const L of G.DBL) if (G.owner && G.owner[L] === side) n++; return n; };
 export const depots = side => { let n = 0; for (const u of G.units) if (u.T.depot && u.side === side) n++; return n; };
-export const incomeNow = () => G.M[0].income + G.M[0].growth * G.S.t / 60 + depots(0) * DEPOT_RATE + (G.owner && G.owner[G.SUPER] === 0 ? SUPER_INC : 0) + dblHeld(0) * DBL_RATE;
+export const incomeNow = () => G.M[0].income + G.M[0].growth * G.S.t / 60 + depots(0) * DEPOT_RATE + (G.owner && G.owner[G.SUPER] === 0 ? SUPER_INC : 0) + dblHeld(0) * DBL_RATE + baseIncome(0);
 export const nestCost = side => utOf(G.nation[side], NAT[G.nation[side]].nest).cost;
 
 export function setLayout(key) {
@@ -109,11 +110,16 @@ export function newGame(mine, theirs, map, seed) {
   relabelCards();
   G.units = []; G.aim = null; G.planes = []; G.tracers = []; G.shells = []; G.booms = []; G.floats = []; G.scorch = []; G.smoke = []; G.wrecks = [];
   G.bases = [{ x: G.LX[0], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }, { x: G.LX[G.HQI], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }];
-  G.ai = { money: 40, buyT: 1, thinkT: 3, lastAdv: 0, aggr: 2, want: null, F: G.NT };
+  G.ai = { money: 40, fund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
   G.fort = new Array(G.HQI + 1).fill(0); G.jobs = []; G.fields = []; G.garr = new Array(G.HQI + 1).fill(0);
   G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
   G.sel = 1; G.offer = null;
+  G.base = [0, 1].map(() => ({ walls: 0, depot: 0, hosp: 0, nat: 0, t: 0, conv: 0, convoyed: false, libT: 0 }));
   applyTech();
+  for (const [pre, id] of [['bw', 'walls'], ['bd', 'depot'], ['bh', 'hosp'], ['bn', 'nat']]) {
+    const n = has(pre + '2') ? 2 : has(pre + '1') ? 1 : 0;
+    for (let i = 0; i < n; i++) raise(0, id);
+  }
   for (let i = 0, n = Math.round((120 + (has('vets') ? 80 : 0)) / ut(0, 'rifle').cost); i < n; i++) spawn(0, 'rifle', 1, true);
   for (let i = 0, n = Math.round(AI_START * 20 / ut(1, 'rifle').cost); i < n; i++) spawn(1, 'rifle', G.NT, true);
   G.running = true; G.userPaused = false;

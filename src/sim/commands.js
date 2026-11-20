@@ -9,7 +9,9 @@ import { NAT } from '../data/nations.js';
 import { G, toast, nestCost, lineName } from './state.js';
 import { isTrench, spawn, cost, full, frontLine } from './geometry.js';
 import { canDef, buildDef, buildNest, fortifyAt } from './fortify.js';
-import { swBlock, useSW } from './superweapons.js';
+import { tier, raise, nextCost } from './base.js';
+import { BASE } from '../data/base.js';
+import { swBlock, useSW, swCost } from './superweapons.js';
 
 export { fortifyAt };
 
@@ -80,9 +82,9 @@ export function startAiming() {
 export function confirmAim() {
   const d = SW[G.nation[0]];
   if (!G.running || !d || !G.aim) return false;
-  if (G.aim.x === null || G.S.supplies < d.cost || swBlock(0)) return false;
+  if (G.aim.x === null || G.S.supplies < swCost(0) || swBlock(0)) return false;
   if (!useSW(0, { x: G.aim.x, y: G.aim.y })) return false;
-  G.S.supplies -= d.cost; G.aim = null;
+  G.S.supplies -= swCost(0); G.aim = null;
   toast('The Paris Gun has fired. The shell lands in 4 seconds.');
   bus.emit('hud'); return true;
 }
@@ -92,8 +94,8 @@ export function cancelAim() { G.aim = null; bus.emit('hud'); }
 export function fireSuperweapon() {
   const d = SW[G.nation[0]];
   if (!G.running || !d || d.kind === 'paris') return false;
-  if (G.S.supplies < d.cost || !useSW(0)) return false;
-  G.S.supplies -= d.cost;
+  if (G.S.supplies < swCost(0) || !useSW(0)) return false;
+  G.S.supplies -= swCost(0);
   toast(d.kind === 'mine' ? 'Tunnellers are digging toward trench ' + G.sw[0].tunnel.line + '.'
     : d.kind === 'char2c' ? 'A Char 2C is rolling out of your HQ.'
     : d.kind === 'tsar' ? 'A Tsar Tank is rolling out of your HQ.'
@@ -101,5 +103,14 @@ export function fireSuperweapon() {
     : d.kind === 'bugs' ? 'Kettering Bugs are in the air.'
     : d.kind === 'caproni' ? 'A Caproni bomber is on its way.'
     : 'The 42 cm battery has fired.');
+  bus.emit('hud'); return true;
+}
+
+export function buyBase(id) {
+  if (!['walls', 'depot', 'hosp', 'nat'].includes(id)) return false;
+  const c = nextCost(0, id);
+  if (!G.running || c === null || G.S.supplies < c) return false;
+  G.S.supplies -= c; raise(0, id);
+  toast(BASE[id === 'nat' ? G.nation[0] : id].name + ' raised to tier ' + tier(0, id) + '.');
   bus.emit('hud'); return true;
 }

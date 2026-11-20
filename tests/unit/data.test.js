@@ -1,9 +1,10 @@
 import { expect, it } from 'vitest';
-import { NATS } from '../../src/data/nations.js';
+import { NATS, NAT } from '../../src/data/nations.js';
 import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
 import { CARDS, CARDTXT } from '../../src/data/cards.js';
 import { TECH, TECH_IDS } from '../../src/data/tech.js';
 import { MAPS } from '../../src/data/maps.js';
+import { BASE, baseIds } from '../../src/data/base.js';
 import { SW } from '../../src/data/superweapons.js';
 
 it('every nation has rifle, mg and at least one armour slot', () => {
@@ -25,7 +26,7 @@ it('card ids unique; CARDTXT keys are card ids; canId values known; TECH ids uni
   expect(new Set(tids).size).toBe(tids.length);
 });
 it('save-code mask order is pinned in full (append-only contract)', () => {
-  expect(TECH_IDS()).toEqual(['marks','kit','craft','vets','deep','walls','guns','aid','stock','rail','econ','intel','mech','gunnery','works','corps','titan']);
+  expect(TECH_IDS()).toEqual(['marks','kit','craft','vets','deep','walls','guns','aid','stock','rail','econ','intel','mech','gunnery','works','corps','titan','bw1','bw2','bd1','bd2','bh1','bh2','bn1','bn2']);
 });
 it('every non-base damage unit declares atk or is a base type', () => {
   const base = new Set(Object.keys(UT));
@@ -35,4 +36,14 @@ it('every non-base damage unit declares atk or is a base type', () => {
 it('each nation has a superweapon; maps cover the four keys', () => {
   for (const n of NATS) expect(SW[n], n).toBeTruthy();
   expect(Object.keys(MAPS).sort()).toEqual(['march', 'open', 'plain', 'river']);
+});
+
+it('every nation has a base upgrade with 3 tier texts; baseIds lists shared + national', () => {
+  for (const n of Object.keys(NAT)) {
+    expect(BASE[n]?.name, n).toBeTruthy();
+    expect(BASE[n].tiers.length).toBe(3);
+    for (const t of BASE[n].tiers) expect(t).toMatch(/\.$/);
+  }
+  for (const k of ['walls', 'depot', 'hosp']) expect(BASE[k].tiers.length).toBe(3);
+  expect(baseIds('ru')).toEqual(['walls', 'depot', 'hosp', 'ru']);
 });

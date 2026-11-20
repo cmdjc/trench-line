@@ -211,6 +211,26 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 4. Tank corps (90 points): The tank unlock is always offered in your first card choice.
 5. Landships (120 points): Super-heavy tanks, such as Germany’s Ratte, are available from the start of every battle. No card needed.
 
+**HQ Walls**
+
+1. HQ Walls I (25 points): Your HQ starts each battle with HQ Walls at tier 1.
+2. HQ Walls II (60 points): Your HQ starts each battle with HQ Walls at tier 2.
+
+**Supply Depot**
+
+1. Supply Depot I (25 points): Your HQ starts each battle with a Supply Depot at tier 1.
+2. Supply Depot II (60 points): Your HQ starts each battle with a Supply Depot at tier 2.
+
+**Field Hospital**
+
+1. Field Hospital I (25 points): Your HQ starts each battle with a Field Hospital at tier 1.
+2. Field Hospital II (60 points): Your HQ starts each battle with a Field Hospital at tier 2.
+
+**National works**
+
+1. National works I (40 points): Your nation’s base upgrade starts each battle at tier 1.
+2. National works II (90 points): Your nation’s base upgrade starts each battle at tier 2.
+
 ## Superweapons
 
 | Nation | Name | Cost | Cooldown | Effect |

@@ -70,7 +70,7 @@ export function stepUnits(dt) {
       const dx = e.x - u.x, d = Math.hypot(dx, e.y - u.y);
       if (d < bd && d >= minR) { bd = d; best = e; }
       if (Math.abs(dx) < 40 && !(e.settled && e.line === u.line)) blocked = true;
-      if (T.crush && d < T.crush) hurt(e, T.crushDps * dt, 'raider', null, undefined, true);
+      if (T.crush && d < T.crush) hurt(e, T.crushDps * dt * (u.dmgMul || 1), 'raider', null, undefined, true);
     }
     if (T.crush) blocked = false;
     if (u.ly === undefined) u.ly = u.y;
@@ -131,13 +131,13 @@ export function stepUnits(dt) {
         if (u.cd2 <= 0 && best && bd <= T.mg.range) {
           u.cd2 = T.mg.cd * (0.8 + rng.float() * 0.4); u.flash2 = 0.07;
           const sy = best.y < u.y ? -(T.big ? 20 : 13) : (T.big ? 20 : 13);
-          if (rng.float() < T.mg.acc * accVs(u, best)) { tracer(u.x, u.y + sy, best.x, best.y, 1, '#ffd76a'); hurt(best, T.mg.dmg, 'mg', u); }
+          if (rng.float() < T.mg.acc * accVs(u, best)) { tracer(u.x, u.y + sy, best.x, best.y, 1, '#ffd76a'); hurt(best, T.mg.dmg * (u.dmgMul || 1), 'mg', u); }
           else tracer(u.x, u.y + sy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,215,106,.6)');
         }
       }
     }
     if (u.cd > 0 || T.noFire || (u.moving && !T.moveFire)) continue;
-    const dmg = T.dmg * m.dmg[u.type];
+    const dmg = T.dmg * m.dmg[u.type] * (u.dmgMul || 1);
     let ox = u.x, oy = u.y;
     if (T.armor) {
       const hit = best && bd <= T.range, gx = hit ? best.x : G.bases[1 - u.side].x, gy = hit ? best.y : WH / 2;
