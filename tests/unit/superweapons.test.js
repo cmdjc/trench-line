@@ -203,36 +203,6 @@ describe('one-at-a-time supers', () => {
   });
 });
 
-describe('us Kettering Bugs', () => {
-  it('four diving shells staggered over the target trench', () => {
-    game('us', 'de');
-    const tx = G.LX[NT()];
-    const dur = Math.min(7, Math.max(1.5, Math.abs(tx - G.bases[0].x) / 230));
-    expect(useSW(0)).toBe(true);
-    expect(G.shells).toHaveLength(4);
-    G.shells.forEach((s, i) => {
-      expect(s.t).toBeCloseTo(-i * 0.7, 10);
-      expect(s.dur).toBeCloseTo(dur, 10);
-      expect(s).toMatchObject({ side: 0, type: 'barrage', dmg: 110, splash: 42, cov: 0.7, arc: 0, plane: true, base: false });
-      expect(Math.abs(s.x1 - tx)).toBeLessThanOrEqual(22); // (rng-0.5)*44
-    });
-    expect(G.sw[0].cd).toBe(75);
-  });
-
-  it('targets the HQ with weaker base shells when no trench is held ahead', () => {
-    game('us', 'de');
-    G.units = G.units.filter(u => u.side === 0);
-    const tx = G.bases[1].x - 24;
-    const dur = Math.min(7, Math.max(1.5, Math.abs(tx - G.bases[0].x) / 230));
-    useSW(0);
-    G.shells.forEach(s => {
-      expect(s.dmg).toBe(70);
-      expect(s.base).toBe(true);
-      expect(s.dur).toBeCloseTo(dur, 10);
-    });
-  });
-});
-
 describe('it Caproni bombers', () => {
   it('one plane, eight bombs down the trench column', () => {
     game('it', 'de');

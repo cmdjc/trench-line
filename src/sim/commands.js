@@ -117,7 +117,6 @@ export function fireSuperweapon() {
     : d.kind === 'char2c' ? 'A Char 2C is rolling out of your HQ.'
     : d.kind === 'tsar' ? 'A Tsar Tank is rolling out of your HQ.'
     : d.kind === 'colossus' ? 'The Southern Colossus is rolling out of your HQ.'
-    : d.kind === 'bugs' ? 'Kettering Bugs are in the air.'
     : d.kind === 'caproni' ? 'A Caproni bomber is on its way.'
     : 'The 42 cm battery has fired.');
   bus.emit('hud'); return true;
