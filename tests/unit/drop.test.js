@@ -6,6 +6,7 @@ import { swBlock, useSW } from '../../src/sim/superweapons.js';
 import { walkFront, validDrop, dropTarget, nearestDrop, spawnDrop } from '../../src/sim/drop.js';
 import { startAiming, confirmAim, fireSuperweapon } from '../../src/sim/commands.js';
 import { infCap } from '../../src/sim/base.js';
+import { DROP_FALL, DROP_STAGGER, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC } from '../../src/data/drop.js';
 import { bus } from '../../src/core/events.js';
 
 const toasts = [];
@@ -175,7 +176,7 @@ describe('landing and ownership', () => {
     for (let i = 0; i < 15; i++) stepUnits(0.1);
     expect(paras().some(u => u.fall > 0)).toBe(true);
     expect(G.owner[3]).toBe(-1);
-    for (let i = 0; i < 20; i++) stepUnits(0.1);
+    for (let i = 0; i < (DROP_FALL + DROP_STAGGER) * 10 + 5; i++) stepUnits(0.1);
     expect(paras().every(u => !(u.fall > 0))).toBe(true);
     expect(G.owner[3]).toBe(0);
   });
@@ -202,5 +203,47 @@ describe('landing and ownership', () => {
     }
     expect(hit).toBe(true);
     expect(paras().reduce((a, u) => a + u.hp, 0)).toBeLessThan(hp0);
+  });
+});
+
+describe('landing scramble', () => {
+  beforeEach(game);
+  /* damage a settled defender-side man takes from a rifle shot fired from another trench */
+  const shot = e => { const h = e.hp; hurt(e, 10, 'rifle', null); return h - e.hp; };
+  it('has no cover for DROP_SCRAMBLE seconds after landing, then normal cover', () => {
+    G.units = []; G.fort[3] = 1;
+    const u = spawn(0, 'rifle', 3, true); u.para = true; u.fall = 0.1; u.hp = u.max = 1e6;
+    const covered = shot(u);
+    expect(covered).toBeLessThan(10);
+    stepUnits(0.2);
+    expect(u.scramble).toBe(DROP_SCRAMBLE);
+    expect(shot(u)).toBe(10);
+    stepUnits(DROP_SCRAMBLE - 0.5);
+    expect(shot(u)).toBe(10);
+    stepUnits(1);
+    expect(u.scramble).toBeLessThanOrEqual(0);
+    expect(shot(u)).toBeCloseTo(covered, 6);
+  });
+  it('fires at DROP_SCRAMBLE_ACC of its normal accuracy', () => {
+    const hits = scr => {
+      G.units = [];
+      const a = spawn(0, 'rifle', 3, true), b = spawn(1, 'rifle', 3, true);
+      b.hp = b.max = 1e9; b.cd = 1e9; b.y = a.y; b.x = a.x + 40;
+      a.scramble = scr ? 1e9 : 0;
+      let n = 0;
+      for (let i = 0; i < 4000; i++) { a.cd = 0; const h = b.hp; stepUnits(0.001); if (b.hp < h) n++; }
+      return n;
+    };
+    const normal = hits(false), scr = hits(true);
+    expect(normal).toBeGreaterThan(1500);
+    expect(scr / normal).toBeGreaterThan(DROP_SCRAMBLE_ACC - 0.08);
+    expect(scr / normal).toBeLessThan(DROP_SCRAMBLE_ACC + 0.08);
+  });
+  it('does not touch units that never fell', () => {
+    G.units = []; G.fort[3] = 1;
+    const u = spawn(0, 'rifle', 3, true);
+    stepUnits(1);
+    expect(u.scramble).toBeUndefined();
+    expect(shot(u)).toBeLessThan(10);
   });
 });

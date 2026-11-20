@@ -69,7 +69,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ORDER } from '../../src/data/units.js';
 import { AI_W } from '../../src/data/nations.js';
-import { dropCost, DROP_MIX, DROP_MARKUP, DROP_RANGE, DROP_FALL, DROP_STAGGER, AI_DROP_T } from '../../src/data/drop.js';
+import { dropCost, DROP_MIX, DROP_MARKUP, DROP_RANGE, DROP_FALL, DROP_STAGGER, AI_DROP_T, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC } from '../../src/data/drop.js';
 
 it('US superweapon is the Airborne drop', () => {
   expect(SW.us.kind).toBe('drop');
@@ -79,7 +79,7 @@ it('US superweapon is the Airborne drop', () => {
 });
 it('drop constants and cost', () => {
   expect(DROP_MIX).toEqual([['tommy', 4], ['rifle', 2], ['mg', 2]]);
-  expect([DROP_MARKUP, DROP_RANGE, DROP_FALL, DROP_STAGGER, AI_DROP_T]).toEqual([1.1, 3, 2, 1, 120]);
+  expect([DROP_MARKUP, DROP_RANGE, DROP_FALL, DROP_STAGGER, AI_DROP_T, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC]).toEqual([1.1, 3, 4, 1, 120, 5, 0.3]);
   expect(dropCost()).toBe(341);
 });
 it('Thompson gunner is a special, fall-firing, unbuyable unit', () => {

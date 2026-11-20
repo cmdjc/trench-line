@@ -48,9 +48,10 @@ could happen. The drop replaces the USA's Kettering Bugs superweapon.
   - Taps outside that span snap to the nearest valid trench.
   - If there is no valid trench, the button is blocked and gives the reason.
 - **Landing:**
-  - The paratroopers drift down over about 2 seconds, scattered along the trench.
+  - The paratroopers drift down over about 4 seconds, scattered along the trench.
   - While they descend they can be shot. Only the Thompson gunners can fire during the descent.
   - Once landed, they are settled in that trench and fight.
+  - **Landing scramble (the user's decision):** for 5 seconds after touching down (`DROP_SCRAMBLE`) a paratrooper gets no trench cover, so damage to it uses the open-ground rate, and it fires at 30% of its normal accuracy (`DROP_SCRAMBLE_ACC`). The Thompsons' fire while falling is unchanged.
   - Their orders line is the target trench.
 - **Afterwards:** survivors are normal infantry. Advance, fall back and gather treat them like any other troops.
 - **Keyboard:** placing the target is tap-only, matching the existing aims.

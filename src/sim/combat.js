@@ -9,6 +9,7 @@ import { G, isDbl, toast } from './state.js';
 import { isTrench, posX } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
 import { rng } from '../core/rng.js';
+import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC } from '../data/drop.js';
 
 export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.hp <= 0) return;
@@ -18,7 +19,7 @@ export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.T.nest) mult = (e.T.ncov || NESTCOV)[atk];
   else if (e.T.soft) mult = 0.6;
   else if (e.T.armor) mult = ARM[atk] * (e.T.thin && ARM[atk] < 0.5 ? 2 : 1);
-  else if (e.settled) {
+  else if (e.settled && !(e.scramble > 0)) {
     if (isTrench(e.line)) { if (atk !== 'raider' && !(attacker && attacker.settled && attacker.line === e.line)) mult = (cov || COV[atk]) * G.M[e.side].cover * FORTD[G.fort[e.line]] * (isDbl(e.line) ? 0.55 : 1); }
     else if (e.line === (e.side ? G.HQI : 0)) mult = 0.5;
   }
@@ -64,7 +65,9 @@ export function stepUnits(dt) {
   for (const u of G.units) {
     if (u.hp <= 0) continue;
     const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
-    if (falling) u.fall -= dt;
+    if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
+    else if (u.scramble > 0) u.scramble -= dt;
+    const sacc = u.scramble > 0 ? DROP_SCRAMBLE_ACC : 1;
     let best = null, bd = 1e9, blocked = false;
     for (const e of G.units) {
       if (e.side === u.side || e.hp <= 0) continue;
@@ -151,7 +154,7 @@ export function stepUnits(dt) {
     if (best && bd <= T.range) {
       u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
       if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: best.x, y1: best.y, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg, splash: T.splash, cov: T.cov, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
-      else if (rng.float() < T.acc * accVs(u, best)) { tracer(u.x + dir * 9, u.y, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
+      else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x + dir * 9, u.y, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
       else tracer(u.x + dir * 9, u.y, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
       if (T.jam && rng.float() < T.jam) u.cd = 2.4;
       if (T.mag) { u.shots = (u.shots || 0) + 1; if (u.shots >= T.mag) { u.shots = 0; u.cd = T.reload; } }
