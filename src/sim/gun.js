@@ -31,7 +31,7 @@ export function fireGun(side, x, y) {
   for (const s of d.shells) {
     G.shells.push({
       x0: own.x, y0: WH / 2,
-      x1: ax + (rng.float() - 0.5) * 2 * s.spread, y1: ay + (rng.float() - 0.5) * 2 * s.spread,
+      x1: ax + (rng.float() - 0.5) * 2 * s.spread, y1: Math.max(0, Math.min(WH, ay + (rng.float() - 0.5) * 2 * s.spread)),
       t: -s.delay, dur: s.dur, side, type: 'barrage', dmg: s.dmg, splash: s.splash, cov: s.cov, arc: s.arc, big: !!s.big, noBase: true,
     });
   }

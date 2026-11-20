@@ -14,7 +14,7 @@ Four battlefields: open ground, a river crossing with two bridges, a wide plain 
 
 Tap your HQ to buy base upgrades with supplies: three shared ones (HQ Walls, Supply Depot, Field Hospital) and one national upgrade, each with three tiers. They take effect at once and cost troops you could have bought, so choose when to spend. The enemy buys them too. Base branches in the research tree let a battle start with some of them already at tier 1 or 2.
 
-Your HQ also has a gun, one per nation. Press the gun button, tap the field inside its range to place the target, and confirm; it costs supplies and then has to reload. The enemy HQ fires its own gun at your biggest clusters.
+Your HQ also has a gun, one per nation. Press the gun button, tap the field inside its range to place the target, and confirm; it costs supplies and then has to reload. The enemy HQ fires its own gun at your biggest clusters from one minute in, without warning, and these shells never hit an HQ.
 
 Research points carry between battles. Spend them on a permanent tree, or carry your progress with a save code.
 

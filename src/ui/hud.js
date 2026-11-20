@@ -90,7 +90,7 @@ export function refresh() {
     $('aimCancel').hidden = !G.aim; }
   { const gd = GUNS[G.nation[0]], gb = $('gunBtn'), gunAim = !!G.aim && G.aim.kind === 'gun';
     gb.hidden = !gd;
-    if (gd && gunAim) { gb.textContent = 'Confirm target, ' + gd.cost; gb.disabled = G.aim.x === null || S.supplies < gd.cost || !!gunBlock(0); }
+    if (gd && gunAim) { gb.innerHTML = '<b>Confirm target, ' + gd.cost + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < gd.cost ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; gb.disabled = G.aim.x === null || S.supplies < gd.cost || !!gunBlock(0); }
     else if (gd) { const cd = G.gun[0].cd; gb.textContent = cd > 0 ? gd.name + ': ready in ' + Math.ceil(cd) + ' s' : 'Aim ' + gd.name + ': ' + gd.cost; gb.disabled = !!gunBlock(0) || S.supplies < gd.cost; } }
   refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
@@ -116,7 +116,7 @@ export function initHud() {
     if (G.aim && G.aim.kind === 'paris') { commands.confirmAim(); return; }
     const d = SW[G.nation[0]];
     if (d && d.kind === 'paris') commands.startAiming();
-    else if (commands.fireSuperweapon() && G.aim) G.aim = null;   // a fired superweapon replaces a gun aim
+    else commands.fireSuperweapon();
   });
   $('pauseBtn').addEventListener('click', () => { G.userPaused = !G.userPaused; $('pauseBtn').textContent = G.userPaused ? 'Resume' : 'Pause'; });
   $('speedBtn').addEventListener('click', () => { G.speed = G.speed === 1 ? 2 : 1; $('speedBtn').textContent = 'Speed ' + G.speed + '×'; });

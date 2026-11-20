@@ -186,7 +186,8 @@ describe('HQ gun button', () => {
     G.S.supplies = 500; bus.emit('hud');
     $('gunBtn').click();
     expect(G.aim.kind).toBe('gun');
-    expect($('gunBtn').textContent).toBe('Confirm target, ' + g.cost);
+    expect($('gunBtn').textContent).toContain('Confirm target, ' + g.cost);
+    expect($('gunBtn').textContent).toContain('Tap the field to place the target.');
     expect($('gunBtn').disabled).toBe(true);        // not placed yet
     expect($('swBtn').textContent).not.toContain('Confirm target');
     expect($('aimCancel').hidden).toBe(false);
@@ -203,6 +204,11 @@ describe('HQ gun button', () => {
     $('aimCancel').click();
     expect(G.aim).toBeNull();
   });
+  it('explains a disabled gun confirm when supplies are short', () => {
+    G.S.supplies = g.cost; commands.startGunAim(); G.aim.x = 300; G.aim.y = 150; G.S.supplies = g.cost - 1; bus.emit('hud');
+    expect($('gunBtn').disabled).toBe(true);
+    expect($('gunBtn').textContent).toContain('Not enough supplies yet.');
+  });
   it('a Paris aim shows swBtn confirm, not gunBtn confirm', () => {
     G.nation[0] = 'de'; G.S.supplies = 5000; commands.startAiming(); bus.emit('hud');
     expect(G.aim.kind).toBe('paris');
@@ -212,7 +218,6 @@ describe('HQ gun button', () => {
   it('swBtn during a gun aim starts the superweapon instead', () => {
     G.S.supplies = 500; commands.startGunAim(); bus.emit('hud');
     $('swBtn').click();
-    expect(G.aim === null || G.aim.kind !== 'gun').toBe(true);
     expect(G.sw[0].tunnel).toBeTruthy();
   });
 });

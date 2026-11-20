@@ -66,13 +66,16 @@ shells are 180 damage with 70 splash.
 
 The commander fires its HQ gun at the richest cluster of your units within its
 range, the way it already aims the Paris Gun (`aimPoint`), when it can afford a
-shot and the gun has reloaded. It shows no warning circle and no toast. It pays
-from its normal money, not the base-upgrade fund.
+shot and the gun has reloaded. It shows no warning circle and no toast.
+
+Ruling made during the build: from t >= 60, 10% of AI income (`AI_GUN_SHARE`)
+goes to `ai.gunFund`, capped at 2x the shot cost, with any overflow returned to
+money. Shots are paid from that fund, not from its normal money.
 
 The enemy's targeting rules:
 - Range is mirrored: it counts trenches from the enemy's own HQ.
 - It uses a range-aware version of `aimPoint` with the same cost-weighted cluster score. Clusters out of range are ignored.
-- It fires only when the best cluster in range is worth at least the shot cost, and it keeps at least twice the shot cost in money after paying, so troop buying isn't starved.
+- It fires only when the best cluster in range is worth at least the shot cost. The fund share, not a money reserve, keeps troop buying from being starved.
 - It doesn't fire at an empty field or at the HQ.
 - After t = 60 s, it may decide whether to fire using the seeded rng.
 

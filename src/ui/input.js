@@ -1,6 +1,6 @@
 // Battlefield pointer input (prototype 2228–2255): drag to pan, tap to
 // select the nearest line, double-tap an owned trench to fortify it, taps
-// while aiming place the Paris Gun target, arrow keys scroll.
+// while aiming place the aim target, arrow keys scroll.
 
 import { bus } from '../core/events.js';
 import { WH } from '../data/units.js';
