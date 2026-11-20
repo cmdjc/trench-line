@@ -9,6 +9,8 @@ import { NAT } from '../data/nations.js';
 import { G, toast, nestCost, lineName } from './state.js';
 import { isTrench, spawn, cost, full, frontLine } from './geometry.js';
 import { canDef, buildDef, buildNest, fortifyAt } from './fortify.js';
+import { tier, raise, nextCost } from './base.js';
+import { BASE } from '../data/base.js';
 import { swBlock, useSW } from './superweapons.js';
 
 export { fortifyAt };
@@ -101,5 +103,13 @@ export function fireSuperweapon() {
     : d.kind === 'bugs' ? 'Kettering Bugs are in the air.'
     : d.kind === 'caproni' ? 'A Caproni bomber is on its way.'
     : 'The 42 cm battery has fired.');
+  bus.emit('hud'); return true;
+}
+
+export function buyBase(id) {
+  const c = nextCost(0, id);
+  if (!G.running || c === null || G.S.supplies < c) return false;
+  G.S.supplies -= c; raise(0, id);
+  toast(BASE[id === 'nat' ? G.nation[0] : id].name + ' raised to tier ' + tier(0, id) + '.');
   bus.emit('hud'); return true;
 }
