@@ -121,7 +121,7 @@ describe('free troops and movers', () => {
     expect(G.base[0].convoyed).toBe(true);
   });
   it('teleferica', () => {
-    mk('it'); const old = startX(0, 3, 'rifle');
+    mk('it'); G.owner[3] = 0; const old = startX(0, 3, 'rifle');
     raise(0, 'nat'); G.sel = 3;
     expect(startX(0, 3, 'rifle')).toBe(G.LX[3] - 14);
     expect(old).toBe(G.LX[0] - 14);
@@ -135,13 +135,41 @@ describe('free troops and movers', () => {
     const tk = TK.find(k => ut(0, k));
     expect(startLineFor(0, tk, 3)).toBe(null);
     raise(0, 'nat'); raise(0, 'nat');
-    expect(startLineFor(0, tk, 9)).toBe(9);
+    G.owner[9] = 0; expect(startLineFor(0, tk, 9)).toBe(9);
     expect(startLineFor(0, 'rifle', 0)).toBe(null);
   });
   it('gb T3 tunnels infantry to the selected line', () => {
-    mk('gb'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    mk('gb'); for (let i = 0; i < 3; i++) raise(0, 'nat'); G.owner[8] = 0;
     expect(startX(0, 8, 'rifle')).toBe(G.LX[8] - 14);
     const tk = TK.find(k => ut(0, k));
     expect(startLineFor(0, tk, 8)).toBe(null);
+  });
+  it('movers only deliver to held trenches', () => {
+    mk('gb'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    expect(startLineFor(0, 'rifle', G.HQI)).toBe(null);
+    expect(startLineFor(0, 'rifle', G.NT)).toBe(null);
+    mk('it'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    expect(startLineFor(0, 'rifle', G.NT)).toBe(null);
+    expect(startLineFor(0, 'rifle', G.HQI)).toBe(null);
+  });
+  it('AI side teleferica', () => {
+    mk('de', 'it'); raise(1, 'nat');
+    G.owner[G.HQI - 2] = 1;
+    expect(startX(1, G.HQI - 2, 'rifle')).toBe(G.LX[G.HQI - 2] + 14);
+    expect(startX(1, 0, 'rifle')).toBe(G.LX[G.HQI] + 14);
+  });
+  it('large dt spans several periods, bounded by cap', () => {
+    mk('ru'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    const n = rifles(); stepBase(24);
+    expect(rifles()).toBe(n + 6);
+    while (!full(0, 'rifle')) spawn(0, 'rifle', 1, true);
+    const m = G.units.length; stepBase(60);
+    expect(G.units.length).toBe(m);
+  });
+  it('convoy toast only if troops arrive', () => {
+    mk('fr'); for (let i = 0; i < 3; i++) raise(0, 'nat');
+    while (!full(0, 'rifle')) spawn(0, 'rifle', 1, true);
+    stepBase(45);
+    expect(G.base[0].convoyed).toBe(false);
   });
 });

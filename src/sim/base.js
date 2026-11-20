@@ -6,7 +6,7 @@ import { DEPOT_INC, VOIE_INC, LIB_DEPOT, WALLS_REPAIR, KUK_CAP, BASE_COST, WALLS
 import { ORDER, TK, DEPOT_RATE } from '../data/units.js';
 import { NAT } from '../data/nations.js';
 import { G, depots, toast } from './state.js';
-import { spawn, full, ut } from './geometry.js';
+import { spawn, full, ut, isTrench } from './geometry.js';
 
 export const tier = (side, id) => G.base[side][id];
 export const nextCost = (side, id) => { const t = tier(side, id); return t >= 3 ? null : BASE_COST[t]; };
@@ -48,8 +48,7 @@ export const infCap = side => NAT[G.nation[side]].inf + (G.nation[side] === 'ah'
 
 // The line a fresh unit appears at (it teleferica, gb tunnels), or null to start from the HQ.
 export function startLineFor(side, type, L) {
-  const own = side ? G.HQI : 0;
-  if (L === own) return null;
+  if (!isTrench(L) || G.owner[L] !== side) return null;
   const n = G.nation[side], t = tier(side, 'nat'), inf = !ut(side, type).armor;
   if (n === 'it' && t >= 1 && (side ? G.HQI - L : L) <= TELE_RANGE[t] && (inf || t >= 3)) return L;
   if (n === 'gb' && t >= 3 && inf) return L;
@@ -57,7 +56,9 @@ export function startLineFor(side, type, L) {
 }
 
 function freeRifles(side, n) {
-  for (let i = 0; i < n; i++) if (!full(side, 'rifle')) spawn(side, 'rifle', side ? G.ai.F : G.sel);
+  let k = 0;
+  for (let i = 0; i < n; i++) if (!full(side, 'rifle')) { spawn(side, 'rifle', side ? G.ai.F : G.sel); k++; }
+  return k;
 }
 
 export function stepBase(dt) {
@@ -72,8 +73,8 @@ export function stepBase(dt) {
     if (n === 'fr' && t >= 3) {
       bs.conv += dt;
       while (bs.conv >= CONVOY_T) {
-        bs.conv -= CONVOY_T; freeRifles(side, CONVOY_N);
-        if (side === 0 && !G.base[0].convoyed) { G.base[0].convoyed = true; toast('A lorry convoy has brought fresh troops up the Voie Sacrée.'); }
+        bs.conv -= CONVOY_T;
+        if (freeRifles(side, CONVOY_N) && side === 0 && !G.base[0].convoyed) { G.base[0].convoyed = true; toast('A lorry convoy has brought fresh troops up the Voie Sacrée.'); }
       }
     }
   }
