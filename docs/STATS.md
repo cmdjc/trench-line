@@ -9,7 +9,7 @@ Generated from the game data by `npm run stats` (`scripts/gen-stats.mjs`). Numbe
 | Britain | 40 | 8 | Wire (70) | Messines mine (450, 120 s cooldown) |
 | Germany | 40 | 8 | Pillbox instead of MG nest | Paris Gun (500, 90 s cooldown) |
 | France | 40 | 12 | Gun pit (130) | Char 2C (1100, 60 s cooldown) |
-| USA | 40 | 5 | Supply depot (120) | Kettering Bugs (350, 75 s cooldown) |
+| USA | 40 | 5 | Supply depot (120) | Airborne drop (341, 30 s cooldown) |
 | Austria-Hungary | 20 | 2 | none | Škoda 42 cm (400, 90 s cooldown) |
 | United States of Antarctica | 20 | 20 | Bunker (120) | Southern Colossus (2500, 150 s cooldown) |
 | Italy | 40 | 8 | Gun pit (120) | Caproni bombers (420, 80 s cooldown) |
@@ -238,7 +238,7 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 | Germany | Paris Gun | 500 | 90 s | One massive shell on a spot you choose, anywhere on the field. It lands after 4 seconds, wrecks everything in a big circle and levels fortifications there. |
 | Britain | Messines mine | 450 | 120 s | Tunnels for 25 seconds under the nearest enemy trench ahead of the selected one, then blows up everything in it. |
 | France | Char 2C | 1100 | 60 s | A 69-ton super-heavy tank with a turret gun and machine guns. One at a time. |
-| USA | Kettering Bugs | 350 | 75 s | Four flying bombs dive on the nearest enemy position ahead of the selected trench. |
+| USA | Airborne drop | 341 | 30 s | Mitchell’s 1919 plan made real: 4 Thompson gunners, 2 riflemen and 2 BAR gunners parachute into an enemy or empty trench up to 3 trenches past your front. |
 | Austria-Hungary | Škoda 42 cm | 400 | 90 s | Three fortress-breaking shells on the nearest enemy position ahead. They level its fortifications. |
 | United States of Antarctica | Southern Colossus | 2500 | 150 s | A colossal 9,000-health landship with four turrets, machine guns and crushing treads. One at a time. |
 | Italy | Caproni bombers | 420 | 80 s | A bomber flies down the nearest enemy position ahead of the selected trench and drops eight bombs along its length. |

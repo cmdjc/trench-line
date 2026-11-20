@@ -266,7 +266,7 @@ export const tkPrev = (n, k) => { if (k === 'tkL') return null; for (let j = TK.
 
 /* non-orderable units: jobs, emplacements and superweapons */
 export const SPECIAL = {
-  tommy: { name: 'Thompson gunner', pl: 'Thompson gunners', cost: 45, hp: 50, speed: STATS.us.rifle.speed, range: 120, dmg: 7, cd: 0.35, acc: 0.75, atk: 'raider', fallFire: true, role: 'Airborne only. A 1919 Thompson submachine gun: short range, fast fire, shoots while falling.' },
+  tommy: { name: 'Thompson gunner', pl: 'Thompson gunners', cost: 45, hp: 20, speed: STATS.us.rifle.speed, range: 120, dmg: 3, cd: 0.45, acc: 0.75, atk: 'raider', fallFire: true, role: 'Airborne only. A 1919 Thompson submachine gun: short range, fast fire, shoots while falling.' },
   carrier: { name: 'Sapper', cost: 15, hp: 40, dmg: 0, cd: 9, range: 0, acc: 0, speed: 62, noFire: true },
   guncarrier: { name: 'Gun team', cost: 25, hp: 45, dmg: 0, cd: 9, range: 0, acc: 0, speed: 44, noFire: true },
   nest: { name: 'MG nest', cost: 90, hp: 200, dmg: 5, cd: 0.18, range: 300, acc: 0.5, speed: 0, nest: true, atk: 'mg' },

@@ -50,7 +50,7 @@ Chosen by you: 45 trenches, fortified belts with wide gaps, same stats, a super 
 
 - Layout: nine belts of five trenches, 150 px apart inside a belt, 520 px of empty ground between belts. World width 10,320 px.
 - The line selector becomes a scrolling strip with gaps marking belts, and recentres on the selected line.
-- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. The Kettering Bug flight time is capped at 7 seconds for the same reason.
+- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. A drop can only land up to three trenches past your walking front, so it never lands beyond reach of the line.
 - **Super trench** (trench 23): starts empty and neutral at level 0. Whoever takes it first gets three built-in guns (two pillboxes and a 75 mm pit, 1.6 times normal health) that change hands with the trench. Holding it pays **+3 supplies a second** and lets you fortify to **level 4** (cost 320). You get a free card on first capture and then **one every 3 minutes held**; the timer pauses while you do not hold it, and a countdown shows in the supplies area. The enemy gets only the income and the guns.
 
 ## 6. United States of Antarctica
@@ -111,6 +111,36 @@ Chosen by you: every nation's HQ has an aimable gun, one per nation, with its ow
 | Germany v Britain | | 2 | 0 | 0 |
 
 The bot rarely holds three times the cost, so it fired mostly with Germany, the USA, Antarctica and Austria-Hungary; in the open-map matrix above, the enemy fired about 3 to 13 shots a battle, and under 1 a battle when Germany played against Britain. Only the first pass had Germany at 30 / 6 s.
+
+## 10. Airborne drop
+
+Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the Kettering Bugs. You press the button, tap a highlighted trench, then Confirm. The cost markup (1.1, so 341), the 30 s cooldown and the 4 Thompson / 2 rifle / 2 BAR platoon were yours. The range, fall time, enemy timing and Thompson numbers were my calls. The full intent is in `docs/superpowers/specs/2026-11-20-paratroopers-design.md`.
+
+- **Use**: the target is an enemy-held or empty trench one to three trenches past your walking front (`DROP_RANGE`). The paratroopers land in the trench, fall for 2 seconds (`DROP_FALL`) staggered over 1 more second, and the Thompson gunners can fire while falling. Survivors become ordinary infantry. They are not counted against the infantry cap, so drops stack.
+- **Cost**: `SW.us.cost` is hard-coded to 341, and a test checks it against `dropCost()`, the unit costs times 1.1.
+- **Enemy**: an enemy USA drops from 120 seconds on (`AI_DROP_T`), other enemy superweapons wait 240. It uses the same ready check and the same random draw as them, so seeded battles stay reproducible.
+- **Headless bot**: when the drop is ready, a target exists and supplies are at least twice the cost, the bot drops on the nearest valid trench. Its JSON reports `drops` and `foeDrops`.
+- **Thompson gunner**: changed from the first pass, hp 50 to 20, damage 7 to 3 and cooldown 0.35 to 0.45 s. Its cost stays 45, so the drop price is the same. Its shots ignore trench cover like any raider's, and defenders cannot shoot a falling man, so the first pass wiped a six-man trench with almost no losses.
+- **Balance check**: US against each nation and each nation against the USA, open map, seeds 1 to 10, wins out of 10, against `main` with the Kettering Bugs. No change was larger than 2 wins (20 points). The bot affords a drop rarely (under 1 a battle), while the enemy USA drops about 3 to 6 times a battle.
+
+| Matchup | Main (bugs) | First pass | Final |
+|---|---|---|---|
+| USA v Britain | 5 | 3 | 4 |
+| USA v Germany | 10 | 10 | 10 |
+| USA v France | 4 | 6 | 6 |
+| USA v Austria-Hungary | 4 | 3 | 3 |
+| USA v Antarctica | 7 | 9 | 9 |
+| USA v Italy | 8 | 8 | 7 |
+| USA v Russia | 3 | 5 | 5 |
+| Britain v USA | 3 | 3 | 4 |
+| Germany v USA | 0 | 1 | 0 |
+| France v USA | 0 | 0 | 0 |
+| Austria-Hungary v USA | 3 | 5 | 5 |
+| Antarctica v USA | 2 | 2 | 2 |
+| Italy v USA | 1 | 1 | 2 |
+| Russia v USA | 0 | 0 | 0 |
+
+- **Lone drop**: with no attack behind it, onto settled riflemen (a quarter of them MGs) at fortification level 1, 100 battles each. Against 6 defenders the drop takes the trench every time, against 8 about 70 times in 100, and against 10 about 15. The goal was that 6 or more usually fail. That could not be met by tuning the Thompson alone: with its damage near zero the other four paratroopers still win against 6, and defenders cannot shoot a man who is still falling. The target needs a change to the platoon or the fall rules, which were not mine to change.
 
 ## Known quirks
 

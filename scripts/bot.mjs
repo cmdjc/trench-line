@@ -15,6 +15,7 @@ import { power, cost, full } from '../src/sim/geometry.js';
 import { takeCard } from '../src/sim/cards.js';
 import { swBlock, aimPoint } from '../src/sim/superweapons.js';
 import { SW } from '../src/data/superweapons.js';
+import { dropTarget } from '../src/sim/drop.js';
 import { tier, nextCost } from '../src/sim/base.js';
 import { gunBlock, bestTarget } from '../src/sim/gun.js';
 import { GUNS } from '../src/data/guns.js';
@@ -36,11 +37,12 @@ bus.on('game:end', d => { end = d; });
 const settledAt = L => G.units.filter(u => u.side === 0 && u.line === L).every(u => u.settled);
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp']; // same rotation as the AI
 const pref = ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
-let want = null, sw = 0, gunShots = 0, foeGunShots = 0;
+let want = null, sw = 0, gunShots = 0, foeGunShots = 0, drops = 0, foeDrops = 0;
 
 for (let sec = 0; sec < MAXS && G.running; sec++) {
-  const foeCd = G.gun[1].cd;
+  const foeCd = G.gun[1].cd, foeSw = G.sw[1].cd;
   tick(1);
+  if (SW[G.nation[1]]?.kind === 'drop' && G.sw[1].cd > foeSw) foeDrops++; // enemy drop went on cooldown
   if (G.gun[1].cd > foeCd) foeGunShots++; // enemy gun reload restarted this second
 
   // take a card when offered, preferring unlocks
@@ -62,7 +64,14 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
 
   // fire the superweapon on a whim when it is ready
   if (brain() < 0.1 && !swBlock(0) && G.S.supplies >= SW[G.nation[0]].cost) {
-    if (SW[G.nation[0]].kind === 'paris') {
+    if (SW[G.nation[0]].kind === 'drop') {
+      // buy a drop only with supplies to spare, onto the nearest reachable trench
+      const L = dropTarget(0);
+      if (L >= 0 && G.S.supplies >= 2 * SW[G.nation[0]].cost && commands.startAiming()) {
+        G.aim.line = L; G.aim.x = G.LX[L];
+        if (commands.confirmAim()) { sw++; drops++; } else G.aim = null;
+      }
+    } else if (SW[G.nation[0]].kind === 'paris') {
       if (commands.startAiming()) { const ap = aimPoint(0); G.aim.x = ap.x; G.aim.y = ap.y; if (commands.confirmAim()) sw++; }
     } else if (commands.fireSuperweapon()) sw++;
   }
@@ -102,7 +111,7 @@ const result = {
   me, foe, map, seed,
   won: end ? end.won : null, finished: !!end,
   time: Math.round(G.S.t * 10) / 10, sel: G.sel,
-  kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw, gunShots, foeGunShots,
+  kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw, gunShots, foeGunShots, drops, foeDrops,
   base: BASE_ROT.map(i => tier(0, i)).join(''), foeBase: BASE_ROT.map(i => tier(1, i)).join(''),
   forts: G.fort.join(''), hq: Math.round(G.bases[0].hp) + '/' + Math.round(G.bases[1].hp),
 };
