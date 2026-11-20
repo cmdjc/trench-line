@@ -42,7 +42,7 @@ export const BASE = {
     `Troops resting in your HQ trench recover another ${HOSP_HEAL} health per second.`] },
   gb: { name: 'Tunnelling Company', tiers: [
     `Mines tunnel in ${TUNNEL_T} seconds and cost ${Math.round((1 - MINE_COST) * 100)}% less.`,
-    `Mines have a wider, stronger blast: ${MINE_R} units across, dealing ${MINE_TANK} damage to tanks and ${MINE_NEST} to machine-gun nests.`,
+    `Mines have a wider, stronger blast: a radius of ${MINE_R}, dealing ${MINE_TANK} damage to tanks and ${MINE_NEST} to machine-gun nests.`,
     `Newly bought infantry tunnel out at the trench they are sent to, instead of walking from your HQ.`] },
   de: { name: 'Krupp Works', tiers: [
     `Paris Gun: a long-range shell strikes the enemy front every ${PARIS_CD} seconds.`,
