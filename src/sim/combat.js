@@ -8,11 +8,13 @@ import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_
 import { G, isDbl, toast } from './state.js';
 import { isTrench, posX, exposed } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
-import { hasTrack, isBigShell, breakAt, cutTrack, segmentIndexFor } from './rail.js';
+import { hasTrack, isBigShell, breakAt, cutTrack, segmentIndexFor, hurtTrain } from './rail.js';
+import { RAIL_Y } from '../data/rail.js';
 import { rng } from '../core/rng.js';
 import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT } from '../data/drop.js';
 
 export function hurt(e, dmg, atk, attacker, cov, area) {
+  if (e.train) { hurtTrain(e.train, dmg, atk); return; }
   if (e.hp <= 0) return;
   /* troops sheltering in a bunker can't be hurt until it falls: direct fire hits the bunker instead, and splash only reaches the bunker itself */
   if (e.shelter && e.shelter.hp > 0 && e.settled) { if (!area) hurt(e.shelter, dmg, atk, attacker, cov); return; }
@@ -77,6 +79,14 @@ export function stepUnits(dt) {
       if (d < bd && d >= minR) { bd = d; best = e; }
       if (Math.abs(dx) < 40 && !(e.settled && e.line === u.line)) blocked = true;
       if (T.crush && d < T.crush) hurt(e, T.crushDps * dt * (u.dmgMul || 1), 'raider', null, undefined, true);
+    }
+    if (G.trains.length) {
+      /* enemy trains are targets too, only if nearer than the best unit target; no rng here */
+      for (const tr of G.trains) {
+        if (tr.side === u.side || tr.hp <= 0) continue;
+        const d = Math.hypot(tr.x - u.x, RAIL_Y - u.y);
+        if (d < bd && d >= minR && d <= T.range) { bd = d; best = { x: tr.x, y: RAIL_Y, hp: tr.hp, settled: false, T: {}, train: tr }; }
+      }
     }
     if (T.crush) blocked = false;
     if (u.ly === undefined) u.ly = u.y;
@@ -198,6 +208,7 @@ export function stepUnits(dt) {
         const d = Math.hypot(e.x - s.x1, e.y - s.y1); if (d > s.splash) continue;
         hurt(e, s.dmg * (1 - 0.55 * d / s.splash), 'barrage', null, s.cov, true);
       }
+      for (const t of G.trains) { const d = Math.hypot(t.x - s.x1, RAIL_Y - s.y1); if (t.side !== s.side && d <= s.splash) hurtTrain(t, s.dmg * (1 - 0.55 * d / s.splash), 'barrage'); }
       const hb = G.bases[1 - s.side], hd = Math.hypot(hb.x - s.x1, WH / 2 - s.y1);
       if (!s.noBase && hd <= s.splash + 22) hurtBase(1 - s.side, s.dmg * 0.8 * (1 - 0.4 * hd / (s.splash + 22)));
       continue;
@@ -211,7 +222,10 @@ export function stepUnits(dt) {
       if (G.owner[L] === 0) toast('A siege shell smashed part of the fortifications at trench ' + L + '.');
     }
     if (s.base && !s.noBase) hurtBase(1 - s.side, s.dmg);
-    else for (const e of G.units) { if (e.side === s.side || e.hp <= 0) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
+    else {
+      for (const e of G.units) { if (e.side === s.side || e.hp <= 0) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
+      for (const t of G.trains) if (t.side !== s.side && Math.hypot(t.x - s.x1, RAIL_Y - s.y1) <= s.splash) hurtTrain(t, s.dmg, s.type);
+    }
   }
   G.shells = G.shells.filter(s => s.t < s.dur);
   // card barrage

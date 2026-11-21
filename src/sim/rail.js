@@ -11,7 +11,8 @@
 // A side "holds" a segment when G.owner[trench it ends at] === side.
 
 import { G } from './state.js';
-import { TRACK_COST, REPAIR_COST, BIG_SPLASH, RAIL_Y } from '../data/rail.js';
+import { TRACK_COST, REPAIR_COST, BIG_SPLASH, RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY } from '../data/rail.js';
+import { ARM } from '../data/units.js';
 
 /* trench a segment of `side` ends at */
 export const lineOfSegment = (side, k) => (side === 0 ? k : G.HQI - k);
@@ -82,6 +83,54 @@ export function breakAt(x, y, splash, shell) {
       if (b >= x - splash && a <= x + splash) t.broken.add(k);
     }
   }
+}
+
+/* ---- transport trains: own entities in G.trains, never units ---- */
+let trainId = 0;
+
+/* Task 4 fills this in: riders get off where the train stood */
+export function dismountAll(train) { train.riders = []; }
+
+/* a side may buy a train: track runs, a slot is free */
+export function canBuyTrain(side) {
+  return G.trains.length < TRAIN_SLOTS && trackEnd(side) > 0;
+}
+
+/* spawns the side's national train at its own HQ; the caller charges the cost */
+export function buyTrain(side) {
+  if (!canBuyTrain(side)) return false;
+  const T = TRAINS[G.nation[side]];
+  G.trains.push({ id: ++trainId, side, x: G.LX[side ? G.HQI : 0], hp: T.hp, max: T.hp, dir: side ? -1 : 1, riders: [], carried: false, T });
+  return true;
+}
+
+/* train damage: armour like a light tank (thin plating doubles weak-fire damage), same as hurt() for units */
+export function hurtTrain(t, dmg, atk) {
+  if (t.hp <= 0) return;
+  const a = ARM[atk] ?? 1;
+  t.hp -= dmg * a * (a < 0.5 ? 2 : 1);
+}
+
+export function stepTrains(dt) {
+  if (!G.trains.length) return;
+  for (const t of G.trains) {
+    const fwd = t.side ? -1 : 1, home = G.LX[t.side ? G.HQI : 0];
+    const end = trackEnd(t.side), farD = end > 0 ? Math.abs(G.LX[lineOfSegment(t.side, end)] - home) : 0;
+    let p = (t.x - home) * fwd;
+    if (t.dir === fwd && p >= farD) t.dir = -fwd;
+    p += (t.dir === fwd ? 1 : -1) * t.T.speed * dt;
+    if (t.dir === fwd && p >= farD) { p = Math.max(farD, 0); t.dir = -fwd; }
+    else if (t.dir !== fwd && p <= 0) {
+      p = 0; t.dir = fwd;
+      if (t.carried) {
+        if (t.side) G.ai.money += TRIP_SUPPLY; else G.S.supplies += TRIP_SUPPLY;
+      }
+      t.carried = false;
+    }
+    t.x = home + p * fwd;
+  }
+  for (const t of G.trains) if (t.hp <= 0) dismountAll(t);
+  G.trains = G.trains.filter(t => t.hp > 0);
 }
 
 export { TRACK_COST, REPAIR_COST };
