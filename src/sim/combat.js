@@ -67,14 +67,15 @@ export function tracer(x1, y1, x2, y2, w, col) { G.tracers.push({ x1, y1, x2, y2
 
 export function stepUnits(dt) {
   for (const u of G.units) {
-    if (u.hp <= 0) continue;
+    if (u.hp <= 0 || u.riding) continue;
+    if (u.waiting) { u.moving = false; continue; } // standing at the HQ for a train: holds fire, can still be shot
     const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
     if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
     else if (u.scramble > 0) u.scramble -= dt;
     const sacc = u.scramble > 0 ? DROP_SCRAMBLE_ACC : 1;
     let best = null, bd = 1e9, blocked = false;
     for (const e of G.units) {
-      if (e.side === u.side || e.hp <= 0) continue;
+      if (e.side === u.side || e.hp <= 0 || e.riding) continue;
       const dx = e.x - u.x, d = Math.hypot(dx, e.y - u.y);
       if (d < bd && d >= minR) { bd = d; best = e; }
       if (Math.abs(dx) < 40 && !(e.settled && e.line === u.line)) blocked = true;
@@ -185,7 +186,7 @@ export function stepUnits(dt) {
   for (let s = 0; s < 2; s++) {
     const b = G.bases[s]; b.cd -= dt; if (b.cd > 0 || b.hp <= 0) continue;
     let best = null, bd = 270;
-    for (const e of G.units) { if (e.side === s || e.hp <= 0) continue; const d = Math.abs(e.x - b.x); if (d < bd) { bd = d; best = e; } }
+    for (const e of G.units) { if (e.side === s || e.hp <= 0 || e.riding) continue; const d = Math.abs(e.x - b.x); if (d < bd) { bd = d; best = e; } }
     if (best) {
       b.cd = 0.25; const dir = s ? -1 : 1;
       if (rng.float() < 0.55 * accVs(HQG, best)) { tracer(b.x + dir * 22, WH / 2 + (rng.float() - 0.5) * 50, best.x, best.y, 1, '#ffd76a'); hurt(best, 9 * b.dmg, 'base', null); }
@@ -204,7 +205,7 @@ export function stepUnits(dt) {
         G.fort[L] = 0; G.fields = G.fields.filter(f => f.side === s.side || f.line !== L);
       }
       for (const e of G.units) {
-        if (e.side === s.side || e.hp <= 0) continue;
+        if (e.side === s.side || e.hp <= 0 || e.riding) continue;
         const d = Math.hypot(e.x - s.x1, e.y - s.y1); if (d > s.splash) continue;
         hurt(e, s.dmg * (1 - 0.55 * d / s.splash), 'barrage', null, s.cov, true);
       }
@@ -223,7 +224,7 @@ export function stepUnits(dt) {
     }
     if (s.base && !s.noBase) hurtBase(1 - s.side, s.dmg);
     else {
-      for (const e of G.units) { if (e.side === s.side || e.hp <= 0) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
+      for (const e of G.units) { if (e.side === s.side || e.hp <= 0 || e.riding) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
       for (const t of G.trains) if (t.side !== s.side && Math.hypot(t.x - s.x1, RAIL_Y - s.y1) <= s.splash) hurtTrain(t, s.dmg, s.type);
     }
   }
@@ -233,7 +234,7 @@ export function stepUnits(dt) {
     G.S.barrageT -= dt;
     if (G.S.barrageT <= 0) {
       G.S.barrageT = 10;
-      let tgt = null; for (const e of G.units) if (e.side === 1 && e.hp > 0 && e.settled && (!tgt || e.x < tgt.x)) tgt = e;
+      let tgt = null; for (const e of G.units) if (e.side === 1 && e.hp > 0 && e.settled && !e.riding && (!tgt || e.x < tgt.x)) tgt = e;
       if (tgt) for (let i = 0; i < G.M[0].barrage; i++) G.shells.push({ x0: G.bases[0].x, y0: WH / 2, x1: tgt.x + (rng.float() - 0.5) * 26, y1: 20 + rng.float() * (WH - 40), t: -i * 0.25, dur: 1.6, side: 0, type: 'barrage', dmg: 26, splash: 36, arc: 1.5 });
     }
   }

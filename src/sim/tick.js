@@ -42,7 +42,7 @@ export function tick(dt) {
   const fl = frontLine(); if (G.sel > Math.max(fl, 0) && countAt(0, G.sel) === 0) G.sel = fl;
   if (G.sel > 0 && G.sel < G.HQI) {
     let foes = 0, near = 0; const sx = G.LX[G.sel];
-    for (const u of G.units) { if (u.fixed) continue; if (u.side === 1) { if (u.line === G.sel && u.settled) foes++; } else if (Math.abs(u.x - sx) < 260 && u.line >= G.sel) near++; }
+    for (const u of G.units) { if (u.fixed) continue; if (u.side === 1) { if (u.line === G.sel && u.settled) foes++; } else if (!u.riding && Math.abs(u.x - sx) < 260 && u.line >= G.sel) near++; }
     if (foes && !near) {
       for (const u of G.units) if (u.side === 0 && u.line === G.sel && !u.fixed) u.line = G.sel - 1;
       toast('Trench ' + G.sel + ' is lost. Your orders fall back to ' + lineName(G.sel - 1) + '.'); G.sel--;

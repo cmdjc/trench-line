@@ -25,8 +25,8 @@ export function targetFor(side) {
 export function aimPoint(side) {
   const foe = 1 - side; let best = null, bs = 0;
   for (const c of G.units) {
-    if (c.side !== foe || c.hp <= 0) continue;
-    let sc = 0; for (const e of G.units) if (e.side === foe && e.hp > 0 && Math.hypot(e.x - c.x, e.y - c.y) < 85) sc += e.T.cost;
+    if (c.side !== foe || c.hp <= 0 || c.riding) continue;
+    let sc = 0; for (const e of G.units) if (e.side === foe && e.hp > 0 && !e.riding && Math.hypot(e.x - c.x, e.y - c.y) < 85) sc += e.T.cost;
     if (sc > bs) { bs = sc; best = c; }
   }
   return best ? { x: best.x, y: best.y } : { x: G.bases[foe].x, y: WH / 2 };
@@ -97,7 +97,7 @@ export function detonate(side, L) {
   let any = false;
   const big = G.nation[side] === 'gb' && tier(side, 'nat') >= 2, R = big ? MINE_R : 70;
   for (const e of G.units) {
-    if (e.side === side || e.hp <= 0 || e.line !== L || Math.abs(e.x - G.LX[L]) > R) continue;
+    if (e.side === side || e.hp <= 0 || e.riding || e.line !== L || Math.abs(e.x - G.LX[L]) > R) continue;
     any = true;
     const d = e.T.armor ? (big ? MINE_TANK : 300) : e.T.nest ? (big ? MINE_NEST : 400) : 1e6;
     e.hp -= d; if (e.hp <= 0) die(e);

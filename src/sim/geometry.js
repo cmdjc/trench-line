@@ -49,7 +49,7 @@ export function reached(u) {
 export function walkFront(side) {
   let f = null;
   for (const u of G.units) {
-    if (u.side !== side || u.fixed || u.para || u.hp <= 0) continue;
+    if (u.side !== side || u.fixed || u.para || u.riding || u.hp <= 0) continue;
     const r = reached(u), at = side ? Math.max(u.line, r) : Math.min(u.line, r);
     f = f === null ? at : side ? Math.min(f, at) : Math.max(f, at);
   }
@@ -91,7 +91,7 @@ export const tanks = side => { let n = 0; for (const u of G.units) if (u.side ==
 export const anyTank = () => TK.some(k => G.S.unlocked[k] && ut(0, k));
 export const tkCan = k => !!ut(0, k) && !G.S.unlocked[k] && (k === 'tkL' || !tkPrev(G.nation[0], k) || !!G.S.unlocked[tkPrev(G.nation[0], k)]);
 export const full = (side, type) => { const T = ut(side, type); return T.armor ? tanks(side) + (T.w || 1) > NAT[G.nation[side]].tanks + 1e-6 : count(side) >= infCap(side); };
-export const countAt = (side, L) => { let n = 0; for (const u of G.units) if (u.side === side && u.line === L && !u.fixed) n++; return n; };
+export const countAt = (side, L) => { let n = 0; for (const u of G.units) if (u.side === side && u.line === L && !u.fixed && !u.riding) n++; return n; };
 export const power = (side, L) => { let p = 0; for (const u of G.units) if (u.side === side && u.line === L) p += u.T.cost; return p; };
 export const cost = type => Math.round(ut(0, type).cost * G.M[0].cost[type]);
 export const frontLine = () => { let f = 0; for (const u of G.units) if (u.side === 0 && !u.fixed && u.line > f) f = u.line; return f; };
