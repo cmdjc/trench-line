@@ -16,7 +16,7 @@ Tap your HQ to buy base upgrades with supplies: three shared ones (HQ Walls, Sup
 
 Your HQ also has a gun, one per nation. Press the gun button, tap the field inside its range to place the target, and confirm; it costs supplies and then has to reload. The enemy HQ fires its own gun at your biggest clusters from one minute in, without warning, and these shells never hit an HQ.
 
-Railways: lay track from your HQ one held trench at a time and buy a train; troops at the HQ ride it up the line when that beats walking, wounded ride it home to heal, and each run with riders brings a few supplies. The enemy builds a railway too, and big shells break track, which you repair. Planned for later: an armoured train and a railway gun.
+Railways: lay track from your HQ one held trench at a time and buy a train; troops at the HQ ride it up the line when that beats walking, wounded ride it home to heal, and each run with riders brings a few supplies. The enemy builds a railway too, and big shells break track, which you repair. The track runs through the middle of the field, with sandbag barriers at each trench that shield it from big shells, and trains are drawn from above. Planned for later: an armoured train and a railway gun.
 
 On the Long March, trenches 11 and 35 hide a tunnel: whoever holds one can send fresh troops through it, hidden for a few seconds, and have them come out at the trench.
 
