@@ -11,7 +11,7 @@
 // A side "holds" a segment when G.owner[trench it ends at] === side.
 
 import { G, toast, hidden } from './state.js';
-import { TRACK_COST, REPAIR_COST, BIG_SPLASH, RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, WOUNDED } from '../data/rail.js';
+import { TRACK_COST, REPAIR_COST, BIG_SPLASH, BARRIER_R, RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, WOUNDED } from '../data/rail.js';
 import { ARM } from '../data/units.js';
 
 /* trench a segment of `side` ends at */
@@ -73,13 +73,22 @@ export function cutTrack(side, k) {
   for (const b of [...t.broken]) if (b > t.end) t.broken.delete(b);
 }
 
-/* a big shell landed: break every segment its splash overlaps (both sides' track) */
+/* does `side` have sandbags shielding the rail at trench L? Only trenches with track laid to them, never the HQ */
+export function barrierAt(side, L) {
+  const k = segmentIndexFor(side, L);
+  return L >= 1 && L <= G.NT && k >= 1 && k <= G.track[side].end;
+}
+
+/* a big shell landed: break every segment its splash overlaps (both sides' track), except where a barrier shields it */
 export function breakAt(x, y, splash, shell) {
   if (!hasTrack() || (shell && !isBigShell(shell))) return;
   if (Math.abs(y - RAIL_Y) > splash) return;
   for (let side = 0; side < 2; side++) {
     const t = G.track[side];
     for (let k = 1; k <= t.end; k++) {
+      const shielded = [lineOfSegment(side, k - 1), lineOfSegment(side, k)]
+        .some(L => barrierAt(side, L) && Math.abs(x - G.LX[L]) <= BARRIER_R);
+      if (shielded) continue;
       const [a, b] = segmentSpan(side, k);
       if (b >= x - splash && a <= x + splash) t.broken.add(k);
     }

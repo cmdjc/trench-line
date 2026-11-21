@@ -12,6 +12,8 @@ import { TRAINS } from '../../src/data/rail.js';
 import { draw, vis } from '../../src/ui/draw/index.js';
 import { setCtx } from '../../src/ui/draw/helpers.js';
 import { cam, vw } from '../../src/ui/camera.js';
+import { drawTrack, drawTrains } from '../../src/ui/draw/rail.js';
+import { RAIL_Y, BARRIER_R } from '../../src/data/rail.js';
 import { drawTunnels } from '../../src/ui/draw/terrain.js';
 import { tunnelLines } from '../../src/sim/tunnel.js';
 
@@ -209,6 +211,68 @@ describe('railway drawing', () => {
       cam.x = G.LX[G.HQI] - 300;
       expect(() => draw()).not.toThrow();
     }
+  });
+});
+
+describe('top-down trains, barriers and HQ door', () => {
+  const rec = () => {
+    const calls = [], stack = [], off = { x: 0, y: 0 };
+    const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => {
+      if (k === 'save') stack.push({ ...off });
+      else if (k === 'restore') Object.assign(off, stack.pop());
+      else if (k === 'translate') { off.x += a[0]; off.y += a[1]; }
+      calls.push({ k, a, ox: off.x, oy: off.y });
+      return a;
+    }), set: (t, k, v) => { t[k] = v; return true; } });
+    return { ctx, calls };
+  };
+  const mk = (s, hp) => ({ id: 70 + s, side: s, x: 400, hp, max: 300, dir: s ? -1 : 1, riders: [], carried: false, T: TRAINS.gb });
+  const all = () => true;
+  it('draws an undamaged train within its body width, nothing profile-like above', () => {
+    const { ctx, calls } = rec(); setCtx(ctx);
+    newGame('gb', 'de', 'open', 3);
+    G.trains.push(mk(0, 300));
+    for (let i = 0; i < 4; i++) { const u = spawn(0, 'rifle', 1, true); u.riding = 70; G.trains[0].riders.push(u); }
+    drawTrains(all);
+    const ys = calls.filter(c => c.k === 'fillRect' || c.k === 'arc').map(c => c.oy + c.a[1] + (c.k === 'fillRect' ? 0 : 0));
+    expect(ys.length).toBeGreaterThan(5);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(RAIL_Y - 8);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(RAIL_Y + 8);
+    setCtx(stubCtx);
+  });
+  it('puts the health bar above a damaged train', () => {
+    const { ctx, calls } = rec(); setCtx(ctx);
+    newGame('gb', 'de', 'open', 3);
+    G.trains.push(mk(1, 100));
+    drawTrains(all);
+    const ys = calls.filter(c => c.k === 'fillRect').map(c => c.oy + c.a[1]);
+    expect(Math.min(...ys)).toBeLessThan(RAIL_Y - 8);
+    setCtx(stubCtx);
+  });
+  it('draws sandbag walls beside the rail only where a barrier exists', () => {
+    const { ctx, calls } = rec(); setCtx(ctx);
+    newGame('gb', 'de', 'open', 3);
+    drawTrack(all);
+    expect(calls.some(c => c.k === 'stroke')).toBe(false);
+    G.track[0].end = 2; G.track[1].end = 2;
+    drawTrack(all);
+    const mv = calls.filter(c => c.k === 'moveTo' && Math.abs(c.a[1] - RAIL_Y) > 7);
+    expect(mv.some(c => c.a[1] === RAIL_Y - 9)).toBe(true);
+    expect(mv.some(c => c.a[1] === RAIL_Y + 9)).toBe(true);
+    expect(mv.some(c => Math.abs(c.a[0] - (G.LX[1] - BARRIER_R)) < 1)).toBe(true);
+    setCtx(stubCtx);
+  });
+  it('starts the first segment at the HQ door', () => {
+    const { ctx, calls } = rec(); setCtx(ctx);
+    newGame('gb', 'de', 'open', 3);
+    G.track[0].end = 1; G.track[1].end = 1;
+    drawTrack(all);
+    const sl = calls.filter(c => c.k === 'fillRect' && c.a[3] === 8).map(c => c.a[0] + 1.5);
+    expect(sl.some(x => x < G.LX[0] + 25)).toBe(false);
+    expect(sl.some(x => x > G.LX[G.HQI] - 25)).toBe(false);
+    expect(sl.some(x => x < G.LX[0] + 40)).toBe(true);
+    expect(sl.length).toBeGreaterThan(3);
+    setCtx(stubCtx);
   });
 });
 

@@ -1,5 +1,5 @@
 import { TRAINS, RAIL_Y, TRACK_COST, REPAIR_COST, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED, BIG_SPLASH, AI_RAIL_T, AI_RAIL_SHARE } from '../../src/data/rail.js';
-import { WH } from '../../src/data/units.js';
+import { WH, SLOTS, SLOTS5 } from '../../src/data/units.js';
 import { expect, it } from 'vitest';
 import { NATS, NAT } from '../../src/data/nations.js';
 import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
@@ -141,8 +141,18 @@ it('train stats are integers where required and within 15% of base', () => {
 it('base train speed is three times the rifle walking speed', () => {
   expect(RAIL_BASE.speed).toBe(138);
 });
-it('RAIL_Y lies on the field, near the bottom', () => {
+it('RAIL_Y lies on the field, in the middle', () => {
   expect(RAIL_Y).toBeGreaterThanOrEqual(0);
   expect(RAIL_Y).toBeLessThanOrEqual(WH);
-  expect(RAIL_Y).toBe(WH - 14);
+  expect(RAIL_Y).toBe(WH / 2);
+});
+it('emplacement slots clear the rail lane and stay on the field', () => {
+  expect(SLOTS.length).toBe(3); expect(SLOTS5.length).toBe(5);
+  for (const S of [SLOTS, SLOTS5]) {
+    const ys = S.map(f => WH * f), m = (S.length - 1) / 2;
+    for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+    expect(Math.abs(ys[m] - RAIL_Y)).toBeGreaterThanOrEqual(26);
+    for (const i of [m - 1, m + 1]) expect(Math.abs(ys[m] - ys[i])).toBeGreaterThanOrEqual(24);
+    for (const y of ys) { expect(y).toBeGreaterThanOrEqual(22); expect(y).toBeLessThanOrEqual(278); }
+  }
 });

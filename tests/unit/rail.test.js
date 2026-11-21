@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { newGame, G } from '../../src/sim/state.js';
 import * as C from '../../src/sim/commands.js';
-import { trackEnd, canLay, layTrack, cutTrack, breakAt, segmentIndexFor, stepTrains, shouldRide, isBigShell } from '../../src/sim/rail.js';
+import { trackEnd, canLay, layTrack, cutTrack, breakAt, barrierAt, segmentIndexFor, stepTrains, shouldRide, isBigShell } from '../../src/sim/rail.js';
 import { bus } from '../../src/core/events.js';
 import { MAPS } from '../../src/data/maps.js';
 import { stepUnits as step } from '../../src/sim/combat.js';
 import { spawn, walkFront, countAt } from '../../src/sim/geometry.js';
-import { RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL } from '../../src/data/rail.js';
+import { RAIL_Y, BARRIER_R, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL } from '../../src/data/rail.js';
 
 const pay = d => Math.round(TRIP_SUPPLY * Math.min(1, d / TRIP_FULL)); // trip pay for a run d px out
 
@@ -30,7 +30,7 @@ describe('track: laying', () => {
   });
   it('rejects laying past a break without charging', () => {
     G.owner[2] = 0; C.layTrackCmd();
-    breakAt(G.LX[1] - 5, RAIL_Y, 60, bigShell(0));
+    breakAt((G.LX[0] + G.LX[1]) / 2, RAIL_Y, 60, bigShell(0));
     expect(G.track[0].broken.has(1)).toBe(true);
     const s = G.S.supplies;
     expect(C.layTrackCmd()).toBe(false);
@@ -70,7 +70,7 @@ describe('track: shells', () => {
   beforeEach(game);
   it('a big shell breaks track; trackEnd drops; repair costs 20', () => {
     G.owner[2] = 0; layTrack(0); layTrack(0);
-    breakAt(G.LX[2] - 10, RAIL_Y, 60, bigShell(0));
+    breakAt((G.LX[1] + G.LX[2]) / 2, RAIL_Y, 60, bigShell(0));
     expect(trackEnd(0)).toBe(1);
     const s = G.S.supplies;
     expect(C.repairTrackCmd()).toBe(true);
@@ -89,6 +89,46 @@ describe('track: shells', () => {
     G.shells.push(bigShell((G.LX[0] + G.LX[1]) / 2, { big: false, splash: 36 }));
     step(0.2);
     expect(G.track[0].broken.size).toBe(0);
+  });
+});
+
+describe('track: sandbag barrier', () => {
+  beforeEach(game);
+  it('barrierAt matches the track end for both sides, never at HQ lines', () => {
+    G.owner[2] = 0; layTrack(0); layTrack(0);
+    layTrack(1);
+    expect([0, 1, 2, 3].map(L => barrierAt(0, L))).toEqual([false, true, true, false]);
+    expect(barrierAt(1, G.HQI)).toBe(false);
+    expect(barrierAt(1, G.NT)).toBe(true);
+    expect(barrierAt(1, G.NT - 1)).toBe(false);
+    expect(barrierAt(0, G.HQI)).toBe(false);
+  });
+  it('barrier holds: a big shell on a trench with track spares the adjoining segments', () => {
+    G.owner[2] = 0; layTrack(0); layTrack(0);
+    breakAt(G.LX[1], RAIL_Y, 90, bigShell(G.LX[1]));
+    expect(G.track[0].broken.size).toBe(0);
+    breakAt(G.LX[1] + BARRIER_R - 1, RAIL_Y, 90, bigShell(0));
+    expect(G.track[0].broken.size).toBe(0);
+  });
+  it('gap breaks: a shell mid-gap breaks as before', () => {
+    G.owner[2] = 0; layTrack(0); layTrack(0);
+    breakAt((G.LX[1] + G.LX[2]) / 2, RAIL_Y, 90, bigShell(0));
+    expect([...G.track[0].broken]).toEqual([2]);
+  });
+  it('just outside the radius the barrier no longer shields; the HQ end never shields', () => {
+    layTrack(0);
+    breakAt(G.LX[1] - BARRIER_R - 1, RAIL_Y, 30, bigShell(0));
+    expect(G.track[0].broken.has(1)).toBe(true);
+    G.track[0].broken.clear();
+    breakAt(G.LX[0], RAIL_Y, 40, bigShell(0));
+    expect(G.track[0].broken.has(1)).toBe(true);
+  });
+  it('side 1: the mirror case for the enemy', () => {
+    layTrack(1); G.owner[G.NT - 1] = 1; layTrack(1);
+    breakAt(G.LX[G.NT], RAIL_Y, 90, bigShell(G.LX[G.NT]));
+    expect(G.track[1].broken.size).toBe(0);
+    breakAt((G.LX[G.NT] + G.LX[G.NT - 1]) / 2, RAIL_Y, 90, bigShell(0));
+    expect([...G.track[1].broken]).toEqual([2]);
   });
 });
 

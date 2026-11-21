@@ -9,7 +9,7 @@ import { NATS } from './nations.js';
 
 export const WH = 300, SEG = WH / 7;
 /* Wide open plain: double trenches (two lines with a wall between), listed in G.DBL */
-export const HEDGE = 94, DBL_COV = 0.55, DBL_RATE = 1, SLOTS5 = [0.12, 0.31, 0.5, 0.69, 0.88];
+export const HEDGE = 94, DBL_COV = 0.55, DBL_RATE = 1, SLOTS5 = [0.12, 0.31, 0.6, 0.69, 0.88];
 
 export const UT = {
   rifle: { name: 'Rifleman', pl: 'riflemen', cost: 20, hp: 40, dmg: 8, cd: 1.2, range: 250, acc: 0.55, speed: 46, role: 'Cheap and steady.' },
@@ -294,7 +294,7 @@ SPECIAL.colossus = tkv({ name: 'Southern Colossus', cost: 2500, hp: 9000, dmg: 1
 export const utOf = (nation, k) => STATS[nation][k] || SPECIAL[k];
 
 /* fortification and cover constants */
-export const FORT_COST = [60, 120, 200, 320], FORTD = [1, 0.85, 0.72, 0.6, 0.5], FORTA = [1, 0.88, 0.76, 0.65, 0.55], SLOTS = [0.22, 0.5, 0.78];
+export const FORT_COST = [60, 120, 200, 320], FORTD = [1, 0.85, 0.72, 0.6, 0.5], FORTA = [1, 0.88, 0.76, 0.65, 0.55], SLOTS = [0.22, 0.62, 0.78];
 export const maxFort = isSuper => (isSuper ? 4 : 3);
 export const NESTCOV = { rifle: 0.25, mg: 0.25, sniper: 0.45, base: 0.3, mortar: 0.8, tank: 0.8, barrage: 0.8, raider: 1 };
 export const COV = { rifle: 0.25, mg: 0.25, sniper: 0.5, mortar: 0.7, tank: 0.6, base: 0.3, raider: 1, barrage: 0.7 };
