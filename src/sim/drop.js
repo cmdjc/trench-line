@@ -8,7 +8,7 @@ import { rng } from '../core/rng.js';
 import { WH } from '../data/units.js';
 import { DROP_MIX, DROP_RANGE, DROP_FALL, DROP_STAGGER } from '../data/drop.js';
 
-export { walkFront }; // lives in geometry.js so the railhead (startX) can use it too
+export { walkFront };
 
 export function validDrop(side, L) {
   if (!isTrench(L)) return false;

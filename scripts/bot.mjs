@@ -19,6 +19,8 @@ import { dropTarget } from '../src/sim/drop.js';
 import { tier, nextCost } from '../src/sim/base.js';
 import { gunBlock, bestTarget } from '../src/sim/gun.js';
 import { GUNS } from '../src/data/guns.js';
+import { TRACK_COST, REPAIR_COST, TRAINS } from '../src/data/rail.js';
+import { canLay, trackEnd, canBuyTrain } from '../src/sim/rail.js';
 
 const argv = process.argv.slice(2);
 const json = argv.includes('--json');
@@ -29,6 +31,9 @@ const MAXS = Number(process.env.MAXS || 1800);
 const BASEX = Number(process.env.BASEX || 2); // buy base tiers at this multiple of the cost
 
 newGame(me, foe, map, seed);
+const NORAIL = !!process.env.NORAIL; // scratch comparison: neither side builds track
+const BOTNORAIL = NORAIL || !!process.env.BOTNORAIL; // BOTNORAIL: only the enemy builds
+if (NORAIL || process.env.FOENORAIL) G.ai.noRail = true; // FOENORAIL: only the enemy goes without
 const brain = makeRng((seed ^ 0xB07) >>> 0); // decisions stay off the battle stream
 
 let end = null;
@@ -37,7 +42,24 @@ bus.on('game:end', d => { end = d; });
 const settledAt = L => G.units.filter(u => u.side === 0 && u.line === L).every(u => u.settled);
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp']; // same rotation as the AI
 const pref = ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
-let want = null, sw = 0, gunShots = 0, foeGunShots = 0, drops = 0, foeDrops = 0;
+// rail usage, sampled once a second: a "trip" is a train turning at the HQ for another run
+const rail = [{ trips: 0, riders: 0, healed: 0, bought: 0 }, { trips: 0, riders: 0, healed: 0, bought: 0 }];
+const seen = new Set(), seenT = new Map();
+function watchRail() {
+  for (const t of G.trains) {
+    const p = seenT.get(t.id);
+    if (!p) rail[t.side].bought++;
+    else if (p.dir !== t.dir && t.dir === (t.side ? -1 : 1)) rail[t.side].trips++;
+    seenT.set(t.id, { dir: t.dir });
+  }
+  for (const u of G.units) {
+    if (!u.riding || seen.has(u.id + ':' + u.riding)) continue;
+    seen.add(u.id + ':' + u.riding);
+    if (u.homeLine !== undefined) rail[u.side].healed++; else rail[u.side].riders++;
+  }
+}
+const peak = [0, 0];
+let saving = false, want = null, sw = 0, gunShots = 0, foeGunShots = 0, drops = 0, foeDrops = 0;
 
 for (let sec = 0; sec < MAXS && G.running; sec++) {
   const foeCd = G.gun[1].cd, foeSw = G.sw[1].cd;
@@ -48,11 +70,23 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
   // take a card when offered, preferring unlocks
   if (G.offer) takeCard(G.offer.ids.find(id => id.startsWith('u_')) || G.offer.ids[0]);
 
+  // railway: repair breaks, lay track while supplies are 3x the cost, buy one train once the track is 2 long
+  if (!BOTNORAIL) {
+    const noTrain = !G.trains.some(t => t.side === 0);
+    saving = false;
+    if (G.track[0].broken.size) { if (G.S.supplies >= REPAIR_COST) commands.repairTrackCmd(); }
+    else if (trackEnd(0) >= 2 && noTrain && canBuyTrain(0)) { // the first train comes before more track: save for it
+      if (G.S.supplies >= TRAINS[G.nation[0]].cost) commands.buyTrainCmd(); else saving = !process.env.NOSAVE;
+    } else if (!canLay(0) && G.S.supplies >= 3 * TRACK_COST) commands.layTrackCmd();
+  }
+  watchRail();
+  for (const i of [0, 1]) peak[i] = Math.max(peak[i], G.track[i].end);
+
   // pick something to buy, then keep trying until it is affordable
   if (!want) want = brain() < 0.45 ? 'rifle' : pref[Math.floor(brain() * pref.length)];
   if (!G.S.unlocked[want] && want !== 'rifle' && want !== 'mg') want = null; // still card-locked
   else if (full(0, want) && G.S.supplies > 300) want = null; // at the cap, pick fresh
-  else if (G.S.supplies >= cost(want)) { if (commands.buyUnit(want)) want = null; }
+  else if (!saving && G.S.supplies >= cost(want)) { if (commands.buyUnit(want)) want = null; }
 
   // level base upgrades in rotation once supplies are at least twice the next cost
   {
@@ -88,6 +122,7 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
     }
   }
 
+
   // sprinkle in fortifications at the selected line
   for (const cmd of [commands.fortifyAt, commands.buildNestAt, commands.buildDefAt]) {
     if (brain() < 0.015) cmd(G.sel);
@@ -113,6 +148,7 @@ const result = {
   time: Math.round(G.S.t * 10) / 10, sel: G.sel,
   kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw, gunShots, foeGunShots, drops, foeDrops,
   base: BASE_ROT.map(i => tier(0, i)).join(''), foeBase: BASE_ROT.map(i => tier(1, i)).join(''),
+  track: peak[0], trains: rail[0], foeTrack: peak[1], foeTrains: rail[1],
   forts: G.fort.join(''), hq: Math.round(G.bases[0].hp) + '/' + Math.round(G.bases[1].hp),
 };
 if (json) console.log(JSON.stringify(result));

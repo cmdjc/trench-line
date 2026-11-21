@@ -26,31 +26,16 @@ it('double trench offsets by ±14 via the y*0.61 parity; HQ lines use the foot/p
   expect(posX(0, G.HQI, 100, 0)).toBe(G.LX[G.HQI] - 85);       // attacking foe HQ from the west
   expect(posX(1, 0, 100, 0)).toBe(G.LX[0] + 85);               // foe attacking player HQ from the east
 });
-it('startX: open map rallies at own HQ; march railhead spawns one trench behind the target', () => {
-  setLayout('open');
-  expect(startX(0, 5)).toBe(G.LX[0] - 14);
-  expect(startX(1, 5)).toBe(G.LX[G.HQI] + 14);
-  G.MAP = 'march'; setLayout('march');      // setLayout alone does not change G.MAP
-  G.units = [];
-  G.owner = new Array(G.HQI + 1).fill(-1);
-  for (let L = 0; L <= 4; L++) G.owner[L] = 0;
-  for (let L = 6; L <= G.HQI; L++) G.owner[L] = 1;
-  expect(startX(0, 5)).toBe(G.LX[4] - 14);
-  expect(startX(0, 0)).toBe(G.LX[0] - 14);                     // clamped to own HQ
-  expect(startX(1, 5)).toBe(G.LX[6] + 14);
-});
-it('startX: the march railhead never runs ahead of both the walking front and the unbroken run of held trenches', () => {
-  G.MAP = 'march'; setLayout('march');
-  G.units = [];
-  G.owner = new Array(G.HQI + 1).fill(-1);
-  G.owner[0] = G.owner[1] = 0; G.owner[5] = 0;                  // trench 5 held by an isolated (airborne) party
-  expect(startX(0, 5)).toBe(G.LX[1] - 14);
-  const u = spawn(0, 'rifle', 3, true);                        // ground troops standing in trench 3
-  expect(startX(0, 5)).toBe(G.LX[3] - 14);
-  u.para = true;                                               // ...unless they are paratroopers
-  expect(startX(0, 5)).toBe(G.LX[1] - 14);
-  G.owner[2] = G.owner[3] = G.owner[4] = 0;                    // unbroken run up to 5
-  expect(startX(0, 5)).toBe(G.LX[4] - 14);
+it('startX: reinforcements rally at their own HQ on every map, the long march included', () => {
+  for (const m of ['open', 'march']) {
+    G.MAP = m; setLayout(m);      // setLayout alone does not change G.MAP
+    G.units = [];
+    G.owner = new Array(G.HQI + 1).fill(-1);
+    for (let L = 0; L <= 4; L++) G.owner[L] = 0;
+    for (let L = 6; L <= G.HQI; L++) G.owner[L] = 1;
+    expect(startX(0, 5)).toBe(G.LX[0] - 14);
+    expect(startX(1, 5)).toBe(G.LX[G.HQI] + 14);
+  }
 });
 it('spawn places settled units at posX with full hp and randomised cooldown', () => {
   const u = spawn(0, 'rifle', 3, true);

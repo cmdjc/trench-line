@@ -13,6 +13,7 @@ import { bus } from '../core/events.js';
 import { has } from './meta.js';
 import { spawn, ut } from './geometry.js';
 import { baseIncome, raise } from './base.js';
+import { buyTrain } from './rail.js';
 
 export const G = {
   /* layout (setLayout fills these in) */
@@ -29,6 +30,7 @@ export const G = {
   aim: null, planes: [], tracers: [], shells: [], booms: [], floats: [], scorch: [], smoke: [], wrecks: [],
   running: false, userPaused: false, speed: 1, uid: 1,
   shake: 0,
+  track: [{ end: 0, broken: new Set() }, { end: 0, broken: new Set() }], trains: [],   /* railways (sim/rail.js) */
   offer: null,          /* card offer state machine (sim/cards.js) */
   reduceMotion: false,  /* UI sets this from matchMedia after boot */
 };
@@ -112,10 +114,14 @@ export function newGame(mine, theirs, map, seed) {
   relabelCards();
   G.units = []; G.aim = null; G.planes = []; G.tracers = []; G.shells = []; G.booms = []; G.floats = []; G.scorch = []; G.smoke = []; G.wrecks = [];
   G.bases = [{ x: G.LX[0], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }, { x: G.LX[G.HQI], hp: BASE_HP, max: BASE_HP, cd: 0, dmg: 1 }];
-  G.ai = { money: 40, fund: 0, gunFund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
+  G.ai = { money: 40, fund: 0, gunFund: 0, railFund: 0, buyT: 1, thinkT: 3, baseT: 150, lastAdv: 0, aggr: 2, want: null, F: G.NT };
   G.fort = new Array(G.HQI + 1).fill(0); G.jobs = []; G.fields = []; G.garr = new Array(G.HQI + 1).fill(0);
   G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
   G.sel = 1; G.offer = null;
+  G.track = [{ end: 0, broken: new Set() }, { end: 0, broken: new Set() }]; G.trains = [];
+  /* Long March: each side starts with its first belt of track laid, free; it runs only as far as the side holds */
+  for (const t of G.track) t.end = MAPS[G.MAP].startTrack || 0;
+  for (let s = 0; s < 2; s++) for (let i = 0; i < (MAPS[G.MAP].startTrains || 0); i++) buyTrain(s); // free, at the HQ
   G.base = [0, 1].map(() => ({ walls: 0, depot: 0, hosp: 0, nat: 0, t: 0, conv: 0, convoyed: false, libT: 0 }));
   applyTech();
   for (const [pre, id] of [['bw', 'walls'], ['bd', 'depot'], ['bh', 'hosp'], ['bn', 'nat']]) {

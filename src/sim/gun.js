@@ -46,7 +46,7 @@ export function stepGun(dt) {
 /* Richest cluster of foe units inside this side's reach (same 85 px cost-weighted score as aimPoint). */
 export function bestTarget(side) {
   const foe = 1 - side, own = G.bases[side].x, m = gunMaxX(side), lo = Math.min(own, m), hi = Math.max(own, m);
-  const pool = G.units.filter(u => u.side === foe && u.hp > 0 && !u.fixed && u.x >= lo && u.x <= hi);
+  const pool = G.units.filter(u => u.side === foe && u.hp > 0 && !u.fixed && !u.riding && u.x >= lo && u.x <= hi);
   let best = null, bs = 0;
   for (const c of pool) {
     let sc = 0;

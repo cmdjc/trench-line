@@ -15,6 +15,8 @@ import { gunBlock, fireGun, bestTarget } from './gun.js';
 import { GUNS, AI_GUN_SHARE } from '../data/guns.js';
 import { AI_DROP_T } from '../data/drop.js';
 import { BASE, AI_BASE_SHARE } from '../data/base.js';
+import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS } from '../data/rail.js';
+import { canLay, layTrack, repairTrack, canBuyTrain, buyTrain, trackEnd } from './rail.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
 
@@ -23,7 +25,12 @@ export function aiStep(dt) {
   const inc = (AI_INCOME * (1 + G.S.t / AI_RAMP) * (G.nation[1] === 'us' ? Math.min(1.8, 0.75 + G.S.t / 400) : G.nation[1] === 'aq' ? Math.min(2, 0.6 + G.S.t / 300) : 1) + depots(1) * DEPOT_RATE + (G.owner[G.SUPER] === 1 ? SUPER_INC : 0) + dblHeld(1) * DBL_RATE + baseIncome(1)) * dt;
   const share = G.S.t >= 150 && BASE_ROT.some(i => tier(1, i) < 3) ? AI_BASE_SHARE : 0;
   const gshare = G.S.t >= 60 && GUNS[G.nation[1]] ? AI_GUN_SHARE : 0;
-  ai.fund += inc * share; ai.money += inc * (1 - share - gshare);
+  const rshare = G.S.t >= AI_RAIL_T && !ai.noRail ? AI_RAIL_SHARE : 0;
+  ai.fund += inc * share; ai.money += inc * (1 - share - gshare - rshare);
+  if (rshare) {
+    const rc = TRAINS[G.nation[1]].cost * 2; ai.railFund += inc * rshare;
+    if (ai.railFund > rc) { ai.money += ai.railFund - rc; ai.railFund = rc; }
+  }
   if (gshare) {
     const d = GUNS[G.nation[1]]; ai.gunFund += inc * gshare;
     if (ai.gunFund > d.cost * 2) { ai.money += ai.gunFund - d.cost * 2; ai.gunFund = d.cost * 2; }
@@ -63,6 +70,7 @@ export function aiStep(dt) {
       }
     }
     aiGun();
+    aiRail();
   }
   ai.thinkT -= dt;
   if (ai.thinkT <= 0) { ai.thinkT = 3; aiThink(); }
@@ -76,6 +84,27 @@ function aiGun() {
   const t = bestTarget(1);
   if (!t || t.value < d.cost || rng.float() >= 0.25) return;
   ai.gunFund -= d.cost; fireGun(1, t.x, t.y);
+}
+
+// Railway: paid from its own fund after 90 s, one purchase per buy tick, no rng. Repair a break first, else lay
+// the next segment; the first train is bought once track is 2 long (before laying more), a second at 3.
+function aiRail() {
+  const ai = G.ai;
+  if (G.S.t < AI_RAIL_T || ai.noRail) return;
+  if (G.track[1].broken.size) {
+    if (ai.railFund >= REPAIR_COST) { ai.railFund -= REPAIR_COST; repairTrack(1); }
+    return;
+  }
+  const T = TRAINS[G.nation[1]], mine = G.trains.filter(t => t.side === 1).length, end = trackEnd(1);
+  if (!mine && end >= 2 && canBuyTrain(1)) {   // first train comes before any more track: save for it
+    if (ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
+    return;
+  }
+  if (!canLay(1)) {
+    if (ai.railFund >= TRACK_COST) { ai.railFund -= TRACK_COST; layTrack(1); }
+    return;
+  }
+  if (mine === 1 && end >= 3 && canBuyTrain(1) && ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
 }
 
 const BASE_GAP = 90; // seconds between enemy base purchases

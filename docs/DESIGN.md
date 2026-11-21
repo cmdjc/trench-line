@@ -50,7 +50,7 @@ Chosen by you: 45 trenches, fortified belts with wide gaps, same stats, a super 
 
 - Layout: nine belts of five trenches, 150 px apart inside a belt, 520 px of empty ground between belts. World width 10,320 px.
 - The line selector becomes a scrolling strip with gaps marking belts, and recentres on the selected line.
-- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. The railhead never runs ahead of both your walking front and your unbroken run of held trenches from the HQ, so a trench taken by an airborne drop is not a railhead: troops sent there arrive at your real front and walk.
+- Reinforcements first appeared one trench behind the line you sent them to (a "railhead", so troops did not walk for minutes). That was replaced by buildable railways (section 11): reinforcements now start at their own HQ on every map, and you build track and a train to bring them up faster. To make up for the long walk, both sides start the Long March with track already laid through their first belt (segments 1 to 5, `startTrack`) and one free transport train each (`startTrains`).
 - **Super trench** (trench 23): starts empty and neutral at level 0. Whoever takes it first gets three built-in guns (two pillboxes and a 75 mm pit, 1.6 times normal health) that change hands with the trench. Holding it pays **+3 supplies a second** and lets you fortify to **level 4** (cost 320). You get a free card on first capture and then **one every 3 minutes held**; the timer pauses while you do not hold it, and a countdown shows in the supplies area. The enemy gets only the income and the guns.
 
 ## 6. United States of Antarctica
@@ -145,10 +145,59 @@ Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the 
 - **Lone drop**: no attack behind it, onto settled riflemen (a quarter of them MGs) at fortification level 1, 100 battles each. With the enemy commander behaving normally (it keeps buying and, once the paratroopers are dead, usually advances out of the trench), the drop takes 6 defenders 50 times in 100 against Germany and 36 against Britain, 8 defenders once against Germany and never against Britain, and 10 never. With the commander frozen so the defenders stay put: 47 and 30 against 6, never against 8 or 10. Before the scramble it took 6, 8 and 10 defenders essentially every time. Against Germany's 6 defenders the drop wins as often as it loses, which is the edge of the target; the fall, scramble and Thompson knobs are all at their weakest.
 - **Supported drop**: six or eight of your riflemen walking into a trench held by 6 to 10 defenders at fort 1 take it 0 times in 40 alone, and every time in 40 when a drop lands as they go in, with the enemy commander frozen or behaving normally.
 
+## 11. Railways (stage 1)
+
+Chosen by you: buildable railways. You lay track from your HQ one segment at a time, buy a transport train, and troops, wounded and supplies ride it. It replaces the Long March "railhead" (reinforcements appearing one trench behind the line): on every map, including the Long March, new troops start at their own HQ. The full intent is in `docs/superpowers/specs/2026-11-20-railways-stage1-design.md`. Stage 2 (an armoured train) and stage 3 (a railway gun and an ammo cart) are planned and not built.
+
+- **Track**: a segment spans one trench to the next from your HQ and can be laid only into a trench you hold and only with no break outstanding. It costs `TRACK_COST` 20 supplies, `REPAIR_COST` 20 to repair. Losing the trench at the end of a segment destroys that segment and every one beyond it. Big shells (splash 60 or more, or the big, huge, raze and siege flags) that land on the rail lane break the segments they overlap, on both sides' track. HQ-gun shells never break track, even the big ones of the 155 mm GPF and the 210 mm mortar.
+- **Long March starting railway**: on the Long March only, each side starts with segments 1 to 5 (its first belt, `MAPS.march.startTrack`) laid for free and one free transport train at its HQ (`startTrains`). The track still runs only as far as the furthest held, intact segment, so the pre-laid stretch ahead of your troops comes into use as you take its trenches. A trench taken by the other side destroys the segment ending there and every one beyond it, whether or not you had held it, and it must be relaid at cost. Every other map starts with no track and no trains.
+- **Trains**: one national train per nation, bought at the HQ once there is track, shared cap `TRAIN_SLOTS` 3 per side. Base stats are cost 150, hp 300, capacity 6, speed 3 times a rifleman (138); each nation stays within 15%. Trains are armoured like a light tank, shuttle between the HQ and the end of the track, and wait about a second at the HQ for stragglers. A train never crosses a broken segment: if a break appears behind it, outbound riders get off where the train is and walk on, wounded riders get off and walk home, the train runs back to the forward edge of the break and waits there until it is repaired, and that trip pays nothing. Losing a trench is different: the train runs back to the new end of the track as before and its riders get off there. A destroyed train leaves a wreck on the rail lane, and losing one of yours shows "<train name> was destroyed.".
+- **Riders**: a foot soldier at the HQ waits for the train only when riding to the end of the track beats walking there, so track never slows reinforcements. Waiting troops stand still but aim and fire as normal. A stranded train is not waited for. Armour, emplacements and paratroopers never ride. Settled wounded below 40% health (`WOUNDED`) in the end trench board for the HQ and are healed to full on arrival, then sent back to their line. If a train is destroyed the riders get off where it stood, wounded stay wounded. A round trip that carried anyone pays on return, in proportion to how far out it went: `Math.round(TRIP_SUPPLY * min(1, far / TRIP_FULL))`, with `TRIP_SUPPLY` 15 and `TRIP_FULL` 1150 px (five default trench gaps). A one-trench shuttle pays 3 a trip, so three trains shuttling one trench earn 0.38 supplies a second, where a flat 15 a trip earned 1.88 (more than the base income of 3 per second at times).
+- **Enemy**: from 90 seconds (`AI_RAIL_T`) 15% of its income goes to a rail fund (`AI_RAIL_SHARE`). It repairs breaks first, buys its first train once its track is 2 long (before laying more), lays more track, and buys a second train at 3. The fund is capped at two trains' cost, the rest returns to units. It uses no random numbers.
+- **Headless bot**: it lays track whenever supplies are at least 3 times the cost and the next trench is held, repairs breaks, saves for one train once the track is 2 long, and reports `track` (longest track laid), `trains` and `foeTrack`, `foeTrains` (trains bought, round trips, riders carried out and wounded carried home). `NORAIL=1` turns railways off for both sides, `FOENORAIL=1` only for the enemy and `BOTNORAIL=1` only for the bot, for scratch comparisons.
+- **Numbers changed**: `TRACK_COST`, from 40 to 20, and trip pay now scales with distance (above). At 40 the bot's track cost more than it saved on the Long March (it reached line 8.9 against 11.3 with no track, in 700 seconds). Train capacity 8 and speed 4 times a rifleman halved arrival times but needed many test changes, and the cheaper track alone was enough. The track cost sits near a cliff at 20: in the earlier Long March runs (before the starting railway) 20 was where track started to pay and 40 left the bot worse off than walking. Re-measured with the starting railway (gb v de and de v gb, seeds 1 to 6, 700 s cap), costs 15, 20, 25, 30 and 40 reached line 14.9, 11.8, 15.2, 13.3 and 11.1 with the bot laying about 18 segments at 15 to 30 and 15.8 at 40; none of those runs was won and 0 to 2 of 12 finished, so the cliff no longer shows as clearly but 40 is still the worst. Changing the cost is not part of this fix.
+
+| Nation | Train | Cost | Hp | Cap | Speed |
+|---|---|---|---|---|---|
+| Britain | Simplex light railway | 150 | 300 | 6 | 138 |
+| Germany | Heeresfeldbahn | 160 | 330 | 6 | 127 |
+| France | Decauville train | 140 | 290 | 6 | 138 |
+| USA | Baldwin trench locomotive | 150 | 300 | 6 | 152 |
+| Austria-Hungary | k.u.k. Feldbahn | 150 | 280 | 6 | 138 |
+| Antarctica | Penguin Express | 165 | 340 | 6 | 120 |
+| Italy | Ferrovia da campo | 155 | 300 | 6 | 138 |
+| Russia | Narrow-gauge field train | 130 | 300 | 6 | 138 |
+
+- **Balance check, open map**: each nation against Germany (Germany against Britain), seeds 1 to 10, wins out of 10, main (no railways) against the branch. No change was larger than 2 wins (20 points). The enemy builds about 2 segments and under 1 train a battle on open; the bot about 8 segments and one train.
+
+| Matchup | Main | Railways |
+|---|---|---|
+| Britain v Germany | 9 | 10 |
+| France v Germany | 9 | 9 |
+| USA v Germany | 10 | 10 |
+| Austria-Hungary v Germany | 9 | 9 |
+| Antarctica v Germany | 3 | 3 |
+| Italy v Germany | 9 | 7 |
+| Russia v Germany | 7 | 5 |
+| Germany v Britain | 0 | 2 |
+
+- **Does track pay**: on the open map it is no clear gain (the table above is within noise of main: wins moved up and down). On the Long March, with 10 seeds each way and a 700 second cap, the bot with track and the enemy without reaches line 15.3 against 11.3 with no track for either side, kills 51 against 32, loses 52 against 56. Sending 12 riflemen to trench 20 on the Long March takes a mean of 63 seconds with a train and 92 without, for 550 supplies of track and train; to trench 14 on the plain, 49 against 71 s; on open, trench 8, 29 against 41 s. In those tests the train carries at most 6 riders a trip (capacity 6), so 6 of the 12 ride the first trip and the other 6 walk, because waiting for the train to come back would not beat walking.
+- **Long March, no railhead**: with the railhead gone, the bot's win rate on the Long March fell from 2 of 3 to 0 of 3 for Britain against Germany, with or without track; both sides now walk from the HQ.
+- **Long March, starting railway** (default bot, seeds 1 to 6, 1800 s cap; W = bot won, L = bot lost, T = timed out at 1800 s, with the finish time in seconds). Main has the railhead and no railways. "No start" is this branch before the fix, with no starting track. "Track" pre-lays the first belt only. "Track and train" adds the free train each, which is what ships.
+
+| Build | Britain v Germany | Germany v Britain | Finished by 1200 s |
+|---|---|---|---|
+| Main | W669 L630 W683 L707 W594 W576 (4 W, 2 L) | L599 L689 L609 L639 L602 L589 (0 W, 6 L) | 12 of 12 |
+| No start | T L918 T L924 T T (0 W, 2 L, 4 T) | T T T L1379 L1251 T (0 W, 2 L, 4 T) | 2 of 12 |
+| Track | W1691 T T T T L913 (1 W, 1 L, 4 T) | T T T T T T (0 W, 0 L, 6 T) | 1 of 12 |
+| Track and train | L1714 L1425 T L1737 T L1125 (0 W, 4 L, 2 T) | L752 L966 L902 L1632 T L682 (0 W, 5 L, 1 T) | 5 of 12 |
+
+  The starting track alone did not help: 10 of 12 battles still timed out, so the free train was added as the fallback. With it 9 of 12 battles finish within 1800 s, but only 5 by 1200 s, and the bot loses every finished battle. In those runs the enemy commander pushes its track to about 41 segments against the bot's 16 to 21. Main finished every battle by about 710 s. The Long March is still slower than main and now leans toward the enemy commander.
+
 ## Known quirks
 
 - "Super trench" now means two different things: the single neutral one on the Long March (built-in guns, +3 supplies, level 4, free cards) and the two double trenches on the Wide open plain (cover, 5 slots, +1 supply, hedgehogs). In code they are `SUPER` (one line index) and `DBL` (a list).
-- On the Wide open plain, reinforcements still walk from the HQ (the Long March's one-trench-behind rule is not applied), so they take over a minute to reach a far-forward front.
+- On every map reinforcements walk from the HQ, so they take over a minute to reach a far-forward front unless a railway carries them (section 11).
 
 - Every non-magazine weapon draws an extra faint "miss" tracer, even on hits and shells. Looks like an `else` attached to the wrong `if` in the original code. Not changed.
 - Bunkers share the three emplacement slots in each trench with MG nests, so two bunkers leave room for one nest.
@@ -168,7 +217,7 @@ Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the 
 6. Other super-heavy tanks for the nations that lack one?
 7. Should the two kinds of super trench be unified, or one of them renamed?
 8. Should Russia get a light tank again, now that the Vezdekhod is its signature tank?
-9. Should the Wide open plain use the Long March's rule that reinforcements arrive one trench behind the front?
+9. (Settled: the Long March's one-trench-behind rule was removed in favour of buildable railways, section 11.)
 
 ## Ideas not started
 

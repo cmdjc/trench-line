@@ -20,6 +20,7 @@ import { swCost } from '../../src/sim/superweapons.js';
 import { nearestDrop } from '../../src/sim/drop.js';
 import { refresh } from '../../src/ui/hud.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
+import { cutTrack } from '../../src/sim/rail.js';
 
 const $ = id => document.getElementById(id);
 
@@ -579,3 +580,52 @@ describe('responsive width', () => {
   });
 });
 
+
+describe('railway buttons', () => {
+  it('lay track: label, reason when the trench is not held, click lays and charges', () => {
+    G.S.supplies = 500; G.owner[1] = 1; bus.emit('hud');
+    expect($('trackBtn').textContent).toContain('Lay track: 20');
+    expect($('trackBtn').textContent).toContain('Trench 1 is not held.');
+    expect($('trackBtn').disabled).toBe(true);
+    G.owner[1] = 0; bus.emit('hud');
+    expect($('trackBtn').disabled).toBe(false);
+    $('trackBtn').click();
+    expect(G.track[0].end).toBe(1);
+    expect(G.S.supplies).toBe(480);
+  });
+  it('turns into repair track when a segment is broken', () => {
+    G.S.supplies = 500; G.owner[1] = 0; G.track[0].end = 1; G.track[0].broken.add(1); bus.emit('hud');
+    expect($('trackBtn').textContent).toContain('Repair track: 20');
+    expect($('trackBtn').disabled).toBe(false);
+    $('trackBtn').click();
+    expect(G.track[0].broken.size).toBe(0);
+    expect(G.S.supplies).toBe(480);
+    expect($('trackBtn').textContent).toContain('Lay track: 20');
+  });
+  it('train button shows its national name and cost, and says why it is off', () => {
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('Simplex light railway: 150');
+    expect($('trainBtn').textContent).toContain('No track yet.');
+    expect($('trainBtn').disabled).toBe(true);
+    G.owner[1] = 0; G.track[0].end = 1; G.S.supplies = 100; bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('Not enough supplies.');
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('trainBtn').disabled).toBe(false);
+    $('trainBtn').click(); $('trainBtn').click(); $('trainBtn').click();
+    expect(G.trains.length).toBe(3);
+    expect(G.S.supplies).toBe(50);
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('All train slots in use.');
+    expect($('trainBtn').disabled).toBe(true);
+  });
+  it('train button: a break at the HQ asks for repair, a cut says so', () => {
+    G.S.supplies = 500; G.owner[1] = 0; G.track[0].end = 1; G.track[0].broken.add(1); bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('Repair the broken track first.');
+    expect($('trainBtn').disabled).toBe(true);
+    G.track[0].broken.clear(); cutTrack(0, 1); bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('The track is cut.');
+    expect($('trainBtn').disabled).toBe(true);
+    G.track[0].end = 2; G.owner[1] = 1; bus.emit('hud');           // laid but the first trench is lost
+    expect($('trainBtn').textContent).toContain('The track is cut.');
+  });
+});

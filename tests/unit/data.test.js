@@ -1,3 +1,5 @@
+import { TRAINS, RAIL_Y, TRACK_COST, REPAIR_COST, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED, BIG_SPLASH, AI_RAIL_T, AI_RAIL_SHARE } from '../../src/data/rail.js';
+import { WH } from '../../src/data/units.js';
 import { expect, it } from 'vitest';
 import { NATS, NAT } from '../../src/data/nations.js';
 import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
@@ -105,4 +107,42 @@ it('the drop range in the button text and the blocked reason both follow DROP_RA
   G.units = G.units.filter(u => u.side === 0 && !u.fixed);
   for (let L = 1; L <= G.NT; L++) G.owner[L] = 0;
   expect(swBlock(0)).toBe('No enemy or empty trench within ' + DROP_RANGE + ' trenches of your front.');
+});
+
+
+const RAIL_BASE = { cost: 150, hp: 300, cap: 6, speed: 3 * STATS.gb.rifle.speed };
+const RAIL_NAMES = {
+  gb: 'Simplex light railway', de: 'Heeresfeldbahn', fr: 'Decauville train', us: 'Baldwin trench locomotive',
+  ah: 'k.u.k. Feldbahn', it: 'Ferrovia da campo', ru: 'Narrow-gauge field train', aq: 'Penguin Express',
+};
+it('rail constants have the agreed values', () => {
+  expect({ TRACK_COST, REPAIR_COST, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED, BIG_SPLASH, AI_RAIL_T, AI_RAIL_SHARE })
+    .toEqual({ TRACK_COST: 20, REPAIR_COST: 20, TRAIN_SLOTS: 3, TRIP_SUPPLY: 15, WOUNDED: 0.4, BIG_SPLASH: 60, AI_RAIL_T: 90, AI_RAIL_SHARE: 0.15 });
+});
+it('every nation has a train entry', () => {
+  for (const n of NATS) expect(TRAINS[n], n).toBeTruthy();
+  expect(Object.keys(TRAINS).sort()).toEqual([...NATS].sort());
+});
+it('train names match the national names', () => {
+  for (const n of NATS) expect(TRAINS[n].name, n).toBe(RAIL_NAMES[n]);
+});
+it('train stats are integers where required and within 15% of base', () => {
+  for (const n of NATS) {
+    const T = TRAINS[n];
+    for (const k of ['cost', 'hp', 'cap', 'speed']) {
+      expect(typeof T[k], `${n}.${k}`).toBe('number');
+      expect(T[k], `${n}.${k}`).toBeGreaterThanOrEqual(RAIL_BASE[k] * 0.85);
+      expect(T[k], `${n}.${k}`).toBeLessThanOrEqual(RAIL_BASE[k] * 1.15);
+    }
+    expect(Number.isInteger(T.cost), `${n} cost integer`).toBe(true);
+    expect(Number.isInteger(T.cap), `${n} cap integer`).toBe(true);
+  }
+});
+it('base train speed is three times the rifle walking speed', () => {
+  expect(RAIL_BASE.speed).toBe(138);
+});
+it('RAIL_Y lies on the field, near the bottom', () => {
+  expect(RAIL_Y).toBeGreaterThanOrEqual(0);
+  expect(RAIL_Y).toBeLessThanOrEqual(WH);
+  expect(RAIL_Y).toBe(WH - 14);
 });

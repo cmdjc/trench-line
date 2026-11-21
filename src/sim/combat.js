@@ -8,10 +8,13 @@ import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_
 import { G, isDbl, toast } from './state.js';
 import { isTrench, posX, exposed } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
+import { hasTrack, isBigShell, breakAt, cutTrack, segmentIndexFor, hurtTrain } from './rail.js';
+import { RAIL_Y } from '../data/rail.js';
 import { rng } from '../core/rng.js';
 import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT } from '../data/drop.js';
 
 export function hurt(e, dmg, atk, attacker, cov, area) {
+  if (e.train) { hurtTrain(e.train, dmg, atk); return; }
   if (e.hp <= 0) return;
   /* troops sheltering in a bunker can't be hurt until it falls: direct fire hits the bunker instead, and splash only reaches the bunker itself */
   if (e.shelter && e.shelter.hp > 0 && e.settled) { if (!area) hurt(e.shelter, dmg, atk, attacker, cov); return; }
@@ -64,18 +67,26 @@ export function tracer(x1, y1, x2, y2, w, col) { G.tracers.push({ x1, y1, x2, y2
 
 export function stepUnits(dt) {
   for (const u of G.units) {
-    if (u.hp <= 0) continue;
+    if (u.hp <= 0 || u.riding) continue;
     const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
     if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
     else if (u.scramble > 0) u.scramble -= dt;
     const sacc = u.scramble > 0 ? DROP_SCRAMBLE_ACC : 1;
     let best = null, bd = 1e9, blocked = false;
     for (const e of G.units) {
-      if (e.side === u.side || e.hp <= 0) continue;
+      if (e.side === u.side || e.hp <= 0 || e.riding) continue;
       const dx = e.x - u.x, d = Math.hypot(dx, e.y - u.y);
       if (d < bd && d >= minR) { bd = d; best = e; }
       if (Math.abs(dx) < 40 && !(e.settled && e.line === u.line)) blocked = true;
       if (T.crush && d < T.crush) hurt(e, T.crushDps * dt * (u.dmgMul || 1), 'raider', null, undefined, true);
+    }
+    if (G.trains.length) {
+      /* enemy trains are targets too, only if nearer than the best unit target; no rng here */
+      for (const tr of G.trains) {
+        if (tr.side === u.side || tr.hp <= 0) continue;
+        const d = Math.hypot(tr.x - u.x, RAIL_Y - u.y);
+        if (d < bd && d >= minR && d <= T.range) { bd = d; best = { x: tr.x, y: RAIL_Y, hp: tr.hp, settled: false, T: {}, train: tr }; }
+      }
     }
     if (T.crush) blocked = false;
     if (u.ly === undefined) u.ly = u.y;
@@ -99,7 +110,7 @@ export function stepUnits(dt) {
       }
     }
     const dy = ty - u.y;
-    if (falling) u.moving = false;
+    if (falling || u.waiting) u.moving = false; // waiting at the HQ for a train: stands still, still fires
     else if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
       const sp = T.speed * (T.armor ? 1 : m.speed) * dt * wireSlow(u);
       let nx = u.x + sgn * Math.min(sp, Math.abs(dx));
@@ -174,7 +185,7 @@ export function stepUnits(dt) {
   for (let s = 0; s < 2; s++) {
     const b = G.bases[s]; b.cd -= dt; if (b.cd > 0 || b.hp <= 0) continue;
     let best = null, bd = 270;
-    for (const e of G.units) { if (e.side === s || e.hp <= 0) continue; const d = Math.abs(e.x - b.x); if (d < bd) { bd = d; best = e; } }
+    for (const e of G.units) { if (e.side === s || e.hp <= 0 || e.riding) continue; const d = Math.abs(e.x - b.x); if (d < bd) { bd = d; best = e; } }
     if (best) {
       b.cd = 0.25; const dir = s ? -1 : 1;
       if (rng.float() < 0.55 * accVs(HQG, best)) { tracer(b.x + dir * 22, WH / 2 + (rng.float() - 0.5) * 50, best.x, best.y, 1, '#ffd76a'); hurt(best, 9 * b.dmg, 'base', null); }
@@ -183,6 +194,7 @@ export function stepUnits(dt) {
   // shells
   for (const s of G.shells) {
     s.t += dt; if (s.t < s.dur) continue;
+    if (hasTrack() && isBigShell(s)) breakAt(s.x1, s.y1, s.splash, s);
     if (s.huge) {
       for (let i = 0; i < 9; i++) { const a = i * 0.7 + rng.float(), r = i ? rng.float() * s.splash * 0.8 : 0; boom(s.x1 + Math.cos(a) * r, s.y1 + Math.sin(a) * r, 34 + rng.float() * 26); }
       if (!G.reduceMotion) G.shake = Math.max(G.shake, 10);
@@ -192,10 +204,11 @@ export function stepUnits(dt) {
         G.fort[L] = 0; G.fields = G.fields.filter(f => f.side === s.side || f.line !== L);
       }
       for (const e of G.units) {
-        if (e.side === s.side || e.hp <= 0) continue;
+        if (e.side === s.side || e.hp <= 0 || e.riding) continue;
         const d = Math.hypot(e.x - s.x1, e.y - s.y1); if (d > s.splash) continue;
         hurt(e, s.dmg * (1 - 0.55 * d / s.splash), 'barrage', null, s.cov, true);
       }
+      for (const t of G.trains) { const d = Math.hypot(t.x - s.x1, RAIL_Y - s.y1); if (t.side !== s.side && d <= s.splash) hurtTrain(t, s.dmg * (1 - 0.55 * d / s.splash), 'barrage'); }
       const hb = G.bases[1 - s.side], hd = Math.hypot(hb.x - s.x1, WH / 2 - s.y1);
       if (!s.noBase && hd <= s.splash + 22) hurtBase(1 - s.side, s.dmg * 0.8 * (1 - 0.4 * hd / (s.splash + 22)));
       continue;
@@ -209,7 +222,10 @@ export function stepUnits(dt) {
       if (G.owner[L] === 0) toast('A siege shell smashed part of the fortifications at trench ' + L + '.');
     }
     if (s.base && !s.noBase) hurtBase(1 - s.side, s.dmg);
-    else for (const e of G.units) { if (e.side === s.side || e.hp <= 0) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
+    else {
+      for (const e of G.units) { if (e.side === s.side || e.hp <= 0 || e.riding) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
+      for (const t of G.trains) if (t.side !== s.side && Math.hypot(t.x - s.x1, RAIL_Y - s.y1) <= s.splash) hurtTrain(t, s.dmg, s.type);
+    }
   }
   G.shells = G.shells.filter(s => s.t < s.dur);
   // card barrage
@@ -217,7 +233,7 @@ export function stepUnits(dt) {
     G.S.barrageT -= dt;
     if (G.S.barrageT <= 0) {
       G.S.barrageT = 10;
-      let tgt = null; for (const e of G.units) if (e.side === 1 && e.hp > 0 && e.settled && (!tgt || e.x < tgt.x)) tgt = e;
+      let tgt = null; for (const e of G.units) if (e.side === 1 && e.hp > 0 && e.settled && !e.riding && (!tgt || e.x < tgt.x)) tgt = e;
       if (tgt) for (let i = 0; i < G.M[0].barrage; i++) G.shells.push({ x0: G.bases[0].x, y0: WH / 2, x1: tgt.x + (rng.float() - 0.5) * 26, y1: 20 + rng.float() * (WH - 40), t: -i * 0.25, dur: 1.6, side: 0, type: 'barrage', dmg: 26, splash: 36, arc: 1.5 });
     }
   }
@@ -226,7 +242,11 @@ export function stepUnits(dt) {
   // who holds what
   for (let L = 1; L <= G.NT; L++) {
     let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !(u.fall > 0) && !u.fixed) { if (u.side) b++; else a++; }
+    const was = G.owner[L];
     if (a && !b) G.owner[L] = 0; else if (b && !a) G.owner[L] = 1;
+    /* a trench taken by one side destroys the other side's segment there and beyond: the side that held it, or
+       (Long March pre-laid track) the side whose unheld track ran through it */
+    if (was !== G.owner[L] && hasTrack()) { const lost = 1 - G.owner[L]; cutTrack(lost, segmentIndexFor(lost, L)); }
   }
   if (G.SUPER > 0 && G.owner[G.SUPER] !== G.S.superOwner) {
     const prev = G.S.superOwner, now = G.owner[G.SUPER]; G.S.superOwner = now;

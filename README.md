@@ -16,6 +16,8 @@ Tap your HQ to buy base upgrades with supplies: three shared ones (HQ Walls, Sup
 
 Your HQ also has a gun, one per nation. Press the gun button, tap the field inside its range to place the target, and confirm; it costs supplies and then has to reload. The enemy HQ fires its own gun at your biggest clusters from one minute in, without warning, and these shells never hit an HQ.
 
+Railways: lay track from your HQ one held trench at a time and buy a train; troops at the HQ ride it up the line when that beats walking, wounded ride it home to heal, and each run with riders brings a few supplies. The enemy builds a railway too, and big shells break track, which you repair. Planned for later: an armoured train and a railway gun.
+
 Research points carry between battles. Spend them on a permanent tree, or carry your progress with a save code.
 
 ## Controls

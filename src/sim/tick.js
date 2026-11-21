@@ -7,6 +7,7 @@ import { SUPER_CARD_T } from '../data/units.js';
 import { G, incomeNow, lineName, toast } from './state.js';
 import { frontLine, countAt } from './geometry.js';
 import { stepUnits, puff } from './combat.js';
+import { stepTrains } from './rail.js';
 import { aiStep } from './ai.js';
 import { stepBase } from './base.js';
 import { stepSW } from './superweapons.js';
@@ -28,7 +29,7 @@ export function tick(dt) {
     S.superT += dt;
     if (S.superT >= SUPER_CARD_T) { S.superT -= SUPER_CARD_T; S.pending++; toast('The super trench has sent you a free card.'); }
   }
-  stepUnits(dt); aiStep(dt); stepBase(dt); stepSW(dt); stepGun(dt);
+  stepUnits(dt); stepTrains(dt); aiStep(dt); stepBase(dt); stepSW(dt); stepGun(dt);
   for (const a of [G.tracers, G.booms, G.floats]) for (const o of a) o.life -= dt;
   G.tracers = G.tracers.filter(o => o.life > 0); G.booms = G.booms.filter(o => o.life > 0); G.floats = G.floats.filter(o => o.life > 0);
   for (const f of G.floats) f.y -= dt * 22;
@@ -41,7 +42,7 @@ export function tick(dt) {
   const fl = frontLine(); if (G.sel > Math.max(fl, 0) && countAt(0, G.sel) === 0) G.sel = fl;
   if (G.sel > 0 && G.sel < G.HQI) {
     let foes = 0, near = 0; const sx = G.LX[G.sel];
-    for (const u of G.units) { if (u.fixed) continue; if (u.side === 1) { if (u.line === G.sel && u.settled) foes++; } else if (Math.abs(u.x - sx) < 260 && u.line >= G.sel) near++; }
+    for (const u of G.units) { if (u.fixed) continue; if (u.side === 1) { if (u.line === G.sel && u.settled) foes++; } else if (!u.riding && Math.abs(u.x - sx) < 260 && u.line >= G.sel) near++; }
     if (foes && !near) {
       for (const u of G.units) if (u.side === 0 && u.line === G.sel && !u.fixed) u.line = G.sel - 1;
       toast('Trench ' + G.sel + ' is lost. Your orders fall back to ' + lineName(G.sel - 1) + '.'); G.sel--;

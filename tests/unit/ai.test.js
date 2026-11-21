@@ -11,6 +11,8 @@ import { NAT, AI_INCOME, AI_RAMP } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
 import { GUNS, AI_GUN_SHARE } from '../../src/data/guns.js';
 import { DEPOT_RATE, SUPER_INC } from '../../src/data/units.js';
+import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS } from '../../src/data/rail.js';
+import { trackEnd, canLay } from '../../src/sim/rail.js';
 
 const toasts = [];
 bus.on('toast', m => toasts.push(m));
@@ -29,22 +31,22 @@ describe('enemy income', () => {
   it('accrues the base ramp AI_INCOME·(1+t/AI_RAMP)', () => {
     game(); quiet();
     for (const t of [0, 300]) {
-      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund; aiStep(0.1);
-      expect(G.ai.money + G.ai.fund + G.ai.gunFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund + G.ai.railFund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund + G.ai.gunFund + G.ai.railFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * 0.1, 6);
     }
   });
   it('us enemy ramps with min(1.8, 0.75+t/400)', () => {
     game('de', 'us'); quiet();
     for (const t of [100, 1000]) {
-      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund; aiStep(0.1);
-      expect(G.ai.money + G.ai.fund + G.ai.gunFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(1.8, 0.75 + t / 400) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund + G.ai.railFund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund + G.ai.gunFund + G.ai.railFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(1.8, 0.75 + t / 400) * 0.1, 6);
     }
   });
   it('aq enemy ramps with min(2, 0.6+t/300)', () => {
     game('de', 'aq'); quiet();
     for (const t of [180, 1200]) {
-      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund; aiStep(0.1);
-      expect(G.ai.money + G.ai.fund + G.ai.gunFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(2, 0.6 + t / 300) * 0.1, 6);
+      G.S.t = t; const m0 = G.ai.money + G.ai.fund + G.ai.gunFund + G.ai.railFund; aiStep(0.1);
+      expect(G.ai.money + G.ai.fund + G.ai.gunFund + G.ai.railFund - m0).toBeCloseTo(AI_INCOME * (1 + t / AI_RAMP) * Math.min(2, 0.6 + t / 300) * 0.1, 6);
     }
   });
   it('adds depot and doubled-trench income on plain', () => {
@@ -280,7 +282,7 @@ describe('enemy HQ gun', () => {
     expect(G.gun[1].cd).toBeLessThanOrEqual(0);
   });
   it('diverts a share of income to the gun fund from 60 s, none before', () => {
-    game(); quiet(); G.ai.gunFund = 0; G.S.t = 59; aiStep(1);
+    game(); quiet(); G.ai.noRail = true; G.ai.gunFund = 0; G.S.t = 59; aiStep(1);
     expect(G.ai.gunFund).toBe(0);
     G.S.t = 100; const m0 = G.ai.money; aiStep(1);
     const inc = AI_INCOME * (1 + 100 / AI_RAMP);
@@ -288,7 +290,7 @@ describe('enemy HQ gun', () => {
     expect(G.ai.money - m0).toBeCloseTo(inc * (1 - AI_GUN_SHARE), 6);
   });
   it('caps the gun fund at 2x cost, returning overflow to money', () => {
-    game(); quiet(); G.S.t = 100; G.ai.gunFund = cost() * 2; const m0 = G.ai.money; aiStep(1);
+    game(); quiet(); G.ai.noRail = true; G.S.t = 100; G.ai.gunFund = cost() * 2; const m0 = G.ai.money; aiStep(1);
     expect(G.ai.gunFund).toBe(cost() * 2);
     expect(G.ai.money - m0).toBeCloseTo(AI_INCOME * (1 + 100 / AI_RAMP), 6);
   });
@@ -303,5 +305,76 @@ describe('enemy HQ gun', () => {
       const cd = G.gun[1].cd; if (cd > prev + 1) shots++; prev = cd; if (cd > 0) G.gun[1].cd -= 0.25;
     }
     expect(shots).toBeGreaterThan(0);
+  });
+});
+
+describe('enemy railway', () => {
+  const tcost = () => TRAINS[G.nation[1]].cost;
+  function setup() { game(); quiet(); G.S.t = 100; G.ai.railFund = 0; G.ai.want = null; G.ai.money = 0; }
+  const buyTicks = (n = 1) => { for (let i = 0; i < n; i++) tick(0); };
+  it('sends a share of income to the rail fund from 90 s, none before', () => {
+    game(); quiet(); G.S.t = AI_RAIL_T - 1; aiStep(1);
+    expect(G.ai.railFund).toBe(0);
+    G.S.t = 100; G.ai.railFund = 0; const m0 = G.ai.money, f0 = G.ai.gunFund; aiStep(1);
+    const inc = AI_INCOME * (1 + 100 / AI_RAMP);
+    expect(G.ai.railFund).toBeCloseTo(inc * AI_RAIL_SHARE, 6);
+    expect(G.ai.money - m0).toBeCloseTo(inc * (1 - AI_RAIL_SHARE - AI_GUN_SHARE * (G.ai.gunFund > f0 ? 1 : 0)), 6);
+  });
+  it('money before 90 s is exactly income times the old split', () => {
+    game(); quiet(); G.S.t = 80; const m0 = G.ai.money; aiStep(1);
+    const inc = AI_INCOME * (1 + 80 / AI_RAMP);
+    expect(G.ai.money - m0).toBeCloseTo(inc * (1 - AI_GUN_SHARE), 12);
+  });
+  it('caps the rail fund at 2x a train, returning overflow to money', () => {
+    setup(); G.ai.railFund = tcost() * 2; const m0 = G.ai.money; aiStep(1);
+    expect(G.ai.railFund).toBe(tcost() * 2);
+    expect(G.ai.money - m0).toBeGreaterThan(0);
+  });
+  it('does nothing before 90 s even with a full fund', () => {
+    setup(); G.S.t = 89; G.ai.railFund = 300; buyTicks(3);
+    expect(G.track[1].end).toBe(0); expect(G.ai.railFund).toBe(300);
+  });
+  it('lays the next segment, paying from the fund', () => {
+    setup(); G.ai.railFund = TRACK_COST; buyTicks();
+    expect(G.track[1].end).toBe(1); expect(G.ai.railFund).toBe(0);
+    expect(G.ai.money).toBe(0);
+  });
+  it('waits when the fund is short, and lays only one thing per tick', () => {
+    setup(); G.ai.railFund = TRACK_COST - 1; buyTicks();
+    expect(G.track[1].end).toBe(0);
+    G.ai.railFund = 300; buyTicks();
+    expect(G.track[1].end).toBe(1); expect(G.ai.railFund).toBe(300 - TRACK_COST);
+  });
+  it('repairs before laying', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 1; G.track[1].broken.add(1); G.ai.railFund = 300; buyTicks();
+    expect(G.track[1].broken.size).toBe(0); expect(G.track[1].end).toBe(1);
+    expect(G.ai.railFund).toBe(300 - REPAIR_COST);
+    buyTicks(); expect(G.track[1].end).toBe(2);
+  });
+  const mineTrains = () => G.trains.filter(t => t.side === 1).length;
+  it('buys the first train at track end 2, before laying a third segment', () => {
+    setup(); G.ai.railFund = 300; G.owner.fill(1); G.owner[0] = 0; // all held: laying is always possible
+    buyTicks(); expect(G.track[1].end).toBe(1);
+    buyTicks(); expect(G.track[1].end).toBe(2); expect(mineTrains()).toBe(0);
+    buyTicks(); expect(mineTrains()).toBe(1); expect(G.track[1].end).toBe(2);
+    expect(G.ai.railFund).toBe(300 - 2 * TRACK_COST - tcost());
+  });
+  it('saves for the first train rather than laying more track', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 2; G.ai.railFund = tcost() - 1; buyTicks(3);
+    expect(G.track[1].end).toBe(2); expect(mineTrains()).toBe(0);
+    G.ai.railFund = tcost(); buyTicks(); expect(mineTrains()).toBe(1);
+  });
+  it('buys a second train only once track end is 3, after laying is blocked or done', () => {
+    setup(); G.owner.fill(0); for (const k of [1, 2]) G.owner[G.HQI - k] = 1; // two held trenches only
+    G.track[1].end = 2; G.ai.railFund = 300; buyTicks(); expect(mineTrains()).toBe(1);
+    G.ai.railFund = 300; buyTicks(2); expect(mineTrains()).toBe(1);   // end 2: no second train
+    G.owner[G.HQI - 3] = 1; G.track[1].end = 3; G.owner[G.HQI - 4] = 0; G.ai.railFund = 300; buyTicks();
+    expect(mineTrains()).toBe(2);
+    G.ai.railFund = 300; buyTicks(3); expect(mineTrains()).toBe(2);
+  });
+  it('lays nothing toward an unheld trench and does not throw', () => {
+    setup(); G.ai.railFund = 300; G.owner[G.HQI - 1] = 0;
+    expect(canLay(1)).not.toBe('');
+    buyTicks(2); expect(G.track[1].end).toBe(0); expect(trackEnd(1)).toBe(0);
   });
 });
