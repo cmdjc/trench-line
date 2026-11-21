@@ -10,7 +10,7 @@
 //   - `broken` holds segment numbers (same numbering) cut by big shells.
 // A side "holds" a segment when G.owner[trench it ends at] === side.
 
-import { G, toast } from './state.js';
+import { G, toast, hidden } from './state.js';
 import { TRACK_COST, REPAIR_COST, BIG_SPLASH, RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, WOUNDED } from '../data/rail.js';
 import { ARM } from '../data/units.js';
 
@@ -105,7 +105,7 @@ function breakBehind(side, p) {
 }
 
 /* foot soldiers only: no armour, emplacements, fixed jobs or paratroopers */
-const rideable = u => !u.T.armor && !u.T.nest && !u.T.bunker && !u.T.depot && !u.T.noFire && !u.fixed && !u.para && u.T.speed > 0;
+export const rideable = u => !u.T.armor && !u.T.nest && !u.T.bunker && !u.T.depot && !u.T.noFire && !u.fixed && !u.para && u.T.speed > 0;
 
 /* seconds until train t, wherever it is now, has carried a unit waiting at the HQ out to the end (farD px) */
 function trainETA(t, farD) {
@@ -128,14 +128,25 @@ function rideTime(side) {
   return { best, ex, eL: lineOfSegment(side, end) };
 }
 
+/* a foot soldier's walking pace, px/s */
+export const walkSpeed = u => u.T.speed * G.M[u.side].speed;
+
 /* does riding from the HQ beat walking to the end of the track, for a unit ordered to its line? */
 function rideBeats(u) {
-  if (u.hp <= 0 || u.riding || !rideable(u)) return false;
+  if (u.hp <= 0 || hidden(u) || !rideable(u)) return false;
   const r = rideTime(u.side); if (!r) return false;
   const fwd = fwdOf(u.side);
   if ((u.line - r.eL) * fwd < 0) return false;
   if ((u.x - r.ex) * fwd >= 0) return false;
-  return r.best < Math.abs(r.ex - u.x) / (u.T.speed * G.M[u.side].speed);
+  return r.best < Math.abs(r.ex - u.x) / walkSpeed(u);
+}
+
+/* Seconds this unit needs to reach x `tx` by train (ride to the end of the track, walk the rest), or Infinity
+   when it would not take the train. */
+export function trainTime(u, tx) {
+  if (!rideBeats(u)) return Infinity;
+  const r = rideTime(u.side);
+  return r.best + Math.abs(tx - r.ex) / walkSpeed(u);
 }
 
 /* Should this unit, standing at the HQ, wait for a train instead of walking? Only when riding gets it to the end
@@ -150,7 +161,7 @@ export function shouldRide(u) {
 /* mark units that should wait for a train; release the ones that no longer gain by waiting */
 function updateWaiting() {
   for (const u of G.units) {
-    if (u.riding) continue;
+    if (hidden(u)) continue;
     if (shouldRide(u)) { u.waiting = true; u.moving = false; } else if (u.waiting) u.waiting = false;
   }
 }
@@ -175,7 +186,7 @@ function atEnd(t, end) {
   const L = lineOfSegment(t.side, end);
   for (const u of G.units) {
     if (t.riders.length >= t.T.cap) break;
-    if (u.side !== t.side || u.line !== L || !u.settled || u.riding || u.hp <= 0 || u.hp >= WOUNDED * u.max || !rideable(u)) continue;
+    if (u.side !== t.side || u.line !== L || !u.settled || hidden(u) || u.hp <= 0 || u.hp >= WOUNDED * u.max || !rideable(u)) continue;
     u.homeLine = u.line; board(t, u);
   }
 }
@@ -247,7 +258,7 @@ export function stepTrains(dt) {
       /* at the HQ, outbound: take waiting troops; once anyone is aboard, hold briefly unless full */
       if (end > 0) for (const u of G.units) {
         if (t.riders.length >= t.T.cap) break;
-        if (u.waiting && u.side === t.side && !u.riding && u.hp > 0) board(t, u);
+        if (u.waiting && u.side === t.side && !hidden(u) && u.hp > 0) board(t, u);
       }
       if (t.riders.length && t.riders.length < t.T.cap && (t.dwell = (t.dwell || 0) + dt) < DWELL) continue;
       t.dwell = 0;

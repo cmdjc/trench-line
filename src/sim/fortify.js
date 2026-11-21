@@ -4,7 +4,7 @@
 
 import { SLOTS, SLOTS5, WH, FORT_COST, maxFort, SPECIAL, BUNKER_CAP, BUNKER_MAX } from '../data/units.js';
 import { NAT } from '../data/nations.js';
-import { G, isDbl, toast } from './state.js';
+import { G, isDbl, toast, hidden } from './state.js';
 import { isTrench, spawn, exposed } from './geometry.js';
 import { hurt, boom } from './combat.js';
 import { rng } from '../core/rng.js';
@@ -37,10 +37,10 @@ export function stepFields() {
     for (const mn of f.mines) {
       if (!mn.live) continue;
       let hit = false;
-      for (const u of G.units) if (u.side !== f.side && u.hp > 0 && !u.riding && Math.abs(u.x - mn.x) < 13 && Math.abs(u.y - mn.y) < 13) { hit = true; break; }
+      for (const u of G.units) if (u.side !== f.side && u.hp > 0 && !hidden(u) && Math.abs(u.x - mn.x) < 13 && Math.abs(u.y - mn.y) < 13) { hit = true; break; }
       if (!hit) continue;
       mn.live = false; boom(mn.x, mn.y, 22);
-      for (const e of G.units) if (e.side !== f.side && e.hp > 0 && !e.riding && Math.hypot(e.x - mn.x, e.y - mn.y) <= 28) hurt(e, 60, 'barrage', null, undefined, true);
+      for (const e of G.units) if (e.side !== f.side && e.hp > 0 && !hidden(e) && Math.hypot(e.x - mn.x, e.y - mn.y) <= 28) hurt(e, 60, 'barrage', null, undefined, true);
     }
   }
   G.fields = G.fields.filter(f => f.type === 'wire' ? f.hp > 0 : f.mines.some(m => m.live));

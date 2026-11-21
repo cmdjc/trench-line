@@ -1,6 +1,6 @@
 // Frame orchestration: camera transform, visibility culling, draw order.
 import { bus } from '../../core/events.js';
-import { G, isDbl } from '../../sim/state.js';
+import { G, isDbl, hidden } from '../../sim/state.js';
 import { isTrench, posX } from '../../sim/geometry.js';
 import { NAT } from '../../data/nations.js';
 import { WH } from '../../data/units.js';
@@ -126,7 +126,7 @@ export function draw() {
   }
   drawTrains(vis);
   for (const u of G.units) {
-    if (!u.T.armor && !u.riding && vis(u.x) && !(u.shelter && u.shelter.hp > 0 && u.settled)) at(u.x, u.y, u.side === 1, () => drawSoldier(u));
+    if (!u.T.armor && !hidden(u) && vis(u.x) && !(u.shelter && u.shelter.hp > 0 && u.settled)) at(u.x, u.y, u.side === 1, () => drawSoldier(u));
   }
   drawSmoke(vis);
   drawShells(vis);

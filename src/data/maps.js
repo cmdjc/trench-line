@@ -10,6 +10,7 @@ export const MAPS = {
   plain: { name: 'Wide open plain', blurb: 'A long front: 17 trenches and no cover between them. Trenches 4 and 14 are super trenches, a double line with a wall between: far stronger cover, room for 5 emplacements, 1 extra supply a second for whoever holds them, and belts of steel hedgehogs that stop the attacker\u2019s tanks until infantry take the trench.',
            rivers: [], n: 17, dbl: [4, 14] },
   march: { name: 'The Long March', blurb: '45 trenches in nine fortified belts with wide empty ground between them, and a super trench in the middle. Troops walk a long way from the HQ, so each side starts with a railway through its first belt of trenches and one transport train. The track only runs as far as you hold, and you can build it on.',
-           rivers: [], belts: 9, per: 5, tight: 150, gap: 520, super: true, startTrack: 5, startTrains: 1 }
+           rivers: [], belts: 9, per: 5, tight: 150, gap: 520, super: true, startTrack: 5, startTrains: 1, tunnels: true }
+  // tunnels: tunnel trenches round(NT/4) from each HQ (sim/tunnel.js)
   // startTrack: segments pre-laid free for each side (the first belt, = per); startTrains: free transport trains each
 };

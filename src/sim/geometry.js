@@ -4,8 +4,9 @@
 import { SEG, WH, TK, utOf, tkPrev } from '../data/units.js';
 import { NAT } from '../data/nations.js';
 import { rng } from '../core/rng.js';
-import { G, isDbl } from './state.js';
+import { G, isDbl, hidden } from './state.js';
 import { infCap, startLineFor } from './base.js';
+import { routeSpawn } from './tunnel.js';
 
 export const trenchX = (cx, y) => cx + ((Math.floor(y / SEG) % 2) ? 6 : -6);
 
@@ -48,7 +49,7 @@ export function reached(u) {
 export function walkFront(side) {
   let f = null;
   for (const u of G.units) {
-    if (u.side !== side || u.fixed || u.para || u.riding || u.hp <= 0) continue;
+    if (u.side !== side || u.fixed || u.para || hidden(u) || u.hp <= 0) continue;
     const r = reached(u), at = side ? Math.max(u.line, r) : Math.min(u.line, r);
     f = f === null ? at : side ? Math.min(f, at) : Math.max(f, at);
   }
@@ -70,6 +71,8 @@ export function spawn(side, type, L, placed) {
   const park = T.armor ? (T.rear ? -((T.park || 38) + 26) : (T.park || 38) + 4) : 0;
   const hp = T.hp * (T.armor ? m.tankHp : m.hp);
   const u = { id: G.uid++, side, type, T, cd2: 0, flash2: 0, gun: 1, tread: 0, puff: 0, line: L, y, aim: 0, park, x: placed ? posX(side, L, y, park) : startX(side, L, type), hp, max: hp, cd: rng.float() * T.cd, settled: !!placed, moving: false, walk: rng.float() * 6, flash: 0 };
+  /* tunnels map: a fresh walker with no direct start line may take the tunnel when that is strictly fastest */
+  if (!placed && startLineFor(side, type, L) === null) routeSpawn(u);
   G.units.push(u); return u;
 }
 
@@ -78,7 +81,7 @@ export const tanks = side => { let n = 0; for (const u of G.units) if (u.side ==
 export const anyTank = () => TK.some(k => G.S.unlocked[k] && ut(0, k));
 export const tkCan = k => !!ut(0, k) && !G.S.unlocked[k] && (k === 'tkL' || !tkPrev(G.nation[0], k) || !!G.S.unlocked[tkPrev(G.nation[0], k)]);
 export const full = (side, type) => { const T = ut(side, type); return T.armor ? tanks(side) + (T.w || 1) > NAT[G.nation[side]].tanks + 1e-6 : count(side) >= infCap(side); };
-export const countAt = (side, L) => { let n = 0; for (const u of G.units) if (u.side === side && u.line === L && !u.fixed && !u.riding) n++; return n; };
+export const countAt = (side, L) => { let n = 0; for (const u of G.units) if (u.side === side && u.line === L && !u.fixed && !hidden(u)) n++; return n; };
 export const power = (side, L) => { let p = 0; for (const u of G.units) if (u.side === side && u.line === L) p += u.T.cost; return p; };
 export const cost = type => Math.round(ut(0, type).cost * G.M[0].cost[type]);
 export const frontLine = () => { let f = 0; for (const u of G.units) if (u.side === 0 && !u.fixed && u.line > f) f = u.line; return f; };
