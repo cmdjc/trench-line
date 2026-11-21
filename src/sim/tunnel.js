@@ -2,19 +2,19 @@
 //
 // Two ordinary trenches, round(NT/4) from each HQ, hold tunnel mouths. A side that holds one can send fresh
 // infantry ordered to that trench or beyond it (toward the foe) through the tunnel: they vanish at their own HQ,
-// spend TUNNEL_T seconds hidden (u.tunnel = { t, exit }), then come out just behind the tunnel trench and walk on.
+// spend TUNNEL_TRANSIT_T seconds hidden (u.tunnel = { t, exit }), then come out just behind the tunnel trench and walk on.
 // Either side may use either tunnel; whoever holds the trench holds the tunnel.
 
 import { G, hidden } from './state.js';
 import { MAPS } from '../data/maps.js';
-import { TUNNEL_T, TUNNEL_DIV } from '../data/tunnel.js';
+import { TUNNEL_TRANSIT_T, TUNNEL_DIV } from '../data/tunnel.js';
 import { posX } from './geometry.js';
 import { rideable, trainTime, walkSpeed } from './rail.js';
 
 const homeOf = side => (side ? G.HQI : 0);
 const fwdOf = side => (side ? -1 : 1);
 /* where a unit leaving the tunnel at trench `exit` appears: just behind it, on its own side */
-const exitX = (side, exit) => G.LX[exit] - fwdOf(side) * 14;
+export const exitX = (side, exit) => G.LX[exit] - fwdOf(side) * 14;
 
 /* the tunnel trenches of this map, [] where there are none */
 export function tunnelLines() {
@@ -39,13 +39,13 @@ export function tunnelBeats(u) {
   if (u.hp <= 0 || hidden(u) || !rideable(u)) return false;
   const exit = tunnelFor(u.side, u.line); if (exit < 0) return false;
   const tx = posX(u.side, u.line, u.y, u.park), v = walkSpeed(u);
-  const tunnel = TUNNEL_T + Math.abs(tx - exitX(u.side, exit)) / v;
+  const tunnel = TUNNEL_TRANSIT_T + Math.abs(tx - exitX(u.side, exit)) / v;
   return tunnel < Math.abs(tx - u.x) / v && tunnel < trainTime(u, tx);
 }
 
 /* into the tunnel: hidden, parked at its own HQ until it comes out */
 export function enterTunnel(u, exit) {
-  u.tunnel = { t: TUNNEL_T, exit };
+  u.tunnel = { t: TUNNEL_TRANSIT_T, exit };
   u.x = G.LX[homeOf(u.side)];
   u.settled = false; u.moving = false; u.waiting = false;
 }

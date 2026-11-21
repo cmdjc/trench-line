@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { newGame, G } from '../../src/sim/state.js';
-import { tunnelLines, tunnelFor, tunnelBeats, stepTunnels } from '../../src/sim/tunnel.js';
-import { TUNNEL_T } from '../../src/data/tunnel.js';
+import { exitX, tunnelLines, tunnelFor, tunnelBeats, stepTunnels } from '../../src/sim/tunnel.js';
+import { TUNNEL_TRANSIT_T } from '../../src/data/tunnel.js';
 import { spawn, count, full, walkFront, countAt } from '../../src/sim/geometry.js';
 import { stepUnits } from '../../src/sim/combat.js';
 import { stepTrains } from '../../src/sim/rail.js';
@@ -12,8 +12,8 @@ function march() { newGame('gb', 'de', 'march', 7); G.units = []; G.shells = [];
 describe('tunnel lines', () => {
   it('march has tunnel trenches 11 and 35; open has none', () => {
     newGame('gb', 'de', 'march', 7);
-    expect(TUNNEL_T).toBeGreaterThanOrEqual(4);
-    expect(TUNNEL_T).toBeLessThanOrEqual(15);
+    expect(TUNNEL_TRANSIT_T).toBeGreaterThanOrEqual(4);
+    expect(TUNNEL_TRANSIT_T).toBeLessThanOrEqual(15);
     expect(tunnelLines()).toEqual([11, 35]);
     newGame('gb', 'de', 'open', 7);
     expect(tunnelLines()).toEqual([]);
@@ -31,15 +31,25 @@ describe('tunnel lines', () => {
   });
 });
 
+describe('exitX', () => {
+  it('matches where units actually come out', () => {
+    march(); G.owner[11] = 0; G.owner[35] = 1;
+    const a = spawn(0, 'rifle', 15); stepTunnels(TUNNEL_TRANSIT_T + 0.01);
+    expect(a.x).toBe(exitX(0, 11));
+    const b = spawn(1, 'rifle', 30); stepTunnels(TUNNEL_TRANSIT_T + 0.01);
+    expect(b.x).toBe(exitX(1, 35));
+  });
+});
+
 describe('tunnel route', () => {
   beforeEach(march);
-  it('holding 11 and ordering line 15: in the tunnel for TUNNEL_T s, then out at trench 11', () => {
+  it('holding 11 and ordering line 15: in the tunnel for TUNNEL_TRANSIT_T s, then out at trench 11', () => {
     G.owner[11] = 0;
     expect(tunnelFor(0, 15)).toBe(11);
     const u = spawn(0, 'rifle', 15);
-    expect(u.tunnel).toEqual({ t: TUNNEL_T, exit: 11 });
+    expect(u.tunnel).toEqual({ t: TUNNEL_TRANSIT_T, exit: 11 });
     expect(u.x).toBe(G.LX[0]);
-    for (let i = 0; i < Math.round(TUNNEL_T * 10) - 1; i++) { stepTunnels(0.1); stepUnits(0.1); }
+    for (let i = 0; i < Math.round(TUNNEL_TRANSIT_T * 10) - 1; i++) { stepTunnels(0.1); stepUnits(0.1); }
     expect(u.tunnel).toBeTruthy();
     expect(u.x).toBe(G.LX[0]);
     stepTunnels(0.2);
@@ -65,9 +75,9 @@ describe('tunnel route', () => {
     for (const L of [10, 5]) {
       expect(tunnelFor(1, L)).toBe(11);
       const u = spawn(1, 'rifle', L);
-      expect(u.tunnel).toEqual({ t: TUNNEL_T, exit: 11 });
+      expect(u.tunnel).toEqual({ t: TUNNEL_TRANSIT_T, exit: 11 });
       expect(u.x).toBe(G.LX[G.HQI]);
-      stepTunnels(TUNNEL_T + 0.01);
+      stepTunnels(TUNNEL_TRANSIT_T + 0.01);
       expect(u.tunnel).toBeUndefined();
       expect(u.x).toBe(G.LX[11] + 14);
     }

@@ -632,6 +632,12 @@ describe('railway buttons', () => {
 });
 
 describe('tunnel trench glyph', () => {
+  it('labels tunnel trenches for screen readers', () => {
+    newGame('gb', 'de', 'march', 7);
+    buildMap(); refresh();
+    const cells = document.querySelector('#map').children;
+    for (let L = 0; L <= G.HQI; L++) expect(cells[L].getAttribute('aria-label').endsWith(', tunnel')).toBe(tunnelLines().includes(L));
+  });
   it('marks the tunnel trenches on march only', () => {
     newGame('gb', 'de', 'march', 7);
     buildMap();

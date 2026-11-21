@@ -15,7 +15,7 @@ That point is worth fighting over, because either side can use it.
 - **Long March only.** Two existing trenches become **tunnel trenches**. Trench 11 is the player's, about 25% of the way from the player's HQ. Trench 35 is the enemy's, the mirror image. Compute the index as `round(NT / 4)` from each side's HQ, so it follows the map if it changes.
 - **Normal trenches otherwise.** They have the same cover and the same emplacement slots as any other trench. Nobody holds them at the start.
 - **What a tunnel trench does.** While a side holds a tunnel trench, reinforcements it sends to that trench or beyond it, toward the foe, can go through the tunnel instead of walking.
-  - They spend `TUNNEL_T` seconds in the tunnel. While inside they are hidden: they can't fire or be hit, and they don't count toward caps.
+  - They spend `TUNNEL_TRANSIT_T` seconds in the tunnel. While inside they are hidden: they don't fire, can't be hit and don't show in the trench counts, but still count toward the infantry cap. (Ruling made during the build: an earlier draft said they don't count toward caps.)
   - Then they come out at the tunnel trench and walk on to their ordered line.
 - **Either side can use either tunnel.** Whoever holds a tunnel trench gets its tunnel. If the enemy captures your trench 11, enemy reinforcements come out there.
 - **Fastest route wins.** For each reinforcement, the game picks whichever gets it to its ordered line soonest, counting walking time from the exit: tunnel, train or walking.
@@ -39,7 +39,7 @@ That point is worth fighting over, because either side can use it.
 
 | Setting | Value |
 |---|---|
-| `TUNNEL_T` | 8 s |
+| `TUNNEL_TRANSIT_T` | 8 s |
 | Tunnel trench index | `round(NT/4)` from each HQ (11 and 35 on the Long March) |
 
 ## Success

@@ -241,4 +241,16 @@ describe('tunnel trench drawing', () => {
     expect(() => draw()).not.toThrow();
     cam.x = 0; cam.tx = 0;
   });
+
+  it('draw() with the enemy holding trench 11 and units in transit does not throw', () => {
+    setCtx(stubCtx);
+    newGame('gb', 'de', 'march', 3);
+    const [a] = tunnelLines();
+    G.owner[a] = 1;
+    cam.x = Math.max(0, G.LX[a] - 200); cam.tx = cam.x;
+    const e = spawn(1, 'rifle', a - 2, true); e.tunnel = { t: 4, exit: a };
+    const m = spawn(0, 'rifle', a + 2, true); m.tunnel = { t: 4, exit: a };
+    expect(() => draw()).not.toThrow();
+    cam.x = 0; cam.tx = 0;
+  });
 });

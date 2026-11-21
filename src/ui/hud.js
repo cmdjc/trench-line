@@ -72,7 +72,7 @@ export function refresh() {
     c.querySelector('.me').textContent = a || '\u00a0'; c.querySelector('.foe').textContent = b || '\u00a0';
     c.querySelector('.pips').textContent = '\u25aa'.repeat(G.fort[L]);
     c.setAttribute('aria-pressed', L === G.sel ? 'true' : 'false');
-    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : ''));
+    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : '') + (tunnelLines().includes(L) ? ', tunnel' : ''));
     c.classList.toggle('mine', G.owner[L] === 0); c.classList.toggle('theirs', G.owner[L] === 1);
   }
   if (G.NT > 9 && G.sel !== lastSel) { lastSel = G.sel; const mp = $('map'), c = cells[G.sel]; if (c) mp.scrollLeft = c.offsetLeft - mp.clientWidth / 2 + c.offsetWidth / 2; }
