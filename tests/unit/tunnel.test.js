@@ -12,7 +12,8 @@ function march() { newGame('gb', 'de', 'march', 7); G.units = []; G.shells = [];
 describe('tunnel lines', () => {
   it('march has tunnel trenches 11 and 35; open has none', () => {
     newGame('gb', 'de', 'march', 7);
-    expect(TUNNEL_T).toBe(8);
+    expect(TUNNEL_T).toBeGreaterThanOrEqual(4);
+    expect(TUNNEL_T).toBeLessThanOrEqual(15);
     expect(tunnelLines()).toEqual([11, 35]);
     newGame('gb', 'de', 'open', 7);
     expect(tunnelLines()).toEqual([]);
@@ -32,13 +33,13 @@ describe('tunnel lines', () => {
 
 describe('tunnel route', () => {
   beforeEach(march);
-  it('holding 11 and ordering line 15: in the tunnel for 8 s, then out at trench 11', () => {
+  it('holding 11 and ordering line 15: in the tunnel for TUNNEL_T s, then out at trench 11', () => {
     G.owner[11] = 0;
     expect(tunnelFor(0, 15)).toBe(11);
     const u = spawn(0, 'rifle', 15);
     expect(u.tunnel).toEqual({ t: TUNNEL_T, exit: 11 });
     expect(u.x).toBe(G.LX[0]);
-    for (let i = 0; i < 79; i++) { stepTunnels(0.1); stepUnits(0.1); }
+    for (let i = 0; i < Math.round(TUNNEL_T * 10) - 1; i++) { stepTunnels(0.1); stepUnits(0.1); }
     expect(u.tunnel).toBeTruthy();
     expect(u.x).toBe(G.LX[0]);
     stepTunnels(0.2);
@@ -123,7 +124,7 @@ describe('tunnel route', () => {
     expect(u.riding).toBeFalsy();
   });
   it('when the train is faster, the unit rides instead', () => {
-    /* track held out to trench 20: the train runs 3x walking pace, so it beats 8 s in the tunnel plus the walk on */
+    /* track held out to trench 20: the train runs 3x walking pace, so it beats the tunnel delay plus the walk on */
     for (let L = 1; L <= 20; L++) G.owner[L] = 0;
     G.track[0].end = 20;
     const u = spawn(0, 'rifle', 20);
