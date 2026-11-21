@@ -18,6 +18,8 @@ Your HQ also has a gun, one per nation. Press the gun button, tap the field insi
 
 Railways: lay track from your HQ one held trench at a time and buy a train; troops at the HQ ride it up the line when that beats walking, wounded ride it home to heal, and each run with riders brings a few supplies. The enemy builds a railway too, and big shells break track, which you repair. Planned for later: an armoured train and a railway gun.
 
+On the Long March, trenches 11 and 35 hide a tunnel: whoever holds one can send fresh troops through it, hidden for a few seconds, and have them come out at the trench.
+
 Research points carry between battles. Spend them on a permanent tree, or carry your progress with a save code.
 
 ## Controls

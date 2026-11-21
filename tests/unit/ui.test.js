@@ -18,7 +18,8 @@ import { GUNS } from '../../src/data/guns.js';
 import * as commands from '../../src/sim/commands.js';
 import { swCost } from '../../src/sim/superweapons.js';
 import { nearestDrop } from '../../src/sim/drop.js';
-import { refresh } from '../../src/ui/hud.js';
+import { refresh, buildMap } from '../../src/ui/hud.js';
+import { tunnelLines } from '../../src/sim/tunnel.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 import { cutTrack } from '../../src/sim/rail.js';
 
@@ -627,5 +628,23 @@ describe('railway buttons', () => {
     expect($('trainBtn').disabled).toBe(true);
     G.track[0].end = 2; G.owner[1] = 1; bus.emit('hud');           // laid but the first trench is lost
     expect($('trainBtn').textContent).toContain('The track is cut.');
+  });
+});
+
+describe('tunnel trench glyph', () => {
+  it('labels tunnel trenches for screen readers', () => {
+    newGame('gb', 'de', 'march', 7);
+    buildMap(); refresh();
+    const cells = document.querySelector('#map').children;
+    for (let L = 0; L <= G.HQI; L++) expect(cells[L].getAttribute('aria-label').endsWith(', tunnel')).toBe(tunnelLines().includes(L));
+  });
+  it('marks the tunnel trenches on march only', () => {
+    newGame('gb', 'de', 'march', 7);
+    buildMap();
+    const lit = [...document.querySelectorAll('#map button')].filter(b => b.textContent.includes('⊓')).map(b => +b.dataset.line);
+    expect(lit).toEqual(tunnelLines());
+    newGame('gb', 'de', 'open', 7);
+    buildMap();
+    expect(document.querySelector('#map').textContent).not.toContain('⊓');
   });
 });

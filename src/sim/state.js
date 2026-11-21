@@ -37,6 +37,8 @@ export const G = {
 
 export const fmt = x => String(Math.round(x * 10) / 10);
 export const lineName = L => (L === 0 ? 'your HQ' : L === G.HQI ? 'the enemy HQ' : 'trench ' + L);
+/* out of the fight: riding a train or in a tunnel (sim/rail.js, sim/tunnel.js) */
+export const hidden = u => !!(u.riding || u.tunnel);
 export const isDbl = L => G.DBL.indexOf(L) >= 0;
 export const dblHeld = side => { let n = 0; for (const L of G.DBL) if (G.owner && G.owner[L] === side) n++; return n; };
 export const depots = side => { let n = 0; for (const u of G.units) if (u.T.depot && u.side === side) n++; return n; };

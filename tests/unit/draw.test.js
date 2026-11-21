@@ -12,6 +12,8 @@ import { TRAINS } from '../../src/data/rail.js';
 import { draw, vis } from '../../src/ui/draw/index.js';
 import { setCtx } from '../../src/ui/draw/helpers.js';
 import { cam, vw } from '../../src/ui/camera.js';
+import { drawTunnels } from '../../src/ui/draw/terrain.js';
+import { tunnelLines } from '../../src/sim/tunnel.js';
 
 const noop = () => {};
 const stubCtx = new Proxy(
@@ -207,5 +209,48 @@ describe('railway drawing', () => {
       cam.x = G.LX[G.HQI] - 300;
       expect(() => draw()).not.toThrow();
     }
+  });
+});
+
+describe('tunnel trench drawing', () => {
+  const recorder = () => {
+    const calls = [];
+    const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => { calls.push(k); return a; }), set: (t, k, v) => { t[k] = v; return true; } });
+    return { ctx, calls };
+  };
+  it('draws a mouth at each tunnel trench on march, none on open', () => {
+    const { ctx, calls } = recorder();
+    setCtx(ctx);
+    newGame('gb', 'de', 'march', 3);
+    drawTunnels(() => true);
+    expect(calls.length).toBeGreaterThan(10);
+    calls.length = 0;
+    newGame('gb', 'de', 'open', 3);
+    drawTunnels(() => true);
+    expect(calls.length).toBe(0);
+    setCtx(stubCtx);
+  });
+
+  it('draw() on march at a tunnel trench, with units in transit, does not throw', () => {
+    setCtx(stubCtx);
+    newGame('gb', 'de', 'march', 3);
+    const [a] = tunnelLines();
+    cam.x = Math.max(0, G.LX[a] - 200); cam.tx = cam.x;
+    const u = spawn(0, 'rifle', a + 2, true);
+    u.tunnel = { t: 4, exit: a };
+    expect(() => draw()).not.toThrow();
+    cam.x = 0; cam.tx = 0;
+  });
+
+  it('draw() with the enemy holding trench 11 and units in transit does not throw', () => {
+    setCtx(stubCtx);
+    newGame('gb', 'de', 'march', 3);
+    const [a] = tunnelLines();
+    G.owner[a] = 1;
+    cam.x = Math.max(0, G.LX[a] - 200); cam.tx = cam.x;
+    const e = spawn(1, 'rifle', a - 2, true); e.tunnel = { t: 4, exit: a };
+    const m = spawn(0, 'rifle', a + 2, true); m.tunnel = { t: 4, exit: a };
+    expect(() => draw()).not.toThrow();
+    cam.x = 0; cam.tx = 0;
   });
 });

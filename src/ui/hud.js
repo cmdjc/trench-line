@@ -20,6 +20,7 @@ import { canLay, canBuyTrain, trackEnd } from '../sim/rail.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
 import { focusLine } from './camera.js';
+import { tunnelLines } from '../sim/tunnel.js';
 
 let toastT = null;
 export function toast(msg) {
@@ -29,8 +30,8 @@ export function toast(msg) {
 
 let lastSel = -1;
 export function buildMap() {
-  let h = ''; const per = (MAPS[G.MAP] && MAPS[G.MAP].per) || 0;
-  for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i></button>';
+  let h = ''; const per = (MAPS[G.MAP] && MAPS[G.MAP].per) || 0, tun = tunnelLines();
+  for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + (tun.includes(L) ? '\u2293' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i></button>';
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
 }
 
@@ -71,7 +72,7 @@ export function refresh() {
     c.querySelector('.me').textContent = a || '\u00a0'; c.querySelector('.foe').textContent = b || '\u00a0';
     c.querySelector('.pips').textContent = '\u25aa'.repeat(G.fort[L]);
     c.setAttribute('aria-pressed', L === G.sel ? 'true' : 'false');
-    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : ''));
+    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : '') + (tunnelLines().includes(L) ? ', tunnel' : ''));
     c.classList.toggle('mine', G.owner[L] === 0); c.classList.toggle('theirs', G.owner[L] === 1);
   }
   if (G.NT > 9 && G.sel !== lastSel) { lastSel = G.sel; const mp = $('map'), c = cells[G.sel]; if (c) mp.scrollLeft = c.offsetLeft - mp.clientWidth / 2 + c.offsetWidth / 2; }

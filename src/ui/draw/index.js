@@ -1,12 +1,12 @@
 // Frame orchestration: camera transform, visibility culling, draw order.
 import { bus } from '../../core/events.js';
-import { G, isDbl } from '../../sim/state.js';
+import { G, isDbl, hidden } from '../../sim/state.js';
 import { isTrench, posX } from '../../sim/geometry.js';
 import { NAT } from '../../data/nations.js';
 import { WH } from '../../data/units.js';
 import { cam, vw, metrics } from '../camera.js';
 import { ctx, setCtx, circle, at, bagArc, TR } from './helpers.js';
-import { makeDecor, drawGround, drawRivers, drawWireBelts, drawTrench, drawSuper, drawBase } from './terrain.js';
+import { makeDecor, drawGround, drawRivers, drawWireBelts, drawTrench, drawSuper, drawBase, drawTunnels } from './terrain.js';
 import { drawTrack, drawTrains } from './rail.js';
 import { drawSoldier } from './men.js';
 import { drawTank, drawWreck } from './tanks.js';
@@ -61,6 +61,7 @@ export function draw() {
     ctx.fillText(L, G.LX[L] + 20 + so, WH - 6);
     if (L === G.SUPER) { ctx.fillStyle = '#e8c25a'; ctx.fillText('SUPER TRENCH', G.LX[L] + 20, WH - 32); }
   }
+  drawTunnels(vis);
   drawTrack(vis);
   // selected line
   if (G.running) {
@@ -126,7 +127,7 @@ export function draw() {
   }
   drawTrains(vis);
   for (const u of G.units) {
-    if (!u.T.armor && !u.riding && vis(u.x) && !(u.shelter && u.shelter.hp > 0 && u.settled)) at(u.x, u.y, u.side === 1, () => drawSoldier(u));
+    if (!u.T.armor && !hidden(u) && vis(u.x) && !(u.shelter && u.shelter.hp > 0 && u.settled)) at(u.x, u.y, u.side === 1, () => drawSoldier(u));
   }
   drawSmoke(vis);
   drawShells(vis);

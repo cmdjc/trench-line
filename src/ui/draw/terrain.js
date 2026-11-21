@@ -4,6 +4,7 @@ import { WH, SEG, HEDGE, BW } from '../../data/units.js';
 import { G, isDbl } from '../../sim/state.js';
 import { NAT } from '../../data/nations.js';
 import { decor } from '../../core/rng.js';
+import { tunnelLines, exitX } from '../../sim/tunnel.js';
 
 let patches = [];
 let craters = [];
@@ -274,4 +275,24 @@ export function drawBase(s) {
     if (b.hp < b.max * 0.5) { ctx.fillStyle = 'rgba(20,14,8,.55)'; circle(-20, -14, 14); circle(0, 22, 10); }
   });
   flag(G.nation[s], b.x + (s ? 28 : -52), WH / 2 - 104);
+}
+
+/* tunnel mouths: a dark arch with timber props just behind each tunnel trench (Long March); a faint ring where
+   units in transit will come out */
+export function drawTunnels(vis) {
+  for (const T of tunnelLines()) {
+    const fwd = T * 2 < G.HQI ? 1 : -1, x = G.LX[T] - fwd * 36, y = WH / 2 - 14;
+    if (!vis(x)) continue;
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x - 15, y - 12, 34, 34);
+    ctx.fillStyle = '#5b4a30'; ctx.fillRect(x - 17, y - 14, 34, 34);
+    ctx.fillStyle = '#12100b';
+    ctx.beginPath(); ctx.moveTo(x - 11, y + 18); ctx.lineTo(x - 11, y + 2); ctx.arc(x, y + 2, 11, Math.PI, 0); ctx.lineTo(x + 11, y + 18); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8c6a3a'; ctx.fillRect(x - 14, y - 12, 4, 32); ctx.fillRect(x + 10, y - 12, 4, 32); ctx.fillRect(x - 14, y - 12, 28, 4);
+    ctx.fillStyle = '#6a4f2a'; ctx.fillRect(x - 14, y + 18, 28, 2);
+    for (const side of [0, 1]) {
+      if (!G.units.some(u => u.tunnel && u.tunnel.exit === T && u.side === side)) continue;
+      ctx.strokeStyle = 'rgba(232,194,90,.35)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.arc(exitX(side, T), WH / 2, 12, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
 }

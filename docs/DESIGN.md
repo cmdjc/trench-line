@@ -194,6 +194,32 @@ Chosen by you: buildable railways. You lay track from your HQ one segment at a t
 
   The starting track alone did not help: 10 of 12 battles still timed out, so the free train was added as the fallback. With it 9 of 12 battles finish within 1800 s, but only 5 by 1200 s, and the bot loses every finished battle. In those runs the enemy commander pushes its track to about 41 segments against the bot's 16 to 21. Main finished every battle by about 710 s. The Long March is still slower than main and now leans toward the enemy commander.
 
+## 12. Tunnel trenches (Long March)
+
+Chosen by you: two trenches on the Long March hide a tunnel, so reinforcements can skip the walk. Intent: `docs/superpowers/specs/2026-11-21-tunnel-trench-design.md`. Sim code in `src/sim/tunnel.js`, numbers in `src/data/tunnel.js`.
+
+- **Where**: trench `round(NT / 4)` from each HQ, which is 11 and 35 on the Long March (`MAPS.march.tunnels`). They are ordinary trenches, empty at the start. The trench strip marks them with "⊓" and the map shows a dark timber-framed arch behind each one.
+- **What it does**: whoever holds a tunnel trench can send fresh infantry ordered to that trench or beyond it through the tunnel. They are hidden for `TUNNEL_TRANSIT_T` seconds (they don't fire, can't be hit and don't show in the trench counts, but still count toward the infantry cap), then come out just behind the trench and walk on. Either side can use either tunnel. Each reinforcement takes the fastest of walking, the train and the tunnel; the Teleferica and the British tunnelling upgrade still come first. The enemy uses tunnels with no extra rules.
+- **`TUNNEL_TRANSIT_T` = 5 s** (the design started at 8, the allowed range was 4 to 15). Other maps are byte-identical to main (`node scripts/bot.mjs gb de <map> 3 --json` on open, river and plain).
+- **Balance: the target was not reached.** The bot never wins on the Long March at any `TUNNEL_TRANSIT_T`, and fewer than 2 of 12 timeouts was not reached either (best: 2 of 12 at 5 s). Per the plan nothing else was changed. Default bot, seeds 1 to 6, `MAXS=1800`; V = won, D = lost, T = timed out.
+
+| TUNNEL_TRANSIT_T | Britain v Germany | Germany v Britain | Timeouts |
+|---|---|---|---|
+| 4 | T T D T T D | D T D D T D | 6 |
+| 5 (ships) | D D D T D D | D D D T D D | 2 |
+| 6 | D D T D D T | D D D T D D | 3 |
+| 7 | D D T D T T | D T D D D D | 4 |
+| 8 | D D D D D T | D T T D T D | 4 |
+| 9 | T D T D T T | D D T D D D | 6 |
+| 10 | D D D D T T | T T T T D D | 6 |
+| 12 | D D T T T T | D T D D T D | 6 |
+| 15 | D D D D D D | D T D D T D | 2 |
+
+  The results are not monotonic in `TUNNEL_TRANSIT_T` (a few seconds shifts a capture and the whole battle changes), so 5 is the lowest-timeout setting, not a smooth optimum. At 5 s the finish times in minutes are Britain v Germany 13.2, 14.9, 19.6, T, 25.8, 20.3 and Germany v Britain 14.5, 22.1, 17.5, T, 28.0, 10.7. Compare section 11: Main finished every battle by about 710 s and the bot won 4 of 6 battles as Britain and 0 of 6 as Germany (4 of 12 in all, the spec's "4 of 12"). Before tunnels (task 1, with `TUNNEL_TRANSIT_T` 8) it won 0 of 12 (W = 0, L = 8, T = 4 at 1800 s).
+- **Diagnosis**: tunnels help with the stalling (10 of 12 battles finish at 5 s, against 9 of 12 with the starting railway and free train alone, and far sooner: the slowest of the 10 took 28 minutes) but not the loss. In instrumented runs at 5 s the enemy holds its own tunnel trench (35) from about minute 3 on and keeps it, while the bot holds trench 11 for a stretch and then loses it. The enemy sent 27 to 107 units through the tunnels against the bot's 29 to 45 and its track reached about 45 segments against the bot's 16 to 21 (the enemy rail fund, section 11). So the enemy reinforces its front faster than the bot, using the tunnel and the long railway. The scripted bot sends everything to the selected line and rarely holds forward trenches long enough for the tunnel to help. The fix round below showed the rail fund is not the lever; the next step is the bot or the enemy's tunnel use.
+- **Fix round: slowing the enemy railway did not help.** Causality check: with `AI_RAIL_SHARE` 0 (the enemy buys no train or track beyond its free start) the bot still won 0 of 12 at `TUNNEL_TRANSIT_T` 5, 8 and 12 (3 to 8 timeouts of 12). So the enemy's 45-segment track is a symptom of it holding the ground, not the cause of its wins. A sweep of `AI_RAIL_SHARE` 0.05, 0.08, 0.10, 0.12 and 0.15 against `TUNNEL_TRANSIT_T` 4, 5, 6, 8, 10, 12 and 15 (about 30 of the 35 cells run) never produced a win for the bot; timeouts per 12 ranged from 2 to 10, with the fewest (2) at the existing 0.15 and 5 s. Nothing in the allowed ranges meets either target, so `AI_RAIL_SHARE` stays 0.15 and `TUNNEL_TRANSIT_T` 5, the open and plain matrices are unchanged by construction, and the optional "lay only within 3 segments of the front" rule was not built (it can only do less than turning the fund off, which did not help). Remaining suspects are the enemy's own tunnel use and the bot's habit of sending troops to one selected line; both are outside the ranges allowed.
+- **Not checked**: the visuals (arch, exit ring and the glyph) were not seen in a browser; they are covered only by tests that they draw without throwing.
+
 ## Known quirks
 
 - "Super trench" now means two different things: the single neutral one on the Long March (built-in guns, +3 supplies, level 4, free cards) and the two double trenches on the Wide open plain (cover, 5 slots, +1 supply, hedgehogs). In code they are `SUPER` (one line index) and `DBL` (a list).
