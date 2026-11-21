@@ -93,7 +93,7 @@ export function dismountAll(train) { train.riders = []; }
 
 /* a side may buy a train: track runs, a slot is free */
 export function canBuyTrain(side) {
-  return G.trains.length < TRAIN_SLOTS && trackEnd(side) > 0;
+  return G.trains.filter(t => t.side === side).length < TRAIN_SLOTS && trackEnd(side) > 0;
 }
 
 /* spawns the side's national train at its own HQ; the caller charges the cost */

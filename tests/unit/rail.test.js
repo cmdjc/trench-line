@@ -111,6 +111,12 @@ describe('transport trains', () => {
     expect(C.buyTrainCmd()).toBe(false);
     expect(G.S.supplies).toBe(s2);
   });
+  it('slots are per side: enemy trains do not use the player slots', () => {
+    layTrack(0);
+    for (let i = 0; i < 3; i++) G.trains.push({ id: 100 + i, side: 1, x: G.LX[G.HQI], hp: 300, max: 300, dir: -1, riders: [], carried: false, T: TRAINS.de });
+    expect(C.buyTrainCmd()).toBe(true);
+    expect(G.trains.filter(t => t.side === 0).length).toBe(1);
+  });
   it('rejects when supplies are short', () => {
     layTrack(0); G.S.supplies = 10;
     expect(C.buyTrainCmd()).toBe(false);
@@ -147,7 +153,7 @@ describe('transport trains', () => {
     const t = G.trains[0];
     let s = G.S.supplies;
     for (let i = 0; i < 3000 && t.x < G.LX[1] - 0.001; i++) stepTrains(0.1);
-    for (let i = 0; i < 3000 && t.dir === 1 || t.x > G.LX[0] + 0.001 && i < 3000; i++) stepTrains(0.1);
+    for (let i = 0; i < 3000 && (t.dir === 1 || t.x > G.LX[0] + 0.001); i++) stepTrains(0.1);
     expect(G.S.supplies).toBe(s);
     t.carried = true;
     for (let i = 0; i < 3000 && t.x < G.LX[1] - 0.001; i++) stepTrains(0.1);
