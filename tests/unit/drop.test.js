@@ -285,7 +285,7 @@ describe('walking front is measured by position (no leapfrog via fresh orders)',
     expect(walkFront(0)).toBe(4);
     expect(validDrop(0, 4 + DROP_RANGE)).toBe(true);
   });
-  it('on march the railhead does not move forward to the drop trench', () => {
+  it('on march a unit bought for the drop trench still starts at the HQ', () => {
     newGame('us', 'de', 'march', 7);
     G.units = []; spawn(0, 'rifle', 1, true);
     G.owner.fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.HQI] = 1;
@@ -294,7 +294,7 @@ describe('walking front is measured by position (no leapfrog via fresh orders)',
     startAiming(); G.aim.line = 4; expect(confirmAim()).toBe(true);
     select(4); expect(buyUnit('rifle')).toBe(true);
     const r = G.units[G.units.length - 1];
-    expect(r.x).toBeLessThanOrEqual(G.LX[1]);
+    expect(r.x).toBeLessThanOrEqual(G.LX[0]);
     expect(walkFront(0)).toBe(1);
     expect(validDrop(0, 5)).toBe(false);
   });

@@ -3,11 +3,9 @@
 
 import { SEG, WH, TK, utOf, tkPrev } from '../data/units.js';
 import { NAT } from '../data/nations.js';
-import { MAPS } from '../data/maps.js';
 import { rng } from '../core/rng.js';
 import { G, isDbl } from './state.js';
 import { infCap, startLineFor } from './base.js';
-import { railSpawn } from './rail.js';
 
 export const trenchX = (cx, y) => cx + ((Math.floor(y / SEG) % 2) ? 6 : -6);
 
@@ -57,23 +55,11 @@ export function walkFront(side) {
   return f === null ? (side ? G.HQI : 0) : f;
 }
 
-/* The furthest trench in an unbroken run of trenches the side holds, counting out from its own HQ. */
-function heldFront(side) {
-  const dir = side ? -1 : 1; let L = side ? G.HQI : 0;
-  while (isTrench(L + dir) && G.owner[L + dir] === side) L += dir;
-  return L;
-}
-
-/* on maps with a railhead, reinforcements appear one trench behind the line they are sent to, but never ahead of
-   both the walking front and the unbroken run of held trenches (so an airborne drop is no railhead) */
+/* a new unit appears at its own HQ (or, for a special type, at its start line) */
 export function startX(side, L, type) {
-  const dir = side ? -1 : 1, own = side ? G.HQI : 0;
+  const dir = side ? -1 : 1;
   const sl = type ? startLineFor(side, type, L) : null;
-  if (sl !== null) return G.LX[sl] - dir * 14;
-  if (!MAPS[G.MAP].rail) return G.LX[own] - dir * 14;
-  const reach = side ? Math.min(walkFront(side), heldFront(side)) : Math.max(walkFront(side), heldFront(side));
-  const at = side ? Math.max(L - dir, reach) : Math.min(L - dir, reach);
-  return G.LX[Math.max(0, Math.min(G.HQI, at))] - dir * 14;
+  return G.LX[sl !== null ? sl : side ? G.HQI : 0] - dir * 14;
 }
 
 export const ut = (side, k) => utOf(G.nation[side], k);
@@ -84,7 +70,6 @@ export function spawn(side, type, L, placed) {
   const park = T.armor ? (T.rear ? -((T.park || 38) + 26) : (T.park || 38) + 4) : 0;
   const hp = T.hp * (T.armor ? m.tankHp : m.hp);
   const u = { id: G.uid++, side, type, T, cd2: 0, flash2: 0, gun: 1, tread: 0, puff: 0, line: L, y, aim: 0, park, x: placed ? posX(side, L, y, park) : startX(side, L, type), hp, max: hp, cd: rng.float() * T.cd, settled: !!placed, moving: false, walk: rng.float() * 6, flash: 0 };
-  if (!placed && G.trains.length) railSpawn(u); // Long March: start at the HQ instead if the train is faster
   G.units.push(u); return u;
 }
 

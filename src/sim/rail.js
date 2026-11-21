@@ -13,7 +13,6 @@
 import { G } from './state.js';
 import { TRACK_COST, REPAIR_COST, BIG_SPLASH, RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED } from '../data/rail.js';
 import { ARM } from '../data/units.js';
-import { MAPS } from '../data/maps.js';
 
 /* trench a segment of `side` ends at */
 export const lineOfSegment = (side, k) => (side === 0 ? k : G.HQI - k);
@@ -118,32 +117,23 @@ function rideTime(side) {
   return { best, ex, eL: lineOfSegment(side, end) };
 }
 
-/* does riding from the HQ beat walking to the end of the track from fromX, for a unit ordered to its line? */
-function rideBeats(u, fromX) {
+/* does riding from the HQ beat walking to the end of the track, for a unit ordered to its line? */
+function rideBeats(u) {
   if (u.hp <= 0 || u.riding || !rideable(u)) return false;
   const r = rideTime(u.side); if (!r) return false;
   const fwd = fwdOf(u.side);
   if ((u.line - r.eL) * fwd < 0) return false;
-  if ((fromX - r.ex) * fwd >= 0) return false;
-  return r.best < Math.abs(r.ex - fromX) / (u.T.speed * G.M[u.side].speed);
+  if ((u.x - r.ex) * fwd >= 0) return false;
+  return r.best < Math.abs(r.ex - u.x) / (u.T.speed * G.M[u.side].speed);
 }
 
 /* Should this unit, standing at the HQ, wait for a train instead of walking? Only when riding gets it to the end
    of the track strictly sooner than walking there, so laying track never slows reinforcements. Units anywhere
-   else (railhead spawns, troops on the march) never board. */
+   else (troops on the march) never board. */
 export function shouldRide(u) {
   const fwd = fwdOf(u.side);
   if ((u.x - G.LX[homeOf(u.side)]) * fwd > HQ_ZONE) return false;
-  return rideBeats(u, u.x);
-}
-
-/* Long March railhead: a new unit spawns at the HQ to wait for a train only if riding from there (wait, ride, then
-   walk on from the end) is strictly faster than walking from its railhead spawn point; else it stays put. */
-export function railSpawn(u) {
-  if (!G.trains.length || !MAPS[G.MAP].rail) return;
-  const hqX = G.LX[homeOf(u.side)] - fwdOf(u.side) * 14;
-  if (Math.abs(u.x - hqX) < 1 || !rideBeats(u, u.x)) return;
-  u.x = hqX; u.waiting = true;
+  return rideBeats(u);
 }
 
 /* mark units that should wait for a train; release the ones that no longer gain by waiting */

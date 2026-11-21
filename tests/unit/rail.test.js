@@ -378,32 +378,31 @@ describe('train riders', () => {
   });
 });
 
-describe('train riders: Long March railhead', () => {
-  const run = (n, dt = 0.05) => { for (let i = 0; i < n; i++) { step(dt); stepTrains(dt); } };
+describe('train riders: Long March spawn', () => {
   beforeEach(() => {
     newGame('gb', 'de', 'march', 7); G.S.supplies = 500; G.units = [];
     G.owner[1] = 0; G.owner[2] = 0; layTrack(0); layTrack(0);
-    G.M[0].speed = 0.5;                           // slow walkers, so the train can beat a one-trench walk
+    G.M[0].speed = 0.5;                           // slow walkers, so the train can beat a two-trench walk
     C.buyTrainCmd();
   });
-  it('spawns at the HQ to wait when riding from there beats walking from the railhead', () => {
+  it('spawns at the HQ and waits for the train when riding beats walking', () => {
     const u = spawn(0, 'rifle', 2);
     expect(u.x).toBe(G.LX[0] - 14);
-    expect(u.waiting).toBe(true);
+    step(0.05); stepTrains(0.05);
+    expect(u.riding).toBe(G.trains[0].id);     // the train is at the HQ: he boards at once
   });
-  it('otherwise spawns at the railhead and never boards', () => {
-    const t = G.trains[0]; t.x = G.LX[0] + 1; t.dir = 1;   // just left: a whole round trip away
+  it('spawns at the HQ and walks when the train is a whole round trip away', () => {
+    const t = G.trains[0]; t.x = G.LX[0] + 1; t.dir = 1;
+    G.M[0].speed = 3;
     const u = spawn(0, 'rifle', 2);
-    expect(u.x).toBe(G.LX[1] - 14);
+    expect(u.x).toBe(G.LX[0] - 14);
+    step(0.05); stepTrains(0.05);
     expect(u.waiting).toBeFalsy();
-    let rode = false;
-    for (let i = 0; i < 1500; i++) { run(1); if (u.riding) rode = true; }
-    expect(rode).toBe(false);
   });
-  it('with no trains the railhead spawn is unchanged', () => {
+  it('with no trains it spawns at the HQ and never waits', () => {
     G.trains = [];
     const u = spawn(0, 'rifle', 2);
-    expect(u.x).toBe(G.LX[1] - 14);
-    expect(u.waiting).toBeUndefined();
+    expect(u.x).toBe(G.LX[0] - 14);
+    expect(u.waiting).toBeFalsy();
   });
 });

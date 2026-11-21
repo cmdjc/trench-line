@@ -50,7 +50,7 @@ Chosen by you: 45 trenches, fortified belts with wide gaps, same stats, a super 
 
 - Layout: nine belts of five trenches, 150 px apart inside a belt, 520 px of empty ground between belts. World width 10,320 px.
 - The line selector becomes a scrolling strip with gaps marking belts, and recentres on the selected line.
-- Reinforcements appear one trench behind the line you send them to (otherwise troops walk for minutes). The same applies to the enemy. The railhead never runs ahead of both your walking front and your unbroken run of held trenches from the HQ, so a trench taken by an airborne drop is not a railhead: troops sent there arrive at your real front and walk.
+- Reinforcements first appeared one trench behind the line you sent them to (a "railhead", so troops did not walk for minutes). That was replaced by buildable railways (section 11): reinforcements now start at their own HQ on every map, and you build track and a train to bring them up faster.
 - **Super trench** (trench 23): starts empty and neutral at level 0. Whoever takes it first gets three built-in guns (two pillboxes and a 75 mm pit, 1.6 times normal health) that change hands with the trench. Holding it pays **+3 supplies a second** and lets you fortify to **level 4** (cost 320). You get a free card on first capture and then **one every 3 minutes held**; the timer pauses while you do not hold it, and a countdown shows in the supplies area. The enemy gets only the income and the guns.
 
 ## 6. United States of Antarctica
