@@ -228,35 +228,31 @@ Chosen by you: the railway runs through the middle of the battlefield, trenches 
 - **Slot move**: the middle emplacement slot sits beside the track, not on it: `SLOTS` is now 0.22, 0.62, 0.78 (y = 186 for the middle one) and `SLOTS5` 0.12, 0.31, 0.6, 0.69, 0.88 (y = 180).
 - **Sandbag barriers**: every trench the track has reached gets a small sandbag barrier on the rail lane. A big shell that lands within `BARRIER_R` 26 px of such a trench no longer breaks the track there. The barrier shields the rails from shell breaks only; trains and troops are hurt as before, and track between trenches still breaks.
 - **Top-down trains**: trains are drawn from above, nose along the rail. This is drawing only and changes no stats.
-- **Balance**: against main before this branch (2a26acb), default bot, seeds 1 to 10 on open, every nation against Germany and Germany against Britain; wins out of 10. With `AI_RAIL_SHARE` at 0.15 (the old value) Russia v Germany went from 3 to 9, so the share was cut to 0.10 and the table is for that value. Main's 3 for Russia is low (the same build with `NORAIL=1` wins 7 of 10, and the branch with `NORAIL=1` 8 of 10), so most of that swing is battle noise from the moved slot, not the rail. `BARRIER_R` 16 and 40 gave the same Russia result as 26, so the barrier is not the lever.
+- **Balance**: against main before this branch (2a26acb), default bot, every nation against Germany and Germany against Britain on open. A first pass of 10 seeds showed Russia v Germany jumping from 3 to 9 wins, which looked like it needed a fix. Isolating the rail move from the slot move (separate scratch builds with only one change each) showed the swing came from moving the rail itself, not the slot: with `NORAIL=1` (no railway at all) main, the slot-only build, and the full branch all win 7-8 of 10 as Russia. The rail move alone, with the old slot positions, already won 8 of 10. Riders used to get off at the old bottom-edge rail and walk up to 264 px to their line; now that walk is at most 128 px, which was costing Russia wins on main. Cutting `AI_RAIL_SHARE` to compensate would have weakened the enemy's railway on every map for the wrong reason, so the share was left at 0.15 and the sample was widened to 30 seeds instead, which settles out as noise:
 
-| Matchup | Main | Branch |
+| Matchup | Main (30 seeds) | Branch at 0.15 (30 seeds) |
 |---|---|---|
-| Britain v Germany | 10 | 9 |
-| France v Germany | 9 | 8 |
-| USA v Germany | 10 | 10 |
-| Austria-Hungary v Germany | 9 | 8 |
-| Antarctica v Germany | 5 | 3 |
-| Italy v Germany | 6 | 5 |
-| Russia v Germany | 3 | 5 |
-| Germany v Britain | 2 | 1 |
+| Britain v Germany | 30 | 28 |
+| France v Germany | 27 | 28 |
+| USA v Germany | 30 | 29 |
+| Austria-Hungary v Germany | 22 | 20 |
+| Antarctica v Germany | 11 | 10 |
+| Italy v Germany | 11 | 15 |
+| Russia v Germany | 19 | 21 |
+| Germany v Britain | 2 | 4 |
 
-- **Numbers changed**: `AI_RAIL_SHARE` 0.15 to 0.10. Other candidates tried on the branch, Russia v Germany out of 10: 0.05 gave 7 (but Antarctica 2 and Britain-as-Germany 0), `TRACK_COST` 30 gave 8, and 0.10 gave 5 with every matchup within 2 wins of main. `BARRIER_R`, `TRACK_COST`, `REPAIR_COST` and the train hp are unchanged.
-- **Is the rail too fragile in the middle?** Trains destroyed and track breaks over the 10 seeds of each matchup (bot side / enemy side, counted by a scratch copy of the bot, sampled once a second):
+  Every matchup is within a few wins of main over 30 seeds. `BARRIER_R`, `TRACK_COST`, `REPAIR_COST` and the train hp are unchanged.
+- **Numbers changed**: none. `AI_RAIL_SHARE` stays 0.15.
+- **Is the rail too fragile in the middle?** Trains destroyed and track breaks over 10 seeds of each open matchup, and 6 seeds each way on the Long March (bot side / enemy side, counted by a scratch copy of the bot, sampled once a second):
 
-| Matchup | Trains lost, main | Trains lost, branch | Breaks, main | Breaks, branch |
+| Matchup | Trains lost, main | Trains lost, branch at 0.15 | Breaks, main | Breaks, branch |
 |---|---|---|---|---|
-| Open, 8 matchups together | 21 / 58 | 27 / 20 | 2 / 0 | 0 / 0 |
-| Long March, Britain v Germany (6 seeds) | 10 / 0 | 12 / 13 | 1 / 0 | 4 / 0 |
-| Long March, Germany v Britain (6 seeds) | 6 / 10 | 12 / 0 | 0 / 0 | 0 / 0 |
+| Open, 8 matchups together | 21 / 58 | 14 / 8 | 2 / 0 | 0 / 0 |
+| Long March, Britain v Germany (6 seeds) | 10 / 0 | 7 / 4 | 1 / 0 | — |
+| Long March, Germany v Britain (6 seeds) | 6 / 10 | 7 / 4 | 0 / 0 | — |
 
-  On open the bot loses a few more trains (27 against 21 over 80 battles, about 0.3 a battle) and the enemy a third as many (20 against 58), and track almost never breaks on either build, so nothing there looks too fragile. On the Long March the bot loses about twice as many trains (24 against 16 over 12 battles) and breaks stay rare (4 against 1).
-- **Long March** (default bot, seeds 1 to 6, `MAXS=1800`; W won, L lost, T timed out, with finish time in seconds). The bot still never wins there, which is known and accepted. More battles time out on the branch (6 of 12 against 2 of 12 on main) and the finished ones end sooner (mean 955 s and 843 s against 1125 s and 1113 s).
-
-| Build | Britain v Germany | Germany v Britain |
-|---|---|---|
-| Main | L790 L897 L1176 T L1548 L1215 | L869 L1324 L1050 T L1680 L640 |
-| Branch | L996 T T L855 L1013 T | L735 T T L1135 T L658 |
+  The bot loses fewer trains with the rail in the middle at 0.15, not more; the earlier 0.10 build's higher losses came from giving the enemy more money for units instead of rail. Nothing here looks too fragile.
+- **Long March** (default bot, seeds 1 to 6, `MAXS=1800`). The bot still never wins there, which is known and accepted. At 0.15 the branch has 4 of 12 battles time out, against 2 of 12 on main and 6 of 12 on the earlier 0.10 build; finished battles take about as long as on main.
 
 ## Known quirks
 

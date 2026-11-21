@@ -11,7 +11,7 @@ export const TRIP_FULL = 5 * 230;  // trip length in px that earns the full TRIP
 export const WOUNDED = 0.4;        // wounded threshold: settled troops below this fraction of max hp ride home to heal
 export const BIG_SPLASH = 60;      // splash radius at or above which a shell breaks track
 export const AI_RAIL_T = 90;       // seconds before the AI starts a railway fund
-export const AI_RAIL_SHARE = 0.10;  // share of enemy income sent to the railway fund
+export const AI_RAIL_SHARE = 0.15;  // share of enemy income sent to the railway fund
 export const BARRIER_R = 26;       // px either side of a trench with track where sandbags shield the rails from big shells
 export const RAIL_Y = WH / 2;      // rail lane, through the middle of the field
 

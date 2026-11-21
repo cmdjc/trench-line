@@ -32,7 +32,7 @@ function drawBagWall(cx, y) {
   ctx.setLineDash([6, 1.8]); ctx.strokeStyle = BAG; ctx.lineWidth = 4; ctx.stroke(); ctx.setLineDash([]);
 }
 
-const HQ_DOOR = 40;
+const HQ_DOOR = 25;
 
 export function drawTrack(vis) {
   for (let s = 0; s < 2; s++) {

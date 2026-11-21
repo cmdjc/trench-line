@@ -268,8 +268,9 @@ describe('top-down trains, barriers and HQ door', () => {
     G.track[0].end = 1; G.track[1].end = 1;
     drawTrack(all);
     const sl = calls.filter(c => c.k === 'fillRect' && c.a[3] === 8).map(c => c.a[0] + 1.5);
-    expect(sl.some(x => x < G.LX[0] + 40)).toBe(false);
-    expect(sl.some(x => x > G.LX[G.HQI] - 40)).toBe(false);
+    expect(sl.some(x => x < G.LX[0] + 25)).toBe(false);
+    expect(sl.some(x => x > G.LX[G.HQI] - 25)).toBe(false);
+    expect(sl.some(x => x < G.LX[0] + 40)).toBe(true);
     expect(sl.length).toBeGreaterThan(3);
     setCtx(stubCtx);
   });
