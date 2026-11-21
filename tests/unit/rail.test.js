@@ -11,18 +11,18 @@ const bigShell = (x, extra = {}) => ({ x0: 0, y0: 0, x1: x, y1: RAIL_Y, t: 0, du
 
 describe('track: laying', () => {
   beforeEach(game);
-  it('lays into a held trench and charges 40', () => {
+  it('lays into a held trench and charges 20', () => {
     expect(G.track[0].end).toBe(0);
     expect(C.layTrackCmd()).toBe(true);
     expect(G.track[0].end).toBe(1);
     expect(trackEnd(0)).toBe(1);
-    expect(G.S.supplies).toBe(460);
+    expect(G.S.supplies).toBe(480);
   });
   it('rejects an unheld trench without charging', () => {
     C.layTrackCmd();
     expect(C.layTrackCmd()).toBe(false);
     expect(canLay(0)).toMatch(/not held/);
-    expect(G.S.supplies).toBe(460);
+    expect(G.S.supplies).toBe(480);
   });
   it('rejects laying past a break without charging', () => {
     G.owner[2] = 0; C.layTrackCmd();
@@ -33,7 +33,7 @@ describe('track: laying', () => {
     expect(G.S.supplies).toBe(s);
   });
   it('rejects when supplies are short', () => {
-    G.S.supplies = 39;
+    G.S.supplies = 19;
     expect(C.layTrackCmd()).toBe(false);
     expect(G.track[0].end).toBe(0);
   });

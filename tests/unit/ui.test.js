@@ -583,14 +583,14 @@ describe('responsive width', () => {
 describe('railway buttons', () => {
   it('lay track: label, reason when the trench is not held, click lays and charges', () => {
     G.S.supplies = 500; G.owner[1] = 1; bus.emit('hud');
-    expect($('trackBtn').textContent).toContain('Lay track: 40');
+    expect($('trackBtn').textContent).toContain('Lay track: 20');
     expect($('trackBtn').textContent).toContain('Trench 1 is not held.');
     expect($('trackBtn').disabled).toBe(true);
     G.owner[1] = 0; bus.emit('hud');
     expect($('trackBtn').disabled).toBe(false);
     $('trackBtn').click();
     expect(G.track[0].end).toBe(1);
-    expect(G.S.supplies).toBe(460);
+    expect(G.S.supplies).toBe(480);
   });
   it('turns into repair track when a segment is broken', () => {
     G.S.supplies = 500; G.owner[1] = 0; G.track[0].end = 1; G.track[0].broken.add(1); bus.emit('hud');
@@ -599,7 +599,7 @@ describe('railway buttons', () => {
     $('trackBtn').click();
     expect(G.track[0].broken.size).toBe(0);
     expect(G.S.supplies).toBe(480);
-    expect($('trackBtn').textContent).toContain('Lay track: 40');
+    expect($('trackBtn').textContent).toContain('Lay track: 20');
   });
   it('train button shows its national name and cost, and says why it is off', () => {
     G.S.supplies = 500; bus.emit('hud');

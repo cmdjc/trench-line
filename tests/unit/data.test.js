@@ -117,7 +117,7 @@ const RAIL_NAMES = {
 };
 it('rail constants have the agreed values', () => {
   expect({ TRACK_COST, REPAIR_COST, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED, BIG_SPLASH, AI_RAIL_T, AI_RAIL_SHARE })
-    .toEqual({ TRACK_COST: 40, REPAIR_COST: 20, TRAIN_SLOTS: 3, TRIP_SUPPLY: 15, WOUNDED: 0.4, BIG_SPLASH: 60, AI_RAIL_T: 90, AI_RAIL_SHARE: 0.15 });
+    .toEqual({ TRACK_COST: 20, REPAIR_COST: 20, TRAIN_SLOTS: 3, TRIP_SUPPLY: 15, WOUNDED: 0.4, BIG_SPLASH: 60, AI_RAIL_T: 90, AI_RAIL_SHARE: 0.15 });
 });
 it('every nation has a train entry', () => {
   for (const n of NATS) expect(TRAINS[n], n).toBeTruthy();

@@ -152,7 +152,7 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   click('#trackBtn');
   expect(d.getElementById('trackBtn').textContent).toContain('Lay track');
   const laySup = T.info().sup;
-  expect(laySup).toBeLessThan(railSup - 30);
+  expect(laySup).toBeLessThan(railSup - 15);
   click('#trainBtn');
   expect(T.info().sup).toBeLessThan(laySup - 100);
 

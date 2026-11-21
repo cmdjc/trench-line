@@ -3,7 +3,7 @@
 
 import { STATS, WH } from './units.js';
 
-export const TRACK_COST = 40;      // supplies per segment laid
+export const TRACK_COST = 20;      // supplies per segment laid
 export const REPAIR_COST = 20;     // supplies per broken segment repaired
 export const TRAIN_SLOTS = 3;      // shared cap on trains in play
 export const TRIP_SUPPLY = 15;     // supplies carried per trip
