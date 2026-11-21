@@ -251,4 +251,4 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 | No man’s land | Open, cratered ground and nine trenches. |
 | River crossing | Two river channels cut the field around a central island at trench 5. Troops and tanks can only cross at the bridges, where they bunch up under fire. |
 | Wide open plain | A long front: 17 trenches and no cover between them. Trenches 4 and 14 are super trenches, a double line with a wall between: far stronger cover, room for 5 emplacements, 1 extra supply a second for whoever holds them, and belts of steel hedgehogs that stop the attacker’s tanks until infantry take the trench. |
-| The Long March | 45 trenches in nine fortified belts with wide empty ground between them, and a super trench in the middle. Troops walk a long way from the HQ; a railway you build can bring them up faster. |
+| The Long March | 45 trenches in nine fortified belts with wide empty ground between them, and a super trench in the middle. Troops walk a long way from the HQ, so each side starts with a railway through its first belt of trenches and one transport train. The track only runs as far as you hold, and you can build it on. |

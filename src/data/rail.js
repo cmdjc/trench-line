@@ -5,9 +5,10 @@ import { STATS, WH } from './units.js';
 
 export const TRACK_COST = 20;      // supplies per segment laid
 export const REPAIR_COST = 20;     // supplies per broken segment repaired
-export const TRAIN_SLOTS = 3;      // shared cap on trains in play
-export const TRIP_SUPPLY = 15;     // supplies carried per trip
-export const WOUNDED = 0.4;        // fraction of riders hurt when a train is hit
+export const TRAIN_SLOTS = 3;      // cap on each side's trains in play (shared later with stage 2 and 3 trains)
+export const TRIP_SUPPLY = 15;     // supplies per round trip that carried riders, scaled by distance (full at TRIP_FULL px)
+export const TRIP_FULL = 5 * 230;  // trip length in px that earns the full TRIP_SUPPLY: five default trench gaps
+export const WOUNDED = 0.4;        // wounded threshold: settled troops below this fraction of max hp ride home to heal
 export const BIG_SPLASH = 60;      // splash radius at or above which a shell breaks track
 export const AI_RAIL_T = 90;       // seconds before the AI starts a railway fund
 export const AI_RAIL_SHARE = 0.15;  // share of enemy income sent to the railway fund

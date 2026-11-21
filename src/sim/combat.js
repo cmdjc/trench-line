@@ -68,7 +68,6 @@ export function tracer(x1, y1, x2, y2, w, col) { G.tracers.push({ x1, y1, x2, y2
 export function stepUnits(dt) {
   for (const u of G.units) {
     if (u.hp <= 0 || u.riding) continue;
-    if (u.waiting) { u.moving = false; continue; } // standing at the HQ for a train: holds fire, can still be shot
     const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
     if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
     else if (u.scramble > 0) u.scramble -= dt;
@@ -111,7 +110,7 @@ export function stepUnits(dt) {
       }
     }
     const dy = ty - u.y;
-    if (falling) u.moving = false;
+    if (falling || u.waiting) u.moving = false; // waiting at the HQ for a train: stands still, still fires
     else if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
       const sp = T.speed * (T.armor ? 1 : m.speed) * dt * wireSlow(u);
       let nx = u.x + sgn * Math.min(sp, Math.abs(dx));
@@ -245,7 +244,9 @@ export function stepUnits(dt) {
     let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !(u.fall > 0) && !u.fixed) { if (u.side) b++; else a++; }
     const was = G.owner[L];
     if (a && !b) G.owner[L] = 0; else if (b && !a) G.owner[L] = 1;
-    if (was !== G.owner[L] && (was === 0 || was === 1) && hasTrack()) cutTrack(was, segmentIndexFor(was, L));
+    /* a trench taken by one side destroys the other side's segment there and beyond: the side that held it, or
+       (Long March pre-laid track) the side whose unheld track ran through it */
+    if (was !== G.owner[L] && hasTrack()) { const lost = 1 - G.owner[L]; cutTrack(lost, segmentIndexFor(lost, L)); }
   }
   if (G.SUPER > 0 && G.owner[G.SUPER] !== G.S.superOwner) {
     const prev = G.S.superOwner, now = G.owner[G.SUPER]; G.S.superOwner = now;

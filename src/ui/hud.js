@@ -100,7 +100,8 @@ export function refresh() {
     tb.innerHTML = '<b>' + (broken ? 'Repair track: ' : 'Lay track: ') + c + '</b><small>' + (why || (S.supplies < c ? 'Not enough supplies.' : broken ? 'Segment ' + Math.min(...G.track[0].broken) + ' is broken.' : '')) + '</small>';
     tb.disabled = !!why || S.supplies < c; }
   { const T = TRAINS[G.nation[0]], bb = $('trainBtn'), slots = G.trains.filter(t => t.side === 0).length >= TRAIN_SLOTS,
-      why = trackEnd(0) <= 0 ? 'No track yet.' : slots || !canBuyTrain(0) ? 'All train slots in use.' : S.supplies < T.cost ? 'Not enough supplies.' : '';
+      tk = G.track[0], noRun = tk.end === 0 ? (tk.cut ? 'The track is cut.' : 'No track yet.') : tk.broken.has(1) ? 'Repair the broken track first.' : 'The track is cut.',
+      why = trackEnd(0) <= 0 ? noRun : slots || !canBuyTrain(0) ? 'All train slots in use.' : S.supplies < T.cost ? 'Not enough supplies.' : '';
     bb.innerHTML = '<b>' + T.name + ': ' + T.cost + '</b><small>' + why + '</small>'; bb.disabled = !!why; }
   refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }

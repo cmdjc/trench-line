@@ -3,6 +3,8 @@
 Date: 2026-11-20 · Status: draft for approval
 
 > **Superseded (2026-11-21, user decision):** the Long March railhead has been removed. Every map now spawns reinforcements at the HQ, and trains replace the railhead. Lines below that say the railhead stays are historical.
+>
+> **Added (2026-11-21, user decision):** on the Long March both sides start with track laid free through their first belt (segments 1 to 5) and one free transport train each. See `docs/DESIGN.md` section 11.
 
 ## Why
 

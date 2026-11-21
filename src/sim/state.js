@@ -13,6 +13,7 @@ import { bus } from '../core/events.js';
 import { has } from './meta.js';
 import { spawn, ut } from './geometry.js';
 import { baseIncome, raise } from './base.js';
+import { buyTrain } from './rail.js';
 
 export const G = {
   /* layout (setLayout fills these in) */
@@ -118,6 +119,9 @@ export function newGame(mine, theirs, map, seed) {
   G.owner = new Array(G.HQI + 1).fill(-1); G.owner[0] = 0; G.owner[1] = 0; G.owner[G.NT] = 1; G.owner[G.HQI] = 1;
   G.sel = 1; G.offer = null;
   G.track = [{ end: 0, broken: new Set() }, { end: 0, broken: new Set() }]; G.trains = [];
+  /* Long March: each side starts with its first belt of track laid, free; it runs only as far as the side holds */
+  for (const t of G.track) t.end = MAPS[G.MAP].startTrack || 0;
+  for (let s = 0; s < 2; s++) for (let i = 0; i < (MAPS[G.MAP].startTrains || 0); i++) buyTrain(s); // free, at the HQ
   G.base = [0, 1].map(() => ({ walls: 0, depot: 0, hosp: 0, nat: 0, t: 0, conv: 0, convoyed: false, libT: 0 }));
   applyTech();
   for (const [pre, id] of [['bw', 'walls'], ['bd', 'depot'], ['bh', 'hosp'], ['bn', 'nat']]) {
