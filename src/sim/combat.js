@@ -11,7 +11,7 @@ import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './forti
 import { hasTrack, isBigShell, breakAt, cutTrack, segmentIndexFor, hurtTrain } from './rail.js';
 import { RAIL_Y } from '../data/rail.js';
 import { rng } from '../core/rng.js';
-import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT } from '../data/drop.js';
+import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT, FALL_DRIFT } from '../data/drop.js';
 
 export function hurt(e, dmg, atk, attacker, cov, area) {
   if (e.train) { hurtTrain(e.train, dmg, atk); return; }
@@ -157,6 +157,7 @@ export function stepUnits(dt) {
     const dmg = T.dmg * m.dmg[u.type] * (u.dmgMul || 1);
     let ox = u.x, oy = u.y;
     const fy = falling ? Math.max(0, u.fall) * FALL_LIFT : 0; // falling men are drawn this far up the screen
+    const fx = falling ? Math.max(0, u.fall) * FALL_DRIFT * dir : 0; // ...and this far behind their landing spot
     if (T.armor) {
       const hit = best && bd <= T.range, gx = hit ? best.x : G.bases[1 - u.side].x, gy = hit ? best.y : WH / 2;
       u.gun = -u.gun;
@@ -167,8 +168,8 @@ export function stepUnits(dt) {
     if (best && bd <= T.range) {
       u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
       if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: best.x, y1: best.y, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg, splash: T.splash, cov: T.cov, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
-      else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x + dir * 9, u.y - fy, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
-      else tracer(u.x + dir * 9, u.y - fy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
+      else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x - fx + dir * 9, u.y - fy, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
+      else tracer(u.x - fx + dir * 9, u.y - fy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
       if (T.jam && rng.float() < T.jam) u.cd = 2.4;
       if (T.mag) { u.shots = (u.shots || 0) + 1; if (u.shots >= T.mag) { u.shots = 0; u.cd = T.reload; } }
     } else {

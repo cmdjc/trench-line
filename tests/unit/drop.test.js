@@ -7,7 +7,7 @@ import { swBlock, useSW } from '../../src/sim/superweapons.js';
 import { walkFront, validDrop, dropTarget, nearestDrop, spawnDrop } from '../../src/sim/drop.js';
 import { startAiming, confirmAim, fireSuperweapon, select, buyUnit } from '../../src/sim/commands.js';
 import { infCap } from '../../src/sim/base.js';
-import { DROP_FALL, DROP_STAGGER, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, DROP_RANGE } from '../../src/data/drop.js';
+import { DROP_FALL, DROP_STAGGER, DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, DROP_RANGE, FALL_DRIFT } from '../../src/data/drop.js';
 import { FORTA } from '../../src/data/units.js';
 import { bus } from '../../src/core/events.js';
 
@@ -368,5 +368,13 @@ describe('falling tracers', () => {
     stepUnits(0.1);
     expect(G.tracers.length).toBe(1);
     expect(G.tracers[0].y1).toBeCloseTo(a.y - a.fall * 14, 6);
+  });
+  it('start behind the landing spot, where the drifting Thompson is drawn', () => {
+    G.units = [];
+    const a = spawn(0, 'tommy', 3, true); a.para = true; a.fall = 3; a.cd = 0;
+    const e = spawn(1, 'rifle', 3, true); e.cd = 99; e.x = a.x + 30; e.y = a.y; e.hp = e.max = 1e6;
+    G.tracers.length = 0;
+    stepUnits(0.1);
+    expect(G.tracers[0].x1).toBeCloseTo(a.x - a.fall * FALL_DRIFT + 9, 6);
   });
 });

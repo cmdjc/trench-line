@@ -2,7 +2,7 @@
 import { circle, oval, line, ctx, bagArc, BAG, TR } from './helpers.js';
 import { NAT } from '../../data/nations.js';
 import { G } from '../../sim/state.js';
-import { FALL_LIFT } from '../../data/drop.js';
+import { FALL_LIFT, FALL_DRIFT } from '../../data/drop.js';
 
 export function drawPillbox(u) {
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(-10, -9, 26, 24);
@@ -111,19 +111,19 @@ export function drawSoldier(u) {
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,.18)'; oval(2, 2.5, 3.2, 5.4);    // ground shadow stays put
     const s = 1 + Math.min(1, u.fall / 2) * 0.12;
-    ctx.translate(0, -u.fall * FALL_LIFT); ctx.scale(s, s);
+    ctx.translate(-u.fall * FALL_DRIFT, -u.fall * FALL_LIFT); ctx.scale(s, s); // up and behind, drifting forward as they come down
     drawChute(u);
-    drawSoldierBody(u);
+    drawSoldierBody(u, true);
     ctx.restore();
     return;
   }
   drawSoldierBody(u);
 }
 
-function drawSoldierBody(u) {
+function drawSoldierBody(u, airborne) {
   const N = NAT[G.nation[u.side]], t = u.type;
   if (u.T.nest) { drawNest(u, N); return; }
-  ctx.fillStyle = 'rgba(0,0,0,.25)'; oval(2, 2.5, 3.2, 5.4);
+  if (!airborne) { ctx.fillStyle = 'rgba(0,0,0,.25)'; oval(2, 2.5, 3.2, 5.4); }
   if (u.moving) {
     const sw = Math.sin(u.walk) * 2.8;
     ctx.fillStyle = '#1c1c15'; oval(sw, -2.4, 2.1, 1.4); oval(-sw, 2.4, 2.1, 1.4);
