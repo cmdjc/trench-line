@@ -87,7 +87,7 @@ function aiGun() {
 }
 
 // Railway: paid from its own fund after 90 s, one purchase per buy tick, no rng. Repair a break first, else lay
-// the next segment, else buy a train (once the track is two segments long, at most two trains).
+// the next segment; the first train is bought once track is 2 long (before laying more), a second at 3.
 function aiRail() {
   const ai = G.ai;
   if (G.S.t < AI_RAIL_T || ai.noRail) return;
@@ -95,14 +95,16 @@ function aiRail() {
     if (ai.railFund >= REPAIR_COST) { ai.railFund -= REPAIR_COST; repairTrack(1); }
     return;
   }
+  const T = TRAINS[G.nation[1]], mine = G.trains.filter(t => t.side === 1).length, end = trackEnd(1);
+  if (!mine && end >= 2 && canBuyTrain(1)) {   // first train comes before any more track: save for it
+    if (ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
+    return;
+  }
   if (!canLay(1)) {
     if (ai.railFund >= TRACK_COST) { ai.railFund -= TRACK_COST; layTrack(1); }
     return;
   }
-  const T = TRAINS[G.nation[1]];
-  if (trackEnd(1) >= 2 && canBuyTrain(1) && G.trains.filter(t => t.side === 1).length < 2 && ai.railFund >= T.cost) {
-    ai.railFund -= T.cost; buyTrain(1);
-  }
+  if (mine === 1 && end >= 3 && canBuyTrain(1) && ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
 }
 
 const BASE_GAP = 90; // seconds between enemy base purchases

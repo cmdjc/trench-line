@@ -10,7 +10,7 @@ export const TRIP_SUPPLY = 15;     // supplies carried per trip
 export const WOUNDED = 0.4;        // fraction of riders hurt when a train is hit
 export const BIG_SPLASH = 60;      // splash radius at or above which a shell breaks track
 export const AI_RAIL_T = 90;       // seconds before the AI starts a railway fund
-export const AI_RAIL_SHARE = 0.1;  // share of enemy income sent to the railway fund
+export const AI_RAIL_SHARE = 0.15;  // share of enemy income sent to the railway fund
 export const RAIL_Y = WH - 14;     // rail lane, near the bottom edge of the field
 
 const BASE_SPEED = 3 * STATS.gb.rifle.speed;

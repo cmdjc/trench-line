@@ -351,16 +351,26 @@ describe('enemy railway', () => {
     expect(G.ai.railFund).toBe(300 - REPAIR_COST);
     buyTicks(); expect(G.track[1].end).toBe(2);
   });
-  it('buys a train only once track reaches 2 segments, then up to 2', () => {
-    setup(); G.ai.railFund = 300; G.owner.fill(0); G.owner[G.HQI - 1] = 1; G.owner[G.HQI - 2] = 1; // only two trenches held
+  const mineTrains = () => G.trains.filter(t => t.side === 1).length;
+  it('buys the first train at track end 2, before laying a third segment', () => {
+    setup(); G.ai.railFund = 300; G.owner.fill(1); G.owner[0] = 0; // all held: laying is always possible
     buyTicks(); expect(G.track[1].end).toBe(1);
-    buyTicks(); expect(G.trains.length).toBe(0); // second tick lays segment 2
-    expect(G.track[1].end).toBe(2);
-    buyTicks(); expect(G.trains.filter(t => t.side === 1).length).toBe(1);
+    buyTicks(); expect(G.track[1].end).toBe(2); expect(mineTrains()).toBe(0);
+    buyTicks(); expect(mineTrains()).toBe(1); expect(G.track[1].end).toBe(2);
     expect(G.ai.railFund).toBe(300 - 2 * TRACK_COST - tcost());
-    G.ai.railFund = 300;
-    buyTicks(); buyTicks();
-    expect(G.trains.filter(t => t.side === 1).length).toBe(2);
+  });
+  it('saves for the first train rather than laying more track', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 2; G.ai.railFund = tcost() - 1; buyTicks(3);
+    expect(G.track[1].end).toBe(2); expect(mineTrains()).toBe(0);
+    G.ai.railFund = tcost(); buyTicks(); expect(mineTrains()).toBe(1);
+  });
+  it('buys a second train only once track end is 3, after laying is blocked or done', () => {
+    setup(); G.owner.fill(0); for (const k of [1, 2]) G.owner[G.HQI - k] = 1; // two held trenches only
+    G.track[1].end = 2; G.ai.railFund = 300; buyTicks(); expect(mineTrains()).toBe(1);
+    G.ai.railFund = 300; buyTicks(2); expect(mineTrains()).toBe(1);   // end 2: no second train
+    G.owner[G.HQI - 3] = 1; G.track[1].end = 3; G.owner[G.HQI - 4] = 0; G.ai.railFund = 300; buyTicks();
+    expect(mineTrains()).toBe(2);
+    G.ai.railFund = 300; buyTicks(3); expect(mineTrains()).toBe(2);
   });
   it('lays nothing toward an unheld trench and does not throw', () => {
     setup(); G.ai.railFund = 300; G.owner[G.HQI - 1] = 0;
