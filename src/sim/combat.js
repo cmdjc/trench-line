@@ -8,6 +8,7 @@ import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_
 import { G, isDbl, toast } from './state.js';
 import { isTrench, posX, exposed } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
+import { hasTrack, isBigShell, breakAt, cutTrack, segmentIndexFor } from './rail.js';
 import { rng } from '../core/rng.js';
 import { DROP_SCRAMBLE, DROP_SCRAMBLE_ACC, FALL_LIFT } from '../data/drop.js';
 
@@ -183,6 +184,7 @@ export function stepUnits(dt) {
   // shells
   for (const s of G.shells) {
     s.t += dt; if (s.t < s.dur) continue;
+    if (hasTrack() && isBigShell(s)) breakAt(s.x1, s.y1, s.splash, s);
     if (s.huge) {
       for (let i = 0; i < 9; i++) { const a = i * 0.7 + rng.float(), r = i ? rng.float() * s.splash * 0.8 : 0; boom(s.x1 + Math.cos(a) * r, s.y1 + Math.sin(a) * r, 34 + rng.float() * 26); }
       if (!G.reduceMotion) G.shake = Math.max(G.shake, 10);
@@ -226,7 +228,9 @@ export function stepUnits(dt) {
   // who holds what
   for (let L = 1; L <= G.NT; L++) {
     let a = 0, b = 0; for (const u of G.units) if (u.line === L && u.settled && !(u.fall > 0) && !u.fixed) { if (u.side) b++; else a++; }
+    const was = G.owner[L];
     if (a && !b) G.owner[L] = 0; else if (b && !a) G.owner[L] = 1;
+    if (was !== G.owner[L] && (was === 0 || was === 1) && hasTrack()) cutTrack(was, segmentIndexFor(was, L));
   }
   if (G.SUPER > 0 && G.owner[G.SUPER] !== G.S.superOwner) {
     const prev = G.S.superOwner, now = G.owner[G.SUPER]; G.S.superOwner = now;
