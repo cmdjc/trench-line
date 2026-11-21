@@ -12,7 +12,8 @@ export const WOUNDED = 0.4;        // wounded threshold: settled troops below th
 export const BIG_SPLASH = 60;      // splash radius at or above which a shell breaks track
 export const AI_RAIL_T = 90;       // seconds before the AI starts a railway fund
 export const AI_RAIL_SHARE = 0.15;  // share of enemy income sent to the railway fund
-export const RAIL_Y = WH - 14;     // rail lane, near the bottom edge of the field
+export const BARRIER_R = 26;       // px either side of a trench with track where sandbags shield the rails from big shells
+export const RAIL_Y = WH / 2;      // rail lane, through the middle of the field
 
 const BASE_SPEED = 3 * STATS.gb.rifle.speed;
 
