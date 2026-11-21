@@ -95,7 +95,7 @@ const homeOf = side => (side ? G.HQI : 0);
 const fwdOf = side => (side ? -1 : 1);
 
 /* foot soldiers only: no armour, emplacements, fixed jobs or paratroopers */
-const rideable = u => !u.T.armor && !u.T.nest && !u.T.bunker && !u.T.depot && !u.fixed && !u.para && u.T.speed > 0;
+const rideable = u => !u.T.armor && !u.T.nest && !u.T.bunker && !u.T.depot && !u.T.noFire && !u.fixed && !u.para && u.T.speed > 0;
 
 /* seconds until train t, wherever it is now, has carried a unit waiting at the HQ out to the end (farD px) */
 function trainETA(t, farD) {
@@ -107,20 +107,43 @@ function trainETA(t, farD) {
   return (back + farD) / t.T.speed + DWELL;
 }
 
-/* Should this unit wait for a train instead of walking? Only when riding gets it to the end of the track strictly
-   sooner than walking there, so laying track never slows reinforcements. */
-export function shouldRide(u) {
-  if (u.hp <= 0 || u.riding || !rideable(u)) return false;
-  const s = u.side, fwd = fwdOf(s), end = trackEnd(s);
-  if (end <= 0 || !G.trains.some(t => t.side === s)) return false;
-  const eL = lineOfSegment(s, end), ex = G.LX[eL], home = G.LX[homeOf(s)];
-  if ((u.line - eL) * fwd < 0 || (u.x - ex) * fwd >= 0) return false;
-  const fresh = MAPS[G.MAP].rail && u.id >= (G.railSeen || 0); // just spawned at a railhead
-  if ((u.x - home) * fwd > HQ_ZONE && !u.waiting && !fresh) return false;
-  const walk = Math.abs(ex - u.x) / (u.T.speed * G.M[s].speed), farD = Math.abs(ex - home);
+/* Seconds a waiting unit of `side` at the HQ needs to reach the end of the track by train (best train), and the
+   end's x; null when the side has no usable track or train. */
+function rideTime(side) {
+  const end = trackEnd(side);
+  if (end <= 0 || !G.trains.some(t => t.side === side)) return null;
+  const ex = G.LX[lineOfSegment(side, end)], farD = Math.abs(ex - G.LX[homeOf(side)]);
   let best = Infinity;
-  for (const t of G.trains) if (t.side === s && t.hp > 0) best = Math.min(best, trainETA(t, farD));
-  return best < walk;
+  for (const t of G.trains) if (t.side === side && t.hp > 0) best = Math.min(best, trainETA(t, farD));
+  return { best, ex, eL: lineOfSegment(side, end) };
+}
+
+/* does riding from the HQ beat walking to the end of the track from fromX, for a unit ordered to its line? */
+function rideBeats(u, fromX) {
+  if (u.hp <= 0 || u.riding || !rideable(u)) return false;
+  const r = rideTime(u.side); if (!r) return false;
+  const fwd = fwdOf(u.side);
+  if ((u.line - r.eL) * fwd < 0) return false;
+  if ((fromX - r.ex) * fwd >= 0) return false;
+  return r.best < Math.abs(r.ex - fromX) / (u.T.speed * G.M[u.side].speed);
+}
+
+/* Should this unit, standing at the HQ, wait for a train instead of walking? Only when riding gets it to the end
+   of the track strictly sooner than walking there, so laying track never slows reinforcements. Units anywhere
+   else (railhead spawns, troops on the march) never board. */
+export function shouldRide(u) {
+  const fwd = fwdOf(u.side);
+  if ((u.x - G.LX[homeOf(u.side)]) * fwd > HQ_ZONE) return false;
+  return rideBeats(u, u.x);
+}
+
+/* Long March railhead: a new unit spawns at the HQ to wait for a train only if riding from there (wait, ride, then
+   walk on from the end) is strictly faster than walking from its railhead spawn point; else it stays put. */
+export function railSpawn(u) {
+  if (!G.trains.length || !MAPS[G.MAP].rail) return;
+  const hqX = G.LX[homeOf(u.side)] - fwdOf(u.side) * 14;
+  if (Math.abs(u.x - hqX) < 1 || !rideBeats(u, u.x)) return;
+  u.x = hqX; u.waiting = true;
 }
 
 /* mark units that should wait for a train; release the ones that no longer gain by waiting */
@@ -129,7 +152,6 @@ function updateWaiting() {
     if (u.riding) continue;
     if (shouldRide(u)) { u.waiting = true; u.moving = false; } else if (u.waiting) u.waiting = false;
   }
-  G.railSeen = G.uid;
 }
 
 function board(t, u) {
@@ -167,9 +189,9 @@ function atHome(t) {
   }
 }
 
-/* the train was destroyed: riders get off where it stood, at full strength */
+/* the train was destroyed: riders get off where it stood, unhurt by the wreck (wounded stay wounded) */
 export function dismountAll(train) {
-  for (const u of train.riders) { getOff(u, train.x); u.hp = u.max; u.homeLine = undefined; }
+  for (const u of train.riders) { getOff(u, train.x); u.homeLine = undefined; }
   train.riders = [];
 }
 
@@ -182,7 +204,6 @@ export function canBuyTrain(side) {
 export function buyTrain(side) {
   if (!canBuyTrain(side)) return false;
   const T = TRAINS[G.nation[side]];
-  if (!G.trains.length) G.railSeen = G.uid; // units already on the march are not fresh railhead spawns
   G.trains.push({ id: ++trainId, side, x: G.LX[side ? G.HQI : 0], hp: T.hp, max: T.hp, dir: side ? -1 : 1, riders: [], carried: false, T });
   return true;
 }

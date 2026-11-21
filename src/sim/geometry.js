@@ -7,6 +7,7 @@ import { MAPS } from '../data/maps.js';
 import { rng } from '../core/rng.js';
 import { G, isDbl } from './state.js';
 import { infCap, startLineFor } from './base.js';
+import { railSpawn } from './rail.js';
 
 export const trenchX = (cx, y) => cx + ((Math.floor(y / SEG) % 2) ? 6 : -6);
 
@@ -83,6 +84,7 @@ export function spawn(side, type, L, placed) {
   const park = T.armor ? (T.rear ? -((T.park || 38) + 26) : (T.park || 38) + 4) : 0;
   const hp = T.hp * (T.armor ? m.tankHp : m.hp);
   const u = { id: G.uid++, side, type, T, cd2: 0, flash2: 0, gun: 1, tread: 0, puff: 0, line: L, y, aim: 0, park, x: placed ? posX(side, L, y, park) : startX(side, L, type), hp, max: hp, cd: rng.float() * T.cd, settled: !!placed, moving: false, walk: rng.float() * 6, flash: 0 };
+  if (!placed && G.trains.length) railSpawn(u); // Long March: start at the HQ instead if the train is faster
   G.units.push(u); return u;
 }
 

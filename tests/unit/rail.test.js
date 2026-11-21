@@ -316,7 +316,7 @@ describe('train riders', () => {
     expect(u.riding).toBeFalsy();
     expect(u.waiting).toBeFalsy();
   });
-  it('destroyed: riders dismount at full strength where the train stood', () => {
+  it('destroyed: riders dismount where the train stood, with the hp they had', () => {
     const t = train();
     const u = spawn(0, 'rifle', 2);
     expect(runUntil(() => u.riding && t.x > G.LX[0] + 100)).toBe(true);
@@ -327,6 +327,31 @@ describe('train riders', () => {
     expect(u.riding).toBeFalsy();
     expect(u.x).toBe(x);
     expect(u.hp).toBe(u.max);
+  });
+  it('destroyed: wounded riders stay wounded (no free heal)', () => {
+    const t = train();
+    const u = spawn(0, 'rifle', 2, true); u.hp = u.max * 0.3;
+    expect(runUntil(() => u.riding === t.id)).toBe(true);
+    t.hp = 0; stepTrains(0.01);
+    expect(u.riding).toBeFalsy();
+    expect(u.hp).toBeCloseTo(u.max * 0.3, 5);
+    expect(u.homeLine).toBeUndefined();
+  });
+  it('boarding never moves a unit further than the HQ zone', () => {
+    const t = train();
+    for (let i = 0; i < 8; i++) spawn(0, 'rifle', 2);
+    const w = spawn(0, 'rifle', 2, true); w.hp = w.max * 0.3;
+    const before = new Map(); let boarded = 0;
+    for (let i = 0; i < 3000; i++) {
+      for (const u of G.units) before.set(u, { x: u.x, r: u.riding });
+      step(0.05); stepTrains(0.05);
+      for (const u of G.units) {
+        const b = before.get(u);
+        if (u.riding && b && !b.r) { boarded++; expect(Math.abs(u.x - b.x)).toBeLessThanOrEqual(60); }
+      }
+    }
+    expect(boarded).toBeGreaterThanOrEqual(8);  // six out, then the wounded man back and out again
+    expect(t.hp).toBeGreaterThan(0);
   });
   it('no farming: an empty shuttle pays nothing, a trip with a rider pays 15', () => {
     const t = train();
@@ -350,5 +375,35 @@ describe('train riders', () => {
     for (let i = 0; i < 20; i++) { e.cd = 0; step(0.01); }
     expect(u.hp).toBe(u.max);
     expect(u.riding).toBe(t.id);
+  });
+});
+
+describe('train riders: Long March railhead', () => {
+  const run = (n, dt = 0.05) => { for (let i = 0; i < n; i++) { step(dt); stepTrains(dt); } };
+  beforeEach(() => {
+    newGame('gb', 'de', 'march', 7); G.S.supplies = 500; G.units = [];
+    G.owner[1] = 0; G.owner[2] = 0; layTrack(0); layTrack(0);
+    G.M[0].speed = 0.5;                           // slow walkers, so the train can beat a one-trench walk
+    C.buyTrainCmd();
+  });
+  it('spawns at the HQ to wait when riding from there beats walking from the railhead', () => {
+    const u = spawn(0, 'rifle', 2);
+    expect(u.x).toBe(G.LX[0] - 14);
+    expect(u.waiting).toBe(true);
+  });
+  it('otherwise spawns at the railhead and never boards', () => {
+    const t = G.trains[0]; t.x = G.LX[0] + 1; t.dir = 1;   // just left: a whole round trip away
+    const u = spawn(0, 'rifle', 2);
+    expect(u.x).toBe(G.LX[1] - 14);
+    expect(u.waiting).toBeFalsy();
+    let rode = false;
+    for (let i = 0; i < 1500; i++) { run(1); if (u.riding) rode = true; }
+    expect(rode).toBe(false);
+  });
+  it('with no trains the railhead spawn is unchanged', () => {
+    G.trains = [];
+    const u = spawn(0, 'rifle', 2);
+    expect(u.x).toBe(G.LX[1] - 14);
+    expect(u.waiting).toBeUndefined();
   });
 });
