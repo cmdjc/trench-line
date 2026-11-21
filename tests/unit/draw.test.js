@@ -8,6 +8,7 @@ import { puff, boom, tracer } from '../../src/sim/combat.js';
 import { NATS, NAT } from '../../src/data/nations.js';
 import { INF, tkList } from '../../src/data/units.js';
 import { MAPS } from '../../src/data/maps.js';
+import { TRAINS } from '../../src/data/rail.js';
 import { draw, vis } from '../../src/ui/draw/index.js';
 import { setCtx } from '../../src/ui/draw/helpers.js';
 import { cam, vw } from '../../src/ui/camera.js';
@@ -187,5 +188,24 @@ describe('renderer', () => {
     draw();
     expect(vis(G.LX[1])).toBe(false);
     expect(vis(G.LX[G.HQI])).toBe(true);
+  });
+});
+
+describe('railway drawing', () => {
+  it('draws track, breaks and trains with riders for both sides without throwing', () => {
+    setCtx(stubCtx);
+    for (const nat of [['gb', 'de'], ['us', 'aq']]) {
+      newGame(nat[0], nat[1], 'open', 3);
+      for (const s of [0, 1]) {
+        G.track[s].end = 3; G.track[s].broken.add(2);
+        G.trains.push({ id: 90 + s, side: s, x: G.LX[s ? G.HQI : 0] + (s ? -80 : 80), hp: 100, max: 300, dir: s ? -1 : 1, riders: [], carried: false, T: TRAINS[nat[s]] });
+      }
+      const t = G.trains[0], u = spawn(0, 'rifle', 1, true); u.riding = t.id; t.riders.push(u);
+      const w = spawn(0, 'rifle', 1, true); w.waiting = true;
+      cam.x = 0;
+      expect(() => draw()).not.toThrow();
+      cam.x = G.LX[G.HQI] - 300;
+      expect(() => draw()).not.toThrow();
+    }
   });
 });

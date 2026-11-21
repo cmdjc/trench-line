@@ -15,6 +15,8 @@ import { swBlock, swCost } from '../sim/superweapons.js';
 import { validDrop } from '../sim/drop.js';
 import { GUNS } from '../data/guns.js';
 import { gunBlock } from '../sim/gun.js';
+import { TRACK_COST, REPAIR_COST, TRAINS, TRAIN_SLOTS } from '../data/rail.js';
+import { canLay, canBuyTrain, trackEnd } from '../sim/rail.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
 import { focusLine } from './camera.js';
@@ -94,6 +96,12 @@ export function refresh() {
     gb.hidden = !gd;
     if (gd && gunAim) { gb.innerHTML = '<b>Confirm target, ' + gd.cost + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < gd.cost ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; gb.disabled = G.aim.x === null || S.supplies < gd.cost || !!gunBlock(0); }
     else if (gd) { const cd = G.gun[0].cd; gb.textContent = cd > 0 ? gd.name + ': ready in ' + Math.ceil(cd) + ' s' : 'Aim ' + gd.name + ': ' + gd.cost; gb.disabled = !!gunBlock(0) || S.supplies < gd.cost; } }
+  { const tb = $('trackBtn'), broken = G.track[0].broken.size > 0, c = broken ? REPAIR_COST : TRACK_COST, why = broken ? '' : canLay(0);
+    tb.innerHTML = '<b>' + (broken ? 'Repair track: ' : 'Lay track: ') + c + '</b><small>' + (why || (S.supplies < c ? 'Not enough supplies.' : broken ? 'Segment ' + Math.min(...G.track[0].broken) + ' is broken.' : '')) + '</small>';
+    tb.disabled = !!why || S.supplies < c; }
+  { const T = TRAINS[G.nation[0]], bb = $('trainBtn'), slots = G.trains.filter(t => t.side === 0).length >= TRAIN_SLOTS,
+      why = trackEnd(0) <= 0 ? 'No track yet.' : slots || !canBuyTrain(0) ? 'All train slots in use.' : S.supplies < T.cost ? 'Not enough supplies.' : '';
+    bb.innerHTML = '<b>' + T.name + ': ' + T.cost + '</b><small>' + why + '</small>'; bb.disabled = !!why; }
   refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
   const held = Object.keys(S.taken).map(id => { const c = CARDS.find(x => x.id === id); return c.name + (S.taken[id] > 1 ? ' ×' + S.taken[id] : ''); });
@@ -107,6 +115,8 @@ export function initHud() {
   $('gatherBtn').addEventListener('click', () => commands.gather());
   $('fortBtn').addEventListener('click', () => commands.fortifyAt(G.sel));
   $('nestBtn').addEventListener('click', () => commands.buildNestAt(G.sel));
+  $('trackBtn').addEventListener('click', () => { if (G.track[0].broken.size) commands.repairTrackCmd(); else commands.layTrackCmd(); });
+  $('trainBtn').addEventListener('click', () => commands.buyTrainCmd());
   $('defBtn').addEventListener('click', () => commands.buildDefAt(G.sel));
   $('basePanel').addEventListener('click', ev => { const b = ev.target.closest('button[data-base]'); if (b) commands.buyBase(b.dataset.base === G.nation[0] ? 'nat' : b.dataset.base); });
   $('aimCancel').addEventListener('click', () => commands.cancelAim());

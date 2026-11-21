@@ -145,6 +145,17 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   expect(T.info().n[0]).toBe(n0 + 2);
   expect(T.info().sup).toBeLessThan(1000 + sup0 - 20); // charged
 
+  // -- railway: lay one segment into trench 1 and buy a train; supplies drop each time
+  T.give(1000);
+  frames(2);
+  const railSup = T.info().sup;
+  click('#trackBtn');
+  expect(d.getElementById('trackBtn').textContent).toContain('Lay track');
+  const laySup = T.info().sup;
+  expect(laySup).toBeLessThan(railSup - 30);
+  click('#trainBtn');
+  expect(T.info().sup).toBeLessThan(laySup - 100);
+
   // -- HQ gun: aim with a field tap, confirm, supplies drop
   T.give(1000);
   frames(2);

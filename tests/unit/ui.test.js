@@ -579,3 +579,42 @@ describe('responsive width', () => {
   });
 });
 
+
+describe('railway buttons', () => {
+  it('lay track: label, reason when the trench is not held, click lays and charges', () => {
+    G.S.supplies = 500; G.owner[1] = 1; bus.emit('hud');
+    expect($('trackBtn').textContent).toContain('Lay track: 40');
+    expect($('trackBtn').textContent).toContain('Trench 1 is not held.');
+    expect($('trackBtn').disabled).toBe(true);
+    G.owner[1] = 0; bus.emit('hud');
+    expect($('trackBtn').disabled).toBe(false);
+    $('trackBtn').click();
+    expect(G.track[0].end).toBe(1);
+    expect(G.S.supplies).toBe(460);
+  });
+  it('turns into repair track when a segment is broken', () => {
+    G.S.supplies = 500; G.owner[1] = 0; G.track[0].end = 1; G.track[0].broken.add(1); bus.emit('hud');
+    expect($('trackBtn').textContent).toContain('Repair track: 20');
+    expect($('trackBtn').disabled).toBe(false);
+    $('trackBtn').click();
+    expect(G.track[0].broken.size).toBe(0);
+    expect(G.S.supplies).toBe(480);
+    expect($('trackBtn').textContent).toContain('Lay track: 40');
+  });
+  it('train button shows its national name and cost, and says why it is off', () => {
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('Simplex light railway: 150');
+    expect($('trainBtn').textContent).toContain('No track yet.');
+    expect($('trainBtn').disabled).toBe(true);
+    G.owner[1] = 0; G.track[0].end = 1; G.S.supplies = 100; bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('Not enough supplies.');
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('trainBtn').disabled).toBe(false);
+    $('trainBtn').click(); $('trainBtn').click(); $('trainBtn').click();
+    expect(G.trains.length).toBe(3);
+    expect(G.S.supplies).toBe(50);
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('trainBtn').textContent).toContain('All train slots in use.');
+    expect($('trainBtn').disabled).toBe(true);
+  });
+});
