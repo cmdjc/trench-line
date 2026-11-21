@@ -2,6 +2,8 @@
 
 Date: 2026-11-20 · Status: draft for approval
 
+> **Superseded (2026-11-21, user decision):** the Long March railhead has been removed. Every map now spawns reinforcements at the HQ, and trains replace the railhead. Lines below that say the railhead stays are historical.
+
 ## Why
 
 Trench railways carried men and shells right up to the front, and shellfire
