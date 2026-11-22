@@ -1,5 +1,6 @@
 // Railways, stage 1: track laying, repair, capture and big-shell breaks.
-// Pure sim, no browser APIs, no rng.
+// Pure sim, no browser APIs. rng is drawn only by armoured trains (fireArmor):
+// a game with transport trains alone never touches it.
 //
 // Representation: G.track[side] = { end, broken: Set }.
 //   - `end` counts segments laid from that side's OWN HQ; segment k (1-based) is
@@ -13,6 +14,8 @@
 import { G, toast, hidden } from './state.js';
 import { TRACK_COST, REPAIR_COST, BIG_SPLASH, BARRIER_R, RAIL_Y, TRAINS, ARMOR_TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, WOUNDED } from '../data/rail.js';
 import { ARM } from '../data/units.js';
+import { hurt, accVs, tracer, puff } from './combat.js';
+import { rng } from '../core/rng.js';
 
 /* trench a segment of `side` ends at */
 export const lineOfSegment = (side, k) => (side === 0 ? k : G.HQI - k);
@@ -262,6 +265,59 @@ function moveArmor(t, dt) {
   t.x = home + p * fwd;
 }
 
+/* an armoured train's weapons: a tank-like cannon (shell/splash) and machine guns (instant tracer hit), with a
+   fallback that shells the enemy base when nothing else is in range. Mirrors stepUnits' armour branch (combat.js
+   lines 75-90 and 139-183), but armoured trains are G.trains entries, never G.units ones, so this stays here.
+   Reuses hurt/accVs/tracer/puff rather than its own damage math; national stats are already baked into
+   ARMOR_TRAINS, so (unlike stepUnits) there is no G.M multiplier and no minR. */
+function fireArmor(t, dt) {
+  const T = t.T, fwd = fwdOf(t.side), dir = fwd;
+  let best = null, bd = 1e9;
+  for (const e of G.units) {
+    if (e.side === t.side || e.hp <= 0 || hidden(e)) continue;
+    const d = Math.hypot(e.x - t.x, e.y - RAIL_Y);
+    if (d < bd) { bd = d; best = e; }
+  }
+  for (const tr of G.trains) {
+    if (tr.side === t.side || tr.hp <= 0) continue;
+    const d = Math.abs(tr.x - t.x);
+    if (d < bd) { bd = d; best = { x: tr.x, y: RAIL_Y, hp: tr.hp, settled: false, T: {}, train: tr }; }
+  }
+
+  t.cd -= dt; t.cd2 -= dt; t.flash -= dt; t.flash2 -= dt; t.puff -= dt;
+  if (t.puff <= 0) {
+    const hurtBad = t.hp < t.max * 0.33;
+    t.puff = hurtBad ? 0.1 : t.moving ? 0.16 : 0.5;
+    puff(t.x - dir * 22, RAIL_Y, hurtBad);
+  }
+
+  if (t.cd2 <= 0 && best && bd <= T.mg.range) {
+    t.cd2 = T.mg.cd * (0.8 + rng.float() * 0.4); t.flash2 = 0.07;
+    const sy = best.y < RAIL_Y ? -6 : 6;
+    if (rng.float() < T.mg.acc * accVs(t, best)) { tracer(t.x, RAIL_Y + sy, best.x, best.y, 1, '#ffd76a'); hurt(best, T.mg.dmg, 'mg', t); }
+    else tracer(t.x, RAIL_Y + sy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,215,106,.6)');
+    t.mgShots++;
+  }
+
+  if (t.cd <= 0) {
+    const hit = best && bd <= T.range, gx = hit ? best.x : G.bases[1 - t.side].x, gy = hit ? best.y : RAIL_Y;
+    t.aim = Math.atan2(gy - RAIL_Y, (gx - t.x) * fwd);
+    if (hit) {
+      t.cd = T.cd * (0.85 + rng.range(0, 0.3)); t.flash = 0.08;
+      G.shells.push({ x0: t.x + dir * 14, y0: RAIL_Y, x1: best.x, y1: best.y, t: 0, dur: T.shell, side: t.side, type: 'tank', dmg: T.dmg, splash: T.splash, arc: 0.1 });
+      t.shots++;
+    } else {
+      const b = G.bases[1 - t.side], d = Math.abs(b.x - t.x);
+      if (d <= T.range) {
+        t.cd = T.cd * (0.85 + rng.range(0, 0.3)); t.flash = 0.08;
+        const by = RAIL_Y + (rng.float() - 0.5) * 70;
+        G.shells.push({ x0: t.x + dir * 14, y0: RAIL_Y, x1: b.x - dir * 20, y1: by, t: 0, dur: T.shell, side: t.side, type: 'tank', dmg: T.dmg * 1.5, base: true, arc: 0.1 });
+        t.shots++;
+      }
+    }
+  }
+}
+
 /* train damage: armour like a light tank (thin plating doubles weak-fire damage), same as hurt() for units */
 export function hurtTrain(t, dmg, atk) {
   if (t.hp <= 0) return;
@@ -272,9 +328,10 @@ export function hurtTrain(t, dmg, atk) {
 export function stepTrains(dt) {
   if (!G.trains.length) return;
   updateWaiting();
+  let armorFired = false;
   for (const t of G.trains) {
     if (t.hp <= 0) continue;
-    if (isArmor(t)) { moveArmor(t, dt); continue; }
+    if (isArmor(t)) { moveArmor(t, dt); fireArmor(t, dt); armorFired = true; continue; }
     const fwd = fwdOf(t.side), home = G.LX[homeOf(t.side)];
     const end = trackEnd(t.side), farD = end > 0 ? Math.abs(G.LX[lineOfSegment(t.side, end)] - home) : 0;
     let p = (t.x - home) * fwd;
@@ -316,6 +373,7 @@ export function stepTrains(dt) {
     t.x = home + p * fwd; t.far = Math.max(t.far || 0, p);
     for (const u of t.riders) { u.x = t.x; u.y = RAIL_Y; }
   }
+  if (armorFired) G.units = G.units.filter(u => u.hp > 0);
   const n = G.trains.length;
   for (const t of G.trains) if (t.hp <= 0) {
     dismountAll(t);

@@ -8,6 +8,7 @@ import { stepUnits as step } from '../../src/sim/combat.js';
 import { spawn, walkFront, countAt, count, tanks } from '../../src/sim/geometry.js';
 import { infCap } from '../../src/sim/base.js';
 import { RAIL_Y, BARRIER_R, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, ARMOR_TRAINS } from '../../src/data/rail.js';
+import { rng } from '../../src/core/rng.js';
 
 const pay = d => Math.round(TRIP_SUPPLY * Math.min(1, d / TRIP_FULL)); // trip pay for a run d px out
 
@@ -405,6 +406,113 @@ describe('armoured train', () => {
     expect(G.wrecks[G.wrecks.length - 1].d).toEqual({ L: 26, W: 7 });
     expect(toasts).toContain(A.name + ' was destroyed.');
     expect(C.buyArmorCmd()).toBe(true);
+  });
+});
+
+describe('armoured train: weapons', () => {
+  beforeEach(game);
+  const track3 = () => { G.owner[2] = G.owner[3] = 0; layTrack(0); layTrack(0); layTrack(0); };
+  const A = ARMOR_TRAINS.gb;
+  let t;
+  beforeEach(() => { track3(); C.buyArmorCmd(); t = G.trains[0]; t.x = G.LX[3]; });
+  const foe = dx => { const e = spawn(1, 'rifle', 4, true); e.x = t.x + dx; e.y = RAIL_Y; e.settled = true; e.fall = 0; return e; };
+
+  it('cannon shells the nearest enemy in range', () => {
+    const e = foe(200);
+    stepTrains(0.05);
+    expect(G.shells).toContainEqual(expect.objectContaining({ side: 0, type: 'tank', dmg: A.dmg, splash: A.splash, dur: A.shell, x1: e.x }));
+    expect(t.cd).toBeGreaterThan(0);
+    expect(t.shots).toBe(1);
+    step(0.3);
+    expect(e.hp).toBeLessThan(e.max);
+  });
+
+  it('machine guns hit through hurt and accVs', () => {
+    const e = foe(100); e.hp = e.max = 1e6;
+    t.cd = 99;
+    for (let i = 0; i < 200; i++) stepTrains(0.05);
+    expect(e.hp).toBeLessThan(e.max);
+    expect(G.tracers.some(tr => tr.col === '#ffd76a')).toBe(true);
+    expect(t.mgShots).toBeGreaterThan(0);
+  });
+
+  it('fires at enemy trains', () => {
+    const tr = { id: 9000, side: 1, x: t.x + 150, dir: -1, hp: 400, max: 400, riders: [], T: { ...TRAINS.de, speed: 0 } };
+    G.trains.push(tr);
+    stepTrains(0.05);
+    expect(G.shells).toContainEqual(expect.objectContaining({ x1: tr.x }));
+    t.cd = 99;
+    for (let i = 0; i < 100; i++) stepTrains(0.05);
+    expect(tr.hp).toBeLessThan(tr.max);
+  });
+
+  it('never fires at its own side', () => {
+    const u = spawn(0, 'rifle', 4, true); u.x = t.x + 100; u.y = RAIL_Y; u.settled = true; u.fall = 0;
+    const friend = { id: 9001, side: 0, x: t.x + 100, dir: 1, hp: 400, max: 400, riders: [], T: { ...TRAINS.gb, speed: 0 } };
+    G.trains.push(friend);
+    for (let i = 0; i < 200; i++) stepTrains(0.05);
+    expect(G.shells.length).toBe(0);
+    expect(G.tracers.length).toBe(0);
+    expect(u.hp).toBe(u.max);
+    expect(friend.hp).toBe(friend.max);
+    expect(t.shots).toBe(0);
+  });
+
+  it('holds fire out of range', () => {
+    foe(400);
+    for (let i = 0; i < 20; i++) stepTrains(0.05);
+    expect(G.shells.length).toBe(0);
+    expect(G.tracers.length).toBe(0);
+    expect(t.shots).toBe(0);
+    expect(t.mgShots).toBe(0);
+  });
+
+  it('base fallback in range', () => {
+    G.units = [];
+    t.T = { ...A, speed: 0 };
+    t.x = G.bases[1].x - (A.range - 10);
+    stepTrains(0.05);
+    expect(G.shells).toContainEqual(expect.objectContaining({ base: true, dmg: A.dmg * 1.5, x1: G.bases[1].x - 20, side: 0 }));
+    expect(G.tracers.length).toBe(0);
+  });
+
+  it('base fallback out of range', () => {
+    G.units = [];
+    t.T = { ...A, speed: 0 };
+    t.x = G.bases[1].x - (A.range + 10);
+    rng.reseed(5);
+    for (let i = 0; i < 20; i++) stepTrains(0.05);
+    const a = rng.float();
+    rng.reseed(5);
+    expect(G.shells.length).toBe(0);
+    expect(a).toBe(rng.float());
+    expect(G.tracers.length).toBe(0);
+  });
+
+  it('kills are removed the same frame', () => {
+    const e = foe(100); e.hp = 0.1;
+    t.cd = 99;
+    for (let i = 0; i < 200 && e.hp > 0; i++) {
+      stepTrains(0.05);
+      expect(G.units.every(u => u.hp > 0)).toBe(true);
+    }
+    expect(e.hp).toBeLessThanOrEqual(0);
+    expect(G.units).not.toContain(e);
+    expect(G.S.kills).toBe(1);
+  });
+
+  it('no rng without armour', () => {
+    newGame('gb', 'de', 'open', 7);
+    G.S.supplies = 500;
+    const trk = () => { G.owner[2] = G.owner[3] = 0; layTrack(0); layTrack(0); layTrack(0); };
+    trk(); C.buyTrainCmd(); C.buyTrainCmd();
+    const e1 = spawn(1, 'rifle', 2, true); e1.x = G.LX[2]; e1.y = RAIL_Y; e1.settled = true; e1.fall = 0;
+    const e2 = spawn(1, 'rifle', 3, true); e2.x = G.LX[3]; e2.y = RAIL_Y; e2.settled = true; e2.fall = 0;
+    rng.reseed(5);
+    for (let i = 0; i < 400; i++) stepTrains(0.05);
+    const a = rng.float();
+    rng.reseed(5);
+    expect(a).toBe(rng.float());
   });
 });
 
