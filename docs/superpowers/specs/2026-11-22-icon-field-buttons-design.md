@@ -58,9 +58,16 @@ other band, at either extreme:
 
 | Band | World y | Holds |
 |---|---|---|
-| Top | 35 | Fortify, MG nest, Defence |
+| Top | 41 | Fortify, MG nest, Defence |
 | Middle | 150 (same height as the rail) | Lay Track / Repair Track |
 | Bottom | 240 | Advance, Fall back, Bring all here |
+
+(The top band's y moved from an initial 35 to 41 during planning: the
+nation-ownership flag has a pole drawn down to y 19, not just the pennant
+at y 4–12, and 35 left only a fraction of a world-unit of clearance at the
+shortest canvas. 41 gives real margin at both camera extremes. The
+"Storm the HQ" state of Advance keeps the same forward-chevron icon rather
+than a separate one — it's still an advance, just the last one.)
 
 Each band is one horizontal row of (up to 3) round buttons, anchored at the
 relevant trench's x the same way the current `anchorX`/`stackSide` logic
@@ -112,7 +119,7 @@ Unchanged from the first draft:
 - Touch: tap once to see it, tap again to act.
 
 **My calls:**
-- The exact world-y values for each band (35 / 150 / 240), checked against
+- The exact world-y values for each band (41 / 150 / 240), checked against
   the real camera-scale range so nothing collides.
 - Putting Lay Track at the middle band, level with the rail itself.
 - The specific icon shape for each action.

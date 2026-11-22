@@ -18,7 +18,7 @@
 
   | Band id | World y | Buttons, DOM order | Anchor trench |
   |---|---|---|---|
-  | `#topBand` | 35 | `fortBtn`, `nestBtn`, `defBtn` | `G.sel` |
+  | `#topBand` | 41 | `fortBtn`, `nestBtn`, `defBtn` | `G.sel` |
   | `#trackBand` | 150 | `trackBtn` | `trackGlyphLine(0)` |
   | `#moveBand` | 240 | `backBtn`, `gatherBtn`, `advBtn` | `G.sel` |
 
@@ -37,7 +37,7 @@
 2. **`aria-label` never depends on reveal state.** Revealing or clearing must not touch `aria-label` or `data-tip`. Only the wrapper's `revealed` class changes. (Task 3 test `aria-label is the same before, during and after a reveal`.)
 3. **One reveal at a time, across bands.** Revealing `advBtn` (bottom band) while `fortBtn` (top band) is revealed clears `fortBtn`, and that tap doesn't advance. (Task 3 test `revealing a button in another band clears the first`.)
 4. **No reveal survives a `G.sel` change.** Revealing `fortBtn` and then selecting another trench, from the map strip, a canvas tap or the sim's own `tick.js` front-line pull-back, clears the reveal on the next frame. Otherwise the next tap would act on a trench the player never looked at. (Task 3 test `a G.sel change clears any reveal`.)
-5. **Bands stay clear of each other and of the canvas markings at both camera extremes (K = 240/300 and 380/300).** The plan must actually use 35 / 150 / 240 and `--fb: 30px`. The test asserts the layout functions place each band at `BAND_Y * K` and checks the band edges against the flag pennant (y 4–12), the pips (y ≈ 287) and each other. (Task 1 test `places each band at its world y`, Task 2 test `30px bands never collide at either K extreme`.)
+5. **Bands stay clear of each other and of the canvas markings at both camera extremes (K = 240/300 and 380/300).** The plan must actually use 41 / 150 / 240 and `--fb: 30px`. The test asserts the layout functions place each band at `BAND_Y * K` and checks the band edges against the flag pennant (y 4–12), the pips (y ≈ 287) and each other. (Task 1 test `places each band at its world y`, Task 2 test `30px bands never collide at either K extreme`.)
 
 ---
 
@@ -54,7 +54,7 @@ The buttons stay as text buttons in this task, so the change can be reviewed as 
 
 **Interfaces:**
 - Produces:
-  - `BAND_Y` in `src/ui/fieldActions.js`: `export const BAND_Y = Object.freeze({ top: 35, track: 150, move: 240 })`.
+  - `BAND_Y` in `src/ui/fieldActions.js`: `export const BAND_Y = Object.freeze({ top: 41, track: 150, move: 240 })`.
   - DOM, in this order inside `.fieldwrap`, after `#field` and before `#toast`:
     ```html
     <div class="fieldBand" id="topBand" role="group" aria-label="Trench defences">
@@ -81,7 +81,7 @@ The buttons stay as text buttons in this task, so the change can be reviewed as 
 In `tests/unit/fieldActions.test.js`:
 ```js
 it('pins the three band heights', () => {
-  expect(BAND_Y).toEqual({ top: 35, track: 150, move: 240 });
+  expect(BAND_Y).toEqual({ top: 41, track: 150, move: 240 });
 });
 ```
 
