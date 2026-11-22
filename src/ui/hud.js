@@ -6,7 +6,7 @@ import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { CARDS } from '../data/cards.js';
 import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort, WH } from '../data/units.js';
-import { anchorX, stackSide, toScreen } from './fieldActions.js';
+import { anchorX, stackSide, toScreen, trackGlyphLine } from './fieldActions.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
 import { infCap, tier, nextCost } from '../sim/base.js';
@@ -32,7 +32,7 @@ export function toast(msg) {
 let lastSel = -1;
 export function buildMap() {
   let h = ''; const per = (MAPS[G.MAP] && MAPS[G.MAP].per) || 0, tun = tunnelLines();
-  for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + (tun.includes(L) ? '\u2293' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i></button>';
+  for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + (tun.includes(L) ? '\u2293' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i><i class="rail"></i></button>';
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
 }
 
@@ -45,6 +45,19 @@ export function layoutOrderGroups() {
   const tf = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
   moveGrp.style.left = movePos.x + 'px'; moveGrp.style.top = movePos.y + 'px'; moveGrp.style.transform = tf;
   fortGrp.style.left = fortPos.x + 'px'; fortGrp.style.top = fortPos.y + 'px'; fortGrp.style.transform = tf;
+}
+
+// Position the floating track button at the segment it would next affect.
+// Not tied to the selection, so when there's nothing left to lay or repair
+// (trackGlyphLine returns null), leave it at its last position: the
+// existing disabled state already communicates "nothing to do" here.
+export function layoutTrackButton() {
+  const L = trackGlyphLine(0);
+  if (L === null) return;
+  const pos = toScreen(anchorX(L), WH / 2 + 80);
+  const tb = $('trackBtn');
+  tb.style.left = pos.x + 'px'; tb.style.top = pos.y + 'px';
+  tb.style.transform = 'translate(-50%, -50%)';
 }
 
 let baseKey = '';
@@ -78,19 +91,21 @@ export function refresh() {
   { const left = Math.max(1, Math.ceil(S.need - S.cardKills)); $('cardText').textContent = 'Next card in about ' + left + (left === 1 ? ' kill' : ' kills'); }
   const m = Math.floor(S.t / 60), s = Math.floor(S.t % 60); $('clock').textContent = m + ':' + (s < 10 ? '0' : '') + s;
   $('hpA').style.width = (G.bases[0].hp / G.bases[0].max * 100) + '%'; $('hpB').style.width = (G.bases[1].hp / G.bases[1].max * 100) + '%';
-  const cells = $('map').children;
+  const cells = $('map').children, railL = trackGlyphLine(0);
   for (let L = 0; L <= G.HQI; L++) {
     const c = cells[L], a = countAt(0, L), b = countAt(1, L);
     c.querySelector('.me').textContent = a || '\u00a0'; c.querySelector('.foe').textContent = b || '\u00a0';
     c.querySelector('.pips').textContent = '\u25aa'.repeat(G.fort[L]);
+    c.querySelector('.rail').textContent = railL === L ? '\u2550' : '';
     c.setAttribute('aria-pressed', L === G.sel ? 'true' : 'false');
-    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : '') + (tunnelLines().includes(L) ? ', tunnel' : ''));
+    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : '') + (tunnelLines().includes(L) ? ', tunnel' : '') + (railL === L ? ', next track segment' : ''));
     c.classList.toggle('mine', G.owner[L] === 0); c.classList.toggle('theirs', G.owner[L] === 1);
   }
   if (G.NT > 9 && G.sel !== lastSel) { lastSel = G.sel; const mp = $('map'), c = cells[G.sel]; if (c) mp.scrollLeft = c.offsetLeft - mp.clientWidth / 2 + c.offsetWidth / 2; }
   const here = countAt(0, G.sel);
   $('selText').textContent = (G.sel === 0 ? 'Your HQ' : G.sel === G.HQI ? 'Assault on the enemy HQ' : 'Trench ' + G.sel) + ': ' + here + (here === 1 ? ' soldier' : ' troops') + ' under orders. New troops march here.' + (G.sel === G.SUPER ? ' The super trench.' : '') + (isDbl(G.sel) ? ' Super trench: stronger cover, 5 emplacements, +' + DBL_RATE + ' supply a second while held. Hedgehogs stop enemy tanks.' : '') + (isTrench(G.sel) && G.fort[G.sel] ? ' Fortified level ' + G.fort[G.sel] + '.' : '') + (G.nation[0] === 'ah' && isTrench(G.sel) && G.fort[G.sel] < 3 && G.garr[G.sel] > 0 ? ' Garrison digging in: ' + Math.floor(G.garr[G.sel] / GARR_T[G.fort[G.sel]] * 100) + '%.' : '');
   layoutOrderGroups();
+  layoutTrackButton();
   { const tr = isTrench(G.sel), mine = tr && G.owner[G.sel] === 0, lv = tr ? G.fort[G.sel] : 0, mx = tr ? maxFort(G.sel) : 3, fb = $('fortBtn'), nb = $('nestBtn');
     fb.textContent = !tr ? 'Fortify' : lv >= mx ? 'Fully fortified' : 'Fortify: ' + FORT_COST[lv];
     fb.disabled = !mine || lv >= mx || S.supplies < FORT_COST[lv];

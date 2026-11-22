@@ -149,6 +149,8 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   T.give(1000);
   frames(2);
   const railSup = T.info().sup;
+  // trench 1 is the next segment to lay: the map strip marks it with the rail glyph
+  expect(d.getElementById('map').children[1].querySelector('.rail').textContent).toBe('═');
   click('#trackBtn');
   expect(d.getElementById('trackBtn').textContent).toContain('Lay track');
   const laySup = T.info().sup;

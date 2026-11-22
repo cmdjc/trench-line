@@ -22,6 +22,7 @@ import { refresh, buildMap } from '../../src/ui/hud.js';
 import { tunnelLines } from '../../src/sim/tunnel.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 import { cutTrack } from '../../src/sim/rail.js';
+import { trackGlyphLine, anchorX, toScreen } from '../../src/ui/fieldActions.js';
 
 const $ = id => document.getElementById(id);
 
@@ -212,6 +213,44 @@ describe('field-action groups', () => {
     expect(order.indexOf('field')).toBeLessThan(order.indexOf('fortGrp'));
     expect(order.indexOf('moveGrp')).toBeLessThan(order.indexOf('map'));
     expect(order.indexOf('fortGrp')).toBeLessThan(order.indexOf('map'));
+  });
+});
+
+describe('track button and map-strip rail glyph', () => {
+  it('marks the next track segment on the map strip', () => {
+    refresh();
+    const L = trackGlyphLine(0);
+    const cells = [...$('map').children];
+    cells.forEach((c, i) => {
+      expect(c.querySelector('.rail').textContent).toBe(i === L ? '═' : '');
+    });
+    expect(cells[L].getAttribute('aria-label')).toContain('next track segment');
+  });
+
+  it('no glyph once the track is complete', () => {
+    G.track[0].end = G.NT;
+    refresh();
+    const cells = [...$('map').children];
+    cells.forEach(c => expect(c.querySelector('.rail').textContent).toBe(''));
+    expect(trackGlyphLine(0)).toBe(null);
+  });
+
+  it('trackBtn floats at the segment it would affect', () => {
+    refresh();
+    const L = trackGlyphLine(0);
+    const expected = toScreen(anchorX(L), 0).x;
+    const tb = $('trackBtn');
+    expect(tb.closest('.fieldwrap')).toBeTruthy();
+    expect(tb.closest('.orders')).toBeFalsy();
+    expect(parseFloat(tb.style.left)).toBeCloseTo(expected, 5);
+  });
+
+  it('trackBtn stays at its last position once the track is complete (does not jump to 0,0)', () => {
+    refresh();
+    const before = $('trackBtn').style.left;
+    G.track[0].end = G.NT;
+    refresh();
+    expect($('trackBtn').style.left).toBe(before);
   });
 });
 
