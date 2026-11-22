@@ -158,6 +158,12 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   click('#trainBtn');
   expect(T.info().sup).toBeLessThan(laySup - 100);
 
+  T.give(1000);
+  frames(2);
+  const armorSup = T.info().sup;
+  click('#armorBtn');
+  expect(T.info().sup).toBeLessThan(armorSup - 300);
+
   // -- HQ gun: aim with a field tap, confirm, supplies drop
   T.give(1000);
   frames(2);

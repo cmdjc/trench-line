@@ -147,7 +147,7 @@ Chosen by you: the USA superweapon is Mitchell's airborne drop and replaces the 
 
 ## 11. Railways (stage 1)
 
-Chosen by you: buildable railways. You lay track from your HQ one segment at a time, buy a transport train, and troops, wounded and supplies ride it. It replaces the Long March "railhead" (reinforcements appearing one trench behind the line): on every map, including the Long March, new troops start at their own HQ. The full intent is in `docs/superpowers/specs/2026-11-20-railways-stage1-design.md`. Stage 2 (an armoured train) and stage 3 (a railway gun and an ammo cart) are planned and not built.
+Chosen by you: buildable railways. You lay track from your HQ one segment at a time, buy a transport train, and troops, wounded and supplies ride it. It replaces the Long March "railhead" (reinforcements appearing one trench behind the line): on every map, including the Long March, new troops start at their own HQ. The full intent is in `docs/superpowers/specs/2026-11-20-railways-stage1-design.md`. Stage 2 (an armoured train) is built, in §12; stage 3 (a railway gun and an ammo cart) is planned and not built.
 
 - **Track**: a segment spans one trench to the next from your HQ and can be laid only into a trench you hold and only with no break outstanding. It costs `TRACK_COST` 20 supplies, `REPAIR_COST` 20 to repair. Losing the trench at the end of a segment destroys that segment and every one beyond it. Big shells (splash 60 or more, or the big, huge, raze and siege flags) that land on the rail lane break the segments they overlap, on both sides' track. HQ-gun shells never break track, even the big ones of the 155 mm GPF and the 210 mm mortar.
 - **Long March starting railway**: on the Long March only, each side starts with segments 1 to 5 (its first belt, `MAPS.march.startTrack`) laid for free and one free transport train at its HQ (`startTrains`). The track still runs only as far as the furthest held, intact segment, so the pre-laid stretch ahead of your troops comes into use as you take its trenches. A trench taken by the other side destroys the segment ending there and every one beyond it, whether or not you had held it, and it must be relaid at cost. Every other map starts with no track and no trains.
@@ -194,7 +194,84 @@ Chosen by you: buildable railways. You lay track from your HQ one segment at a t
 
   The starting track alone did not help: 10 of 12 battles still timed out, so the free train was added as the fallback. With it 9 of 12 battles finish within 1800 s, but only 5 by 1200 s, and the bot loses every finished battle. In those runs the enemy commander pushes its track to about 41 segments against the bot's 16 to 21. Main finished every battle by about 710 s. The Long March is still slower than main and now leans toward the enemy commander.
 
-## 12. Tunnel trenches (Long March)
+## 12. Railways (stage 2: armoured train)
+
+Chosen by you, matching the enemy's own armoured train: a second, combat national train that shares the
+track with the transport. The full intent is in `docs/superpowers/specs/2026-11-22-armoured-train-design.md`.
+
+- **Entity**: `buyArmor(side)` spawns a `{ kind: 'armor' }` entry in `G.trains`, at the HQ, with its
+  national `ARMOR_TRAINS` stats. It never carries riders (`riders` stays `[]` forever, so `dismountAll`
+  and the draw code stay generic across both kinds) and is tracked separately from transports:
+  `isArmor(t)` distinguishes the two, and `G.trains` holds both kinds together.
+- **Advance and hold**: `moveArmor` drives it straight to the far end of the held, unbroken track
+  (`trackEnd(side)`) and holds there — it never shuttles back to the HQ like a transport. Losing the
+  trench at the end pulls it back to the new end.
+- **Never crosses a break**: like a transport, a break behind it clamps its position to the break's
+  forward edge (`breakBehind`) until repaired; it never drives across an unrepaired segment.
+- **Weapons**: `fireArmor` gives it two, mirroring `stepUnits`' armour branch but living in `sim/rail.js`
+  since trains are `G.trains` entries, not `G.units` ones. A tank-like cannon (shell, splash, `T.dmg`,
+  `T.cd`, `T.range`) picks the nearest enemy unit or train within range; machine guns (`T.mg`: instant
+  tracer, its own `cd`/`range`/`acc`) do the same independently and fire more often. National stats are
+  baked into `ARMOR_TRAINS` directly (unlike units, there is no `G.M` scaling and no minimum range).
+- **Base fallback**: when nothing is in cannon range, it shells the enemy base instead, at 1.5× its
+  normal shell damage, as long as the base is within `T.range`. It is armoured like a light tank
+  (`hurtTrain`, same thin-plating-doubles-weak-fire rule as `hurt()`), and a destroyed one leaves a
+  wreck on the rail lane and (for the player's own) toasts "`<name> was destroyed.`".
+- **Shared slots**: transports and armoured trains share the same `TRAIN_SLOTS` (3) cap per side and the
+  same `canBuyTrain(side)` gate (track must be running, a slot must be free) — buying one is buying
+  against the same pool as the other.
+- **Enemy priority order and fund cap**: `aiRail()` repairs a break first; then the first transport,
+  once track is 2 long; then, once that transport is in and the track reaches `AI_ARMOR_END` (2), the
+  armoured train, saved for ahead of laying more track or a second transport; then track; then a second
+  transport at end 3. The rail fund's cap (previously two trains' cost) now also covers the armoured
+  train: `max(2 × a transport's cost, the armoured train's cost)`, so the fund can actually accumulate
+  enough to buy one without first overflowing into ordinary unit spending.
+- **The bot rule** (`scripts/bot.mjs`): after its own railway block, the headless bot buys one armoured
+  train once it has a transport running, no armoured train yet, `trackEnd(0) >= 3`, `canBuyTrain(0)`
+  holds, and supplies are at least twice the train's cost. `BOTNOARMOR=1` disables it, for comparison
+  runs; `NORAIL` implies `BOTNOARMOR`. Unlike the enemy AI, the bot spends from its single shared
+  supply pool, so it only buys one when the normal game's economy comfortably affords it — it does not
+  pause other spending to save up for one.
+
+| Nation | Train | Cost | Hp | Speed | Cannon dmg | Cannon cd | Range | Splash | MG dmg | MG cd | MG range |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Britain | Naval armoured train | 380 | 600 | 138 | 25 | 1.6 | 270 | 20 | 5 | 0.2 | 280 |
+| Germany | Panzerzug | 420 | 630 | 125 | 26 | 1.8 | 260 | 20 | 5 | 0.18 | 290 |
+| France | Train blindé | 370 | 580 | 138 | 24 | 1.4 | 260 | 20 | 5 | 0.22 | 270 |
+| Russia | Zaamurets armoured train | 350 | 640 | 130 | 25 | 1.7 | 250 | 21 | 5 | 0.2 | 280 |
+| USA | Liberty armored train | 400 | 620 | 150 | 26 | 1.6 | 260 | 20 | 5.5 | 0.18 | 280 |
+| Austria-Hungary | k.u.k. Panzerzug | 380 | 600 | 138 | 25 | 1.6 | 260 | 20 | 5 | 0.2 | 280 |
+| Italy | Treno armato | 375 | 590 | 138 | 26 | 1.6 | 280 | 19 | 5 | 0.21 | 270 |
+| Antarctica | Iron Penguin | 420 | 680 | 125 | 28 | 1.8 | 260 | 23 | 5 | 0.2 | 280 |
+
+- **Balance check**: every nation against Germany plus Germany against Britain, `MAXS=900`, open map
+  (seeds 1–10) and plain and march (seeds 1–3) — baseline on `main` (no armoured train) against this
+  branch, 144 battles each. Overall win rate moved from 42.4% to 40.3%; 25 of 27 matchup/map categories
+  stayed within ±20 points of the baseline (several improved, e.g. Germany v Germany open +20, France v
+  Germany open +10). Two categories exceeded it: Austria-Hungary v Germany on march (−33.3) and Russia v
+  Germany on plain (−33.3), both 3-seed samples where exactly one seed flips from a clean win to a long
+  grind or loss once the enemy fields its armoured train and the player nation's economy is too weak to
+  field its own in time. Germany's own `ARMOR_TRAINS` entry was nerfed from the original
+  `{hp:680, dmg:27, cd:1.75, splash:22}` to `{hp:630, dmg:26, cd:1.8, splash:20}` (still within ±15% of
+  base) to bring the overall picture in from 7 violating categories to these 2; pushing Germany's stats
+  to the absolute floor of the ±15% band did not clear either remaining one, and a longer `MAXS=1800`
+  run confirmed both are a genuine balance shift (Russia v Germany plain seed 3 loses outright at 1720 s;
+  Austria-Hungary v Germany march seed 1 is still grinding at 1800 s against a 764 s baseline win), not
+  a 900 s budget artifact. These two are accepted, documented known limitations — the same treatment given
+  to a similar known limitation found during testing, where the track's end briefly sits out of weapon
+  range near the end of a long battle in one specific tested scenario — rather than chasing two
+  single-seed flips past the ±15% band.
+- **Anti-goal check**: an armoured train must not end up holding a trench alone, i.e. it must help the
+  attacker push rather than make trench fighting pointless. Compared the bot's own `sel` and `losses` on
+  plain and march, with its armour-buying rule on versus `BOTNOARMOR=1` off, same 48 seeds each (every
+  nation v Germany, seeds 1–3, both maps): avg `sel` 11.21 either way, avg `losses` 64.10 with the rule
+  against 64.27 without — statistically indistinguishable. The bot's own armoured train almost never
+  gets bought inside this matrix's economy and 900 s budget (1–2 of 48 runs), so the rule is close to
+  inert there; it never makes the bot's own trench fighting pointless. The imbalance found above comes
+  entirely from the *enemy* AI's armoured train, built and reviewed earlier in this stage; this pass only
+  re-confirmed its effect inside a wider matrix, it did not change that AI logic.
+
+## 13. Tunnel trenches (Long March)
 
 Chosen by you: two trenches on the Long March hide a tunnel, so reinforcements can skip the walk. Intent: `docs/superpowers/specs/2026-11-21-tunnel-trench-design.md`. Sim code in `src/sim/tunnel.js`, numbers in `src/data/tunnel.js`.
 
@@ -220,7 +297,7 @@ Chosen by you: two trenches on the Long March hide a tunnel, so reinforcements c
 - **Fix round: slowing the enemy railway did not help.** Causality check: with `AI_RAIL_SHARE` 0 (the enemy buys no train or track beyond its free start) the bot still won 0 of 12 at `TUNNEL_TRANSIT_T` 5, 8 and 12 (3 to 8 timeouts of 12). So the enemy's 45-segment track is a symptom of it holding the ground, not the cause of its wins. A sweep of `AI_RAIL_SHARE` 0.05, 0.08, 0.10, 0.12 and 0.15 against `TUNNEL_TRANSIT_T` 4, 5, 6, 8, 10, 12 and 15 (about 30 of the 35 cells run) never produced a win for the bot; timeouts per 12 ranged from 2 to 10, with the fewest (2) at the existing 0.15 and 5 s. Nothing in the allowed ranges meets either target, so `AI_RAIL_SHARE` stays 0.15 and `TUNNEL_TRANSIT_T` 5, the open and plain matrices are unchanged by construction, and the optional "lay only within 3 segments of the front" rule was not built (it can only do less than turning the fund off, which did not help). Remaining suspects are the enemy's own tunnel use and the bot's habit of sending troops to one selected line; both are outside the ranges allowed.
 - **Not checked**: the visuals (arch, exit ring and the glyph) were not seen in a browser; they are covered only by tests that they draw without throwing.
 
-## 13. Rail through the middle
+## 14. Rail through the middle
 
 Chosen by you: the railway runs through the middle of the battlefield, trenches get sandbag barriers, and trains are drawn from above. Intent: `docs/superpowers/specs/2026-11-21-rail-middle-design.md`. Numbers in `src/data/rail.js`.
 

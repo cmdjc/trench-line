@@ -11,8 +11,8 @@ import { NAT, AI_INCOME, AI_RAMP } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
 import { GUNS, AI_GUN_SHARE } from '../../src/data/guns.js';
 import { DEPOT_RATE, SUPER_INC } from '../../src/data/units.js';
-import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS } from '../../src/data/rail.js';
-import { trackEnd, canLay } from '../../src/sim/rail.js';
+import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS, ARMOR_TRAINS, AI_ARMOR_END } from '../../src/data/rail.js';
+import { trackEnd, canLay, buyTrain, isArmor } from '../../src/sim/rail.js';
 
 const toasts = [];
 bus.on('toast', m => toasts.push(m));
@@ -310,6 +310,7 @@ describe('enemy HQ gun', () => {
 
 describe('enemy railway', () => {
   const tcost = () => TRAINS[G.nation[1]].cost;
+  const acost = () => ARMOR_TRAINS[G.nation[1]].cost;
   function setup() { game(); quiet(); G.S.t = 100; G.ai.railFund = 0; G.ai.want = null; G.ai.money = 0; }
   const buyTicks = (n = 1) => { for (let i = 0; i < n; i++) tick(0); };
   it('sends a share of income to the rail fund from 90 s, none before', () => {
@@ -325,9 +326,10 @@ describe('enemy railway', () => {
     const inc = AI_INCOME * (1 + 80 / AI_RAMP);
     expect(G.ai.money - m0).toBeCloseTo(inc * (1 - AI_GUN_SHARE), 12);
   });
-  it('caps the rail fund at 2x a train, returning overflow to money', () => {
-    setup(); G.ai.railFund = tcost() * 2; const m0 = G.ai.money; aiStep(1);
-    expect(G.ai.railFund).toBe(tcost() * 2);
+  it('caps the rail fund at max(2x a train, an armoured train)', () => {
+    const cap = () => Math.max(tcost() * 2, acost());
+    setup(); G.ai.railFund = cap(); const m0 = G.ai.money; aiStep(1);
+    expect(G.ai.railFund).toBe(cap());
     expect(G.ai.money - m0).toBeGreaterThan(0);
   });
   it('does nothing before 90 s even with a full fund', () => {
@@ -351,7 +353,8 @@ describe('enemy railway', () => {
     expect(G.ai.railFund).toBe(300 - REPAIR_COST);
     buyTicks(); expect(G.track[1].end).toBe(2);
   });
-  const mineTrains = () => G.trains.filter(t => t.side === 1).length;
+  const mineTrains = () => G.trains.filter(t => t.side === 1 && !isArmor(t)).length;
+  const armors = () => G.trains.filter(t => t.side === 1 && isArmor(t)).length;
   it('buys the first train at track end 2, before laying a third segment', () => {
     setup(); G.ai.railFund = 300; G.owner.fill(1); G.owner[0] = 0; // all held: laying is always possible
     buyTicks(); expect(G.track[1].end).toBe(1);
@@ -368,13 +371,45 @@ describe('enemy railway', () => {
     setup(); G.owner.fill(0); for (const k of [1, 2]) G.owner[G.HQI - k] = 1; // two held trenches only
     G.track[1].end = 2; G.ai.railFund = 300; buyTicks(); expect(mineTrains()).toBe(1);
     G.ai.railFund = 300; buyTicks(2); expect(mineTrains()).toBe(1);   // end 2: no second train
-    G.owner[G.HQI - 3] = 1; G.track[1].end = 3; G.owner[G.HQI - 4] = 0; G.ai.railFund = 300; buyTicks();
-    expect(mineTrains()).toBe(2);
-    G.ai.railFund = 300; buyTicks(3); expect(mineTrains()).toBe(2);
+    G.owner[G.HQI - 3] = 1; G.track[1].end = 3; G.owner[G.HQI - 4] = 0;
+    G.ai.railFund = acost(); buyTicks(); expect(armors()).toBe(1); // armoured train before the second transport
+    G.ai.railFund = 300; buyTicks();
+    expect(mineTrains()).toBe(2); expect(armors()).toBe(1);
+    G.ai.railFund = 300; buyTicks(3); expect(mineTrains()).toBe(2); expect(armors()).toBe(1);
   });
   it('lays nothing toward an unheld trench and does not throw', () => {
     setup(); G.ai.railFund = 300; G.owner[G.HQI - 1] = 0;
     expect(canLay(1)).not.toBe('');
     buyTicks(2); expect(G.track[1].end).toBe(0); expect(trackEnd(1)).toBe(0);
+  });
+  it('buys an armoured train at end 3 after its first transport, saving for it', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 3; buyTrain(1);
+    G.ai.railFund = acost() - 1; buyTicks(3);
+    expect(armors()).toBe(0); expect(mineTrains()).toBe(1);
+    G.ai.railFund = acost(); buyTicks();
+    expect(armors()).toBe(1); expect(G.ai.railFund).toBe(0);
+  });
+  it('buys an armoured train right at the tuned AI_ARMOR_END threshold', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = AI_ARMOR_END; buyTrain(1);
+    G.ai.railFund = acost() - 1; buyTicks(3);
+    expect(armors()).toBe(0); expect(mineTrains()).toBe(1);
+    G.ai.railFund = acost(); buyTicks();
+    expect(armors()).toBe(1); expect(G.ai.railFund).toBe(0);
+  });
+  it('no armoured train without a transport first', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 3; G.ai.railFund = 999;
+    buyTicks();
+    expect(mineTrains()).toBe(1); expect(armors()).toBe(0);
+  });
+  it('never more than 3 trains across both kinds', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 5;
+    for (let i = 0; i < 20; i++) { G.ai.railFund = 999; buyTicks(); }
+    expect(G.trains.filter(t => t.side === 1).length).toBeLessThanOrEqual(3);
+    expect(armors()).toBeLessThanOrEqual(1);
+  });
+  it('never buys armour with noRail', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 3; buyTrain(1);
+    G.ai.noRail = true; G.ai.railFund = 999; buyTicks(3);
+    expect(armors()).toBe(0);
   });
 });

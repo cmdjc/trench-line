@@ -8,7 +8,7 @@ import { puff, boom, tracer } from '../../src/sim/combat.js';
 import { NATS, NAT } from '../../src/data/nations.js';
 import { INF, tkList } from '../../src/data/units.js';
 import { MAPS } from '../../src/data/maps.js';
-import { TRAINS } from '../../src/data/rail.js';
+import { TRAINS, ARMOR_TRAINS } from '../../src/data/rail.js';
 import { draw, vis } from '../../src/ui/draw/index.js';
 import { setCtx } from '../../src/ui/draw/helpers.js';
 import { cam, vw } from '../../src/ui/camera.js';
@@ -203,6 +203,7 @@ describe('railway drawing', () => {
       for (const s of [0, 1]) {
         G.track[s].end = 3; G.track[s].broken.add(2);
         G.trains.push({ id: 90 + s, side: s, x: G.LX[s ? G.HQI : 0] + (s ? -80 : 80), hp: 100, max: 300, dir: s ? -1 : 1, riders: [], carried: false, T: TRAINS[nat[s]] });
+        G.trains.push({ id: 190 + s, side: s, kind: 'armor', x: G.LX[s ? G.HQI : 0] + (s ? -150 : 150), hp: 300, max: ARMOR_TRAINS[nat[s]].hp, cd: 0, cd2: 0, flash: 0.05, flash2: 0.05, aim: 0.3, puff: 0, moving: true, shots: 0, mgShots: 0, riders: [], T: ARMOR_TRAINS[nat[s]] });
       }
       const t = G.trains[0], u = spawn(0, 'rifle', 1, true); u.riding = t.id; t.riders.push(u);
       const w = spawn(0, 'rifle', 1, true); w.waiting = true;
@@ -247,6 +248,25 @@ describe('top-down trains, barriers and HQ door', () => {
     drawTrains(all);
     const ys = calls.filter(c => c.k === 'fillRect').map(c => c.oy + c.a[1]);
     expect(Math.min(...ys)).toBeLessThan(RAIL_Y - 8);
+    setCtx(stubCtx);
+  });
+  const mkArmor = (s, hp) => ({ id: 80 + s, side: s, kind: 'armor', x: 400, hp, max: 600, cd: 0, cd2: 0, flash: 0.05, flash2: 0.05, aim: 0.4, puff: 0, moving: true, shots: 0, mgShots: 0, riders: [], T: ARMOR_TRAINS.gb });
+  it('draws an armoured train within its body width', () => {
+    const { ctx, calls } = rec(); setCtx(ctx);
+    newGame('gb', 'de', 'open', 3);
+    G.trains.push(mkArmor(0, 600));
+    drawTrains(all);
+    const ys = calls.filter(c => c.k === 'fillRect' || c.k === 'arc').map(c => c.oy + c.a[1]);
+    expect(ys.length).toBeGreaterThan(5);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(RAIL_Y - 8);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(RAIL_Y + 8);
+    setCtx(stubCtx);
+
+    const { ctx: ctx2, calls: calls2 } = rec(); setCtx(ctx2);
+    G.trains.length = 0; G.trains.push(mkArmor(1, 300));
+    drawTrains(all);
+    const ys2 = calls2.filter(c => c.k === 'fillRect').map(c => c.oy + c.a[1]);
+    expect(Math.min(...ys2)).toBeLessThan(RAIL_Y - 8);
     setCtx(stubCtx);
   });
   it('draws sandbag walls beside the rail only where a barrier exists', () => {

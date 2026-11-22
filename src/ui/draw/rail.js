@@ -1,9 +1,9 @@
-// Railways: laid track with sleepers, broken segments, and transport trains. No rng; pure drawing.
+// Railways: laid track with sleepers, broken segments, and transport and armoured trains. No rng; pure drawing.
 import { ctx, line, circle, BAG, BAGD } from './helpers.js';
 import { G } from '../../sim/state.js';
 import { NAT } from '../../data/nations.js';
 import { RAIL_Y, BARRIER_R } from '../../data/rail.js';
-import { segmentSpan, barrierAt } from '../../sim/rail.js';
+import { segmentSpan, barrierAt, isArmor } from '../../sim/rail.js';
 
 const RAIL = '#8a8576', SLEEPER = '#4a3722', GAP = 26;
 
@@ -77,12 +77,36 @@ function drawTrain(t) {
   }
 }
 
+/* top-down armoured loco (boxy casemate, front) and gun wagon (turret, rear); faces +x always, since an
+   armoured train holds a fixed defensive position and never flips direction like a transport train (it has
+   no t.dir field — the caller flips the enemy's with ctx.scale, same as drawTrain) */
+function drawArmorTrain(t) {
+  const N = NAT[G.nation[t.side]], body = N.body, dark = N.hat, K = '#1b1b14';
+  ctx.fillStyle = K;                                                       // wheel tops poking out each side
+  for (const wx of [-20, -6, 10, 22]) { ctx.fillRect(wx - 3, -8, 6, 1.6); ctx.fillRect(wx - 3, 6.4, 6, 1.6); }
+  ctx.fillStyle = dark; ctx.fillRect(-26, -7, 21, 14);                     // armoured gun wagon, boxy plating
+  ctx.fillStyle = body; ctx.fillRect(-25, -6, 19, 12);
+  ctx.fillStyle = body; ctx.fillRect(-4, -8, 26, 16);                      // casemate loco, slab-sided
+  ctx.fillStyle = dark; ctx.fillRect(-4, -8, 6, 16);                       // driver's armoured face plate
+  ctx.fillStyle = K; ctx.fillRect(19, -2.5, 5, 5);                         // stub funnel
+  ctx.save(); ctx.translate(-15, 0); ctx.rotate(t.aim);                    // turret on the gun wagon
+  ctx.fillStyle = dark; circle(0, 0, 5.2);
+  ctx.fillStyle = K; ctx.fillRect(0, -1.3, 12, 2.6);                       // cannon barrel
+  if (t.flash > 0) { ctx.fillStyle = '#fff1b8'; circle(13, 0, 3); }
+  ctx.restore();
+  if (t.flash2 > 0) { ctx.fillStyle = '#fff1b8'; circle(9, -6.5, 1.6); circle(9, 6.5, 1.6); } // mg flash, loco sides
+  if (t.hp < t.max) {
+    ctx.fillStyle = 'rgba(20,20,14,.75)'; ctx.fillRect(-26, -14, 52, 4);
+    ctx.fillStyle = t.side ? '#e0583e' : '#9fc05a'; ctx.fillRect(-25, -13, 50 * Math.max(0, t.hp / t.max), 2);
+  }
+}
+
 export function drawTrains(vis) {
   for (const t of G.trains) {
     if (!vis(t.x)) continue;
     ctx.save(); ctx.translate(t.x, RAIL_Y);
     if (t.side === 1) ctx.scale(-1, 1);
-    drawTrain(t);
+    if (isArmor(t)) drawArmorTrain(t); else drawTrain(t);
     ctx.restore();
   }
 }

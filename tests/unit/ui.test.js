@@ -928,6 +928,30 @@ describe('railway buttons', () => {
     G.track[0].end = 2; G.owner[1] = 1; bus.emit('hud');           // laid but the first trench is lost
     expect($('trainBtn').textContent).toContain('The track is cut.');
   });
+  it('armor button shows its national name and cost, and says why it is off', () => {
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('armorBtn').textContent).toContain('Naval armoured train: 380');
+    expect($('armorBtn').textContent).toContain('No track yet.');
+    expect($('armorBtn').disabled).toBe(true);
+    G.owner[1] = 0; G.track[0].end = 1; G.S.supplies = 300; bus.emit('hud');
+    expect($('armorBtn').textContent).toContain('Not enough supplies.');
+    expect($('armorBtn').disabled).toBe(true);
+    G.S.supplies = 500; bus.emit('hud');
+    expect($('armorBtn').disabled).toBe(false);
+    $('armorBtn').click();
+    expect(G.S.supplies).toBe(120);
+    expect(G.trains.filter(t => t.kind === 'armor').length).toBe(1);
+  });
+  it('armor button shares the slot cap', () => {
+    G.owner[1] = 0; G.track[0].end = 1; G.S.supplies = 2000; bus.emit('hud');
+    $('trainBtn').click(); $('trainBtn').click(); bus.emit('hud');
+    $('armorBtn').click(); bus.emit('hud');
+    expect(G.trains.length).toBe(3);
+    expect($('trainBtn').textContent).toContain('All train slots in use.');
+    expect($('trainBtn').disabled).toBe(true);
+    expect($('armorBtn').textContent).toContain('All train slots in use.');
+    expect($('armorBtn').disabled).toBe(true);
+  });
 });
 
 describe('tunnel trench glyph', () => {

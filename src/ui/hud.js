@@ -17,7 +17,7 @@ import { swBlock, swCost } from '../sim/superweapons.js';
 import { validDrop } from '../sim/drop.js';
 import { GUNS } from '../data/guns.js';
 import { gunBlock } from '../sim/gun.js';
-import { TRACK_COST, REPAIR_COST, TRAINS, TRAIN_SLOTS } from '../data/rail.js';
+import { TRACK_COST, REPAIR_COST, TRAINS, ARMOR_TRAINS, TRAIN_SLOTS } from '../data/rail.js';
 import { canLay, canBuyTrain, trackEnd } from '../sim/rail.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
@@ -73,6 +73,13 @@ export function layoutTrackButton() {
 }
 
 let baseKey = '';
+/* why a train (transport or armoured) can't be bought right now, for the given cost; shared by both buy buttons */
+export function trainWhy(cost) {
+  const tk = G.track[0], noRun = tk.end === 0 ? (tk.cut ? 'The track is cut.' : 'No track yet.') : tk.broken.has(1) ? 'Repair the broken track first.' : 'The track is cut.',
+    slots = G.trains.filter(t => t.side === 0).length >= TRAIN_SLOTS;
+  return trackEnd(0) <= 0 ? noRun : slots || !canBuyTrain(0) ? 'All train slots in use.' : G.S.supplies < cost ? 'Not enough supplies.' : '';
+}
+
 function refreshBase() {
   const el = $('basePanel'), show = G.sel === 0;
   el.hidden = !show;
@@ -141,10 +148,10 @@ export function refresh() {
     setTip(tb, head + (sub ? '. ' + sub : ''));
     tb.querySelector('use').setAttribute('href', broken ? '#i-fix' : '#i-track');
     tb.disabled = !!why || S.supplies < c; }
-  { const T = TRAINS[G.nation[0]], bb = $('trainBtn'), slots = G.trains.filter(t => t.side === 0).length >= TRAIN_SLOTS,
-      tk = G.track[0], noRun = tk.end === 0 ? (tk.cut ? 'The track is cut.' : 'No track yet.') : tk.broken.has(1) ? 'Repair the broken track first.' : 'The track is cut.',
-      why = trackEnd(0) <= 0 ? noRun : slots || !canBuyTrain(0) ? 'All train slots in use.' : S.supplies < T.cost ? 'Not enough supplies.' : '';
+  { const T = TRAINS[G.nation[0]], bb = $('trainBtn'), why = trainWhy(T.cost);
     bb.innerHTML = '<b>' + T.name + ': ' + T.cost + '</b><small>' + why + '</small>'; bb.disabled = !!why; }
+  { const A = ARMOR_TRAINS[G.nation[0]], ab = $('armorBtn'), why = trainWhy(A.cost);
+    ab.innerHTML = '<b>' + A.name + ': ' + A.cost + '</b><small>' + why + '</small>'; ab.disabled = !!why; }
   refreshBase();
   for (const b of $('buy').children) { const k = b.dataset.buy; b.disabled = !S.unlocked[k] || S.supplies < cost(k) || full(0, k); }
   const held = Object.keys(S.taken).map(id => { const c = CARDS.find(x => x.id === id); return c.name + (S.taken[id] > 1 ? ' ×' + S.taken[id] : ''); });
@@ -161,6 +168,7 @@ export function initHud() {
   $('nestBtn').addEventListener('click', () => commands.buildNestAt(G.sel));
   $('trackBtn').addEventListener('click', () => { if (G.track[0].broken.size) commands.repairTrackCmd(); else commands.layTrackCmd(); });
   $('trainBtn').addEventListener('click', () => commands.buyTrainCmd());
+  $('armorBtn').addEventListener('click', () => commands.buyArmorCmd());
   $('defBtn').addEventListener('click', () => commands.buildDefAt(G.sel));
   $('basePanel').addEventListener('click', ev => { const b = ev.target.closest('button[data-base]'); if (b) commands.buyBase(b.dataset.base === G.nation[0] ? 'nat' : b.dataset.base); });
   $('aimCancel').addEventListener('click', () => commands.cancelAim());
