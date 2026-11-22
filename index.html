@@ -17,15 +17,17 @@
 
   <div class="fieldwrap">
     <canvas id="field" tabindex="0" aria-label="Battlefield seen from above. Drag sideways or use the arrow keys to scroll. Use the trench buttons below to select a line."></canvas>
-    <div class="fieldGrp" id="moveGrp">
-      <button class="act alt" id="backBtn">Fall back</button>
-      <button class="act alt" id="gatherBtn">Bring all here</button>
-      <button class="act" id="advBtn">Advance</button>
-    </div>
-    <div class="fieldGrp" id="fortGrp">
-      <button class="act alt" id="fortBtn">Fortify</button>
-      <button class="act alt" id="nestBtn">MG nest</button>
-      <button class="act alt" id="defBtn" hidden>Defence</button>
+    <div class="fieldGrp" id="fieldActions">
+      <div class="actRow">
+        <button class="act alt" id="backBtn">Fall back</button>
+        <button class="act alt" id="gatherBtn">Bring all here</button>
+        <button class="act" id="advBtn">Advance</button>
+      </div>
+      <div class="actRow">
+        <button class="act alt" id="fortBtn">Fortify</button>
+        <button class="act alt" id="nestBtn">MG nest</button>
+        <button class="act alt" id="defBtn" hidden>Defence</button>
+      </div>
     </div>
     <button class="act alt trkbtn fieldFloat" id="trackBtn"></button>
     <div id="toast" role="status" aria-live="polite"></div>

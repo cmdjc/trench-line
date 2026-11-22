@@ -4,7 +4,7 @@
 
 import { tick } from '../sim/tick.js';
 import { G } from '../sim/state.js';
-import { refresh } from './hud.js';
+import { refresh, layoutActions, layoutTrackButton } from './hud.js';
 import { draw } from './draw/index.js';
 import { cam } from './camera.js';
 import { dragging } from './input.js';
@@ -27,6 +27,7 @@ export function frame(now) {
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 16);
   if (!dragging()) cam.x += (cam.tx - cam.x) * Math.min(1, dt * 7);
   draw();
+  if (G.S) { layoutActions(); layoutTrackButton(); }
   uiT += dt; if (uiT >= 0.25) { uiT = 0; refresh(); }
   requestAnimationFrame(frame);
 }

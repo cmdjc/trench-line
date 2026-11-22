@@ -18,10 +18,10 @@ import { GUNS } from '../../src/data/guns.js';
 import * as commands from '../../src/sim/commands.js';
 import { swCost } from '../../src/sim/superweapons.js';
 import { nearestDrop } from '../../src/sim/drop.js';
-import { refresh, buildMap } from '../../src/ui/hud.js';
+import { refresh, buildMap, layoutActions, layoutTrackButton } from '../../src/ui/hud.js';
 import { tunnelLines } from '../../src/sim/tunnel.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
-import { cutTrack } from '../../src/sim/rail.js';
+import { cutTrack, layTrack } from '../../src/sim/rail.js';
 import { trackGlyphLine, anchorX, toScreen } from '../../src/ui/fieldActions.js';
 
 const $ = id => document.getElementById(id);
@@ -175,26 +175,29 @@ describe('hud', () => {
 });
 
 describe('field-action groups', () => {
-  it('moves the order groups to float over the field, anchored at the selected trench', () => {
-    refresh();
-    const moveGrp = $('moveGrp'), fortGrp = $('fortGrp');
-    expect(Number.isFinite(parseFloat(moveGrp.style.left))).toBe(true);
-    expect(Number.isFinite(parseFloat(fortGrp.style.left))).toBe(true);
-    expect(moveGrp.closest('.fieldwrap')).toBeTruthy();
-    expect(moveGrp.closest('.orders')).toBeFalsy();
+  it('merges the two order groups into one floating container, anchored at the selected trench', () => {
+    layoutActions();
+    const grp = $('fieldActions');
+    expect(Number.isFinite(parseFloat(grp.style.left))).toBe(true);
+    expect(Number.isFinite(parseFloat(grp.style.top))).toBe(true);
+    expect(grp.closest('.fieldwrap')).toBeTruthy();
+    expect(grp.closest('.orders')).toBeFalsy();
+    // both rows live inside the single container
+    expect(grp.querySelector('#advBtn')).toBeTruthy();
+    expect(grp.querySelector('#fortBtn')).toBeTruthy();
   });
 
   it('positions at a double trench without throwing', () => {
     newGame('gb', 'aq', 'march', 7);
     G.sel = G.SUPER;
-    expect(() => refresh()).not.toThrow();
+    expect(() => layoutActions()).not.toThrow();
   });
 
   it('flips side at the player\'s own HQ', () => {
-    G.sel = 1; refresh();
-    const normal = $('moveGrp').style.transform;
-    G.sel = 0; refresh();
-    const atHQ = $('moveGrp').style.transform;
+    G.sel = 1; layoutActions();
+    const normal = $('fieldActions').style.transform;
+    G.sel = 0; layoutActions();
+    const atHQ = $('fieldActions').style.transform;
     expect(atHQ).not.toBe(normal);
     expect(atHQ).toContain('0%');
     expect(atHQ).not.toContain('-100%');
@@ -207,12 +210,52 @@ describe('field-action groups', () => {
     expect($('defBtn').hidden).toBe(true);
   });
 
+  it('defBtn visibility is driven dynamically by refresh(), not just the static markup', () => {
+    // 'de' has no defence structure, so defBtn starts (and stays) hidden.
+    newGame('de', 'gb', 'open', 7);
+    refresh();
+    expect($('defBtn').hidden).toBe(true);
+    // switching to a nation with a defence structure must flip it visible
+    // via refresh()'s own logic, not merely because the markup says hidden.
+    newGame('gb', 'de', 'open', 7);
+    refresh();
+    expect($('defBtn').hidden).toBe(false);
+  });
+
   it('keeps advBtn/backBtn/fortBtn/etc. reachable in DOM order after the canvas, before the map strip', () => {
-    const order = [...document.querySelectorAll('#field, #moveGrp, #fortGrp, #map')].map(el => el.id);
-    expect(order.indexOf('field')).toBeLessThan(order.indexOf('moveGrp'));
-    expect(order.indexOf('field')).toBeLessThan(order.indexOf('fortGrp'));
-    expect(order.indexOf('moveGrp')).toBeLessThan(order.indexOf('map'));
-    expect(order.indexOf('fortGrp')).toBeLessThan(order.indexOf('map'));
+    const order = [...document.querySelectorAll('#field, #fieldActions, #map')].map(el => el.id);
+    expect(order.indexOf('field')).toBeLessThan(order.indexOf('fieldActions'));
+    expect(order.indexOf('fieldActions')).toBeLessThan(order.indexOf('map'));
+  });
+
+  it('hides #fieldActions when its anchor would land fully off-screen', () => {
+    layoutActions();
+    expect($('fieldActions').hidden).toBe(false);
+    cam.x = 100000; // push the anchor far outside the canvas
+    layoutActions();
+    expect($('fieldActions').hidden).toBe(true);
+    cam.x = 0; layoutActions();
+    expect($('fieldActions').hidden).toBe(false);
+  });
+
+  it('never collides vertically with the trackBtn band, at either K extreme (CH 240 or 380)', () => {
+    // #fieldActions: two 46px rows + one 6px gap = 98px tall, centred (via
+    // -50% transform) on toScreen(x, WH/2). #trackBtn: one ~46px band,
+    // centred on toScreen(x, 40). Compute both bands in screen px at the
+    // K extremes a real canvas height produces (CH 240 -> K 0.8, CH 380 ->
+    // K 1.2667) and assert they never overlap.
+    const actionsHeight = 98, trackHeight = 46;
+    for (const K of [240 / WH, 380 / WH]) {
+      const actionsCenter = (WH / 2) * K, trackCenter = 40 * K;
+      const actionsTop = actionsCenter - actionsHeight / 2, actionsBottom = actionsCenter + actionsHeight / 2;
+      const trackBottom = trackCenter + trackHeight / 2;
+      expect(trackBottom).toBeLessThan(actionsTop);
+      // and the whole #fieldActions container fits inside the canvas band
+      // for a canvas of that height (CH = K*WH)
+      const CH = K * WH;
+      expect(actionsTop).toBeGreaterThanOrEqual(0);
+      expect(actionsBottom).toBeLessThanOrEqual(CH);
+    }
   });
 });
 
@@ -227,6 +270,16 @@ describe('track button and map-strip rail glyph', () => {
     expect(cells[L].getAttribute('aria-label')).toContain('next track segment');
   });
 
+  it('labels the marked cell "track to repair" instead when it is a repair target', () => {
+    G.owner[1] = 0; layTrack(0); G.track[0].broken.add(1);
+    refresh();
+    const L = trackGlyphLine(0);
+    expect(G.track[0].broken.size > 0).toBe(true);
+    const cells = [...$('map').children];
+    expect(cells[L].getAttribute('aria-label')).toContain('track to repair');
+    expect(cells[L].getAttribute('aria-label')).not.toContain('next track segment');
+  });
+
   it('no glyph once the track is complete', () => {
     G.track[0].end = G.NT;
     refresh();
@@ -236,21 +289,36 @@ describe('track button and map-strip rail glyph', () => {
   });
 
   it('trackBtn floats at the segment it would affect', () => {
-    refresh();
+    layoutTrackButton();
     const L = trackGlyphLine(0);
     const expected = toScreen(anchorX(L), 0).x;
     const tb = $('trackBtn');
     expect(tb.closest('.fieldwrap')).toBeTruthy();
     expect(tb.closest('.orders')).toBeFalsy();
     expect(parseFloat(tb.style.left)).toBeCloseTo(expected, 5);
+    expect(tb.hidden).toBe(false);
   });
 
-  it('trackBtn stays at its last position once the track is complete (does not jump to 0,0)', () => {
-    refresh();
-    const before = $('trackBtn').style.left;
+  it('hides trackBtn entirely once the track is complete, rather than leaving it at a stale anchor', () => {
+    layoutTrackButton();
+    expect($('trackBtn').hidden).toBe(false);
     G.track[0].end = G.NT;
-    refresh();
-    expect($('trackBtn').style.left).toBe(before);
+    layoutTrackButton();
+    expect($('trackBtn').hidden).toBe(true);
+    // resumes showing and positioning it the moment a segment breaks again
+    G.track[0].broken.add(1);
+    layoutTrackButton();
+    expect($('trackBtn').hidden).toBe(false);
+    expect(Number.isFinite(parseFloat($('trackBtn').style.left))).toBe(true);
+  });
+
+  it('hides trackBtn when its own anchor would land fully off-screen', () => {
+    layoutTrackButton();
+    expect($('trackBtn').hidden).toBe(false);
+    cam.x = 100000;
+    layoutTrackButton();
+    expect($('trackBtn').hidden).toBe(true);
+    cam.x = 0;
   });
 });
 
@@ -537,6 +605,17 @@ describe('game loop', () => {
     expect($('cardOv').hidden).toBe(true);
     frame(300);
     expect(G.S.t).toBeGreaterThan(0.1);
+  });
+
+  it('repositions #fieldActions/#trackBtn every frame, not just every 0.25s refresh tick', () => {
+    startLoop(0);
+    frame(100);
+    const before = $('fieldActions').style.left;
+    cam.x = 50;                          // simulate a drag/pan moving the camera
+    frame(110);                          // 10ms later — well under the 0.25s refresh throttle
+    const after = $('fieldActions').style.left;
+    expect(after).not.toBe(before);
+    cam.x = 0;
   });
 });
 
