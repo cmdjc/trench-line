@@ -299,6 +299,18 @@ describe('field icon buttons', () => {
       expect(bot + r).toBeLessThan(283 * K);       // above the fort pips (y ≈ 287)
     }
   });
+
+  it('.fieldBand sits above #toast so a toast never visually covers the move band', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
+    const toastZ = Number(css.match(/#toast\{[^}]*z-index:(\d+)/)[1]);
+    const bandZ = Number(css.match(/\.fieldBand\{[^}]*z-index:(\d+)/)[1]);
+    expect(bandZ).toBeGreaterThan(toastZ);
+  });
+
+  it("nestBtn's popover right-aligns like a last-child when defBtn is hidden", () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
+    expect(css).toMatch(/#topBand \.fb:has\(\+ \.fb > \[hidden\]\) \.fbtn::after\{left:auto;right:0;transform:none\}/);
+  });
 });
 
 describe('field button touch reveal', () => {

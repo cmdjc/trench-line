@@ -1,4 +1,5 @@
-// DOM side of the field buttons: description text and, from Task 3, touch reveal.
+// DOM side of the field buttons: description text (aria-label/data-tip) and
+// touch/pen tap-to-reveal before acting.
 
 import { G } from '../sim/state.js';
 

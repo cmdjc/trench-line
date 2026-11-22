@@ -43,7 +43,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid var(--brass);outline
 #field{display:block;width:100%;height:clamp(240px,40vh,380px);touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
 #toast{position:absolute;left:8px;right:8px;bottom:8px;padding:7px 10px;background:rgba(29,32,23,.9);color:#f1ebd5;font-size:13px;border-radius:3px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:3}
 #toast.on{opacity:1}
-.fieldBand{position:absolute;z-index:2;display:flex;gap:4px;min-width:0}
+.fieldBand{position:absolute;z-index:4;display:flex;gap:4px;min-width:0}
 .fieldBand .fb{display:flex;position:relative}
 .fb:has(> [hidden]){display:none}
 .sprite{position:absolute;width:0;height:0;overflow:hidden}
@@ -60,7 +60,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid var(--brass);outline
 #topBand .fbtn::after{top:100%;margin-top:4px}
 #trackBand .fbtn::after,#moveBand .fbtn::after{bottom:100%;margin-bottom:4px}
 #topBand .fb:first-child .fbtn::after,#trackBand .fb:first-child .fbtn::after,#moveBand .fb:first-child .fbtn::after{left:0;transform:none}
-#topBand .fb:last-child .fbtn::after,#trackBand .fb:last-child .fbtn::after,#moveBand .fb:last-child .fbtn::after{left:auto;right:0;transform:none}
+#topBand .fb:last-child .fbtn::after,#trackBand .fb:last-child .fbtn::after,#moveBand .fb:last-child .fbtn::after,#topBand .fb:has(+ .fb > [hidden]) .fbtn::after{left:auto;right:0;transform:none}
 @media (hover:hover){.fb:hover > .fbtn::after{display:block}}
 .fbtn:focus-visible::after{display:block}
 .fb.revealed > .fbtn::after{display:block}
@@ -106,9 +106,6 @@ button:focus-visible,canvas:focus-visible{outline:3px solid var(--brass);outline
 .basepanel .tier{color:var(--brass)}
 .basepanel button{margin-top:auto;min-height:36px}
 .basepanel button:disabled{opacity:.5;cursor:default}
-.trkbtn{display:block;text-align:left;padding:8px 10px}
-.trkbtn b{display:block;font-family:var(--display);font-size:15px}
-.trkbtn small{display:block;font-size:12.5px;font-weight:400;line-height:1.25;margin-top:2px}
 .swbtn{display:block;width:100%;margin-top:6px;text-align:left;padding:8px 10px;border-color:var(--brass)}
 .swbtn b{display:block;font-family:var(--display);font-size:15px}
 .swbtn small{display:block;font-size:12.5px;font-weight:400;line-height:1.25;margin-top:2px}
