@@ -11,7 +11,7 @@
 // A side "holds" a segment when G.owner[trench it ends at] === side.
 
 import { G, toast, hidden } from './state.js';
-import { TRACK_COST, REPAIR_COST, BIG_SPLASH, BARRIER_R, RAIL_Y, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, WOUNDED } from '../data/rail.js';
+import { TRACK_COST, REPAIR_COST, BIG_SPLASH, BARRIER_R, RAIL_Y, TRAINS, ARMOR_TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, WOUNDED } from '../data/rail.js';
 import { ARM } from '../data/units.js';
 
 /* trench a segment of `side` ends at */
@@ -95,8 +95,11 @@ export function breakAt(x, y, splash, shell) {
   }
 }
 
-/* ---- transport trains: own entities in G.trains, never units ---- */
+/* ---- transport and armoured trains: own entities in G.trains, never units ---- */
 let trainId = 0;
+
+/* a train entry is an armoured train rather than a transport one; bare entries (no kind) count as transport */
+export const isArmor = t => t.kind === 'armor';
 
 const DWELL = 1;    // seconds a train holds at the HQ after its first rider boards, for stragglers
 const HQ_ZONE = 60; // px forward of the HQ that still counts as "at the HQ" (spawn point and HQ post)
@@ -130,10 +133,10 @@ function trainETA(t, farD) {
    end's x; null when the side has no usable track or train. */
 function rideTime(side) {
   const end = trackEnd(side);
-  if (end <= 0 || !G.trains.some(t => t.side === side)) return null;
+  if (end <= 0 || !G.trains.some(t => t.side === side && !isArmor(t))) return null;
   const ex = G.LX[lineOfSegment(side, end)], farD = Math.abs(ex - G.LX[homeOf(side)]);
   let best = Infinity;
-  for (const t of G.trains) if (t.side === side && t.hp > 0 && !t.stranded) best = Math.min(best, trainETA(t, farD));
+  for (const t of G.trains) if (t.side === side && !isArmor(t) && t.hp > 0 && !t.stranded) best = Math.min(best, trainETA(t, farD));
   return { best, ex, eL: lineOfSegment(side, end) };
 }
 
@@ -225,7 +228,7 @@ function strand(t) {
   t.riders = []; t.carried = false; t.stranded = true;
 }
 
-/* a side may buy a train: track runs, a slot is free */
+/* a side may buy a train: track runs, a slot is free. Shared by transport and armoured trains */
 export function canBuyTrain(side) {
   return G.trains.filter(t => t.side === side).length < TRAIN_SLOTS && trackEnd(side) > 0;
 }
@@ -234,8 +237,29 @@ export function canBuyTrain(side) {
 export function buyTrain(side) {
   if (!canBuyTrain(side)) return false;
   const T = TRAINS[G.nation[side]];
-  G.trains.push({ id: ++trainId, side, x: G.LX[side ? G.HQI : 0], hp: T.hp, max: T.hp, dir: side ? -1 : 1, riders: [], carried: false, far: 0, T });
+  G.trains.push({ id: ++trainId, side, kind: 'transport', x: G.LX[side ? G.HQI : 0], hp: T.hp, max: T.hp, dir: side ? -1 : 1, riders: [], carried: false, far: 0, T });
   return true;
+}
+
+/* spawns the side's national armoured train at its own HQ; the caller charges the cost. It never rides with
+   troops; `riders` stays [] forever so dismountAll and the draw code stay generic. */
+export function buyArmor(side) {
+  if (!canBuyTrain(side)) return false;
+  const A = ARMOR_TRAINS[G.nation[side]];
+  G.trains.push({ id: ++trainId, kind: 'armor', side, x: G.LX[side ? G.HQI : 0], hp: A.hp, max: A.hp, cd: 0, cd2: 0, flash: 0, flash2: 0, aim: 0, puff: 0, moving: false, shots: 0, mgShots: 0, riders: [], T: A });
+  return true;
+}
+
+/* advance to the end of the track and hold there; retreat behind a lost trench or a break; never shuttles */
+function moveArmor(t, dt) {
+  const fwd = fwdOf(t.side), home = G.LX[homeOf(t.side)], end = trackEnd(t.side);
+  let goal = end > 0 ? segDist(t.side, end) : 0, p = (t.x - home) * fwd;
+  const fence = breakBehind(t.side, p);
+  if (fence >= 0) goal = Math.max(goal, fence);            // never cross a break behind it
+  const step = t.T.speed * dt;
+  t.moving = Math.abs(goal - p) > 1e-6;
+  p = p < goal ? Math.min(goal, p + step) : Math.max(goal, p - step);
+  t.x = home + p * fwd;
 }
 
 /* train damage: armour like a light tank (thin plating doubles weak-fire damage), same as hurt() for units */
@@ -250,6 +274,7 @@ export function stepTrains(dt) {
   updateWaiting();
   for (const t of G.trains) {
     if (t.hp <= 0) continue;
+    if (isArmor(t)) { moveArmor(t, dt); continue; }
     const fwd = fwdOf(t.side), home = G.LX[homeOf(t.side)];
     const end = trackEnd(t.side), farD = end > 0 ? Math.abs(G.LX[lineOfSegment(t.side, end)] - home) : 0;
     let p = (t.x - home) * fwd;
@@ -294,7 +319,7 @@ export function stepTrains(dt) {
   const n = G.trains.length;
   for (const t of G.trains) if (t.hp <= 0) {
     dismountAll(t);
-    G.wrecks.push({ x: t.x, y: RAIL_Y, side: t.side, nat: G.nation[t.side], t: 0, puff: 0, d: { L: 18, W: 6 } });
+    G.wrecks.push({ x: t.x, y: RAIL_Y, side: t.side, nat: G.nation[t.side], t: 0, puff: 0, d: isArmor(t) ? { L: 26, W: 7 } : { L: 18, W: 6 } });
     if (G.wrecks.length > 10) G.wrecks.shift();
     if (t.side === 0) toast(t.T.name + ' was destroyed.');
   }

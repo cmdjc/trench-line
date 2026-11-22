@@ -16,8 +16,8 @@ import { fireGun, gunBlock, clampAim } from './gun.js';
 import { validDrop } from './drop.js';
 import { swBlock, useSW, swCost } from './superweapons.js';
 
-import { TRAINS } from '../data/rail.js';
-import { canLay, layTrack, buyTrain, canBuyTrain, repairTrack, TRACK_COST, REPAIR_COST } from './rail.js';
+import { TRAINS, ARMOR_TRAINS } from '../data/rail.js';
+import { canLay, layTrack, buyTrain, buyArmor, canBuyTrain, repairTrack, TRACK_COST, REPAIR_COST } from './rail.js';
 
 export { fortifyAt };
 
@@ -164,6 +164,15 @@ export function buyTrainCmd() {
   if (G.S.supplies < T.cost) return false;
   G.S.supplies -= T.cost; buyTrain(0);
   toast(T.name + ' is running.');
+  bus.emit('hud'); return true;
+}
+
+export function buyArmorCmd() {
+  if (!G.running || !canBuyTrain(0)) return false;
+  const A = ARMOR_TRAINS[G.nation[0]];
+  if (G.S.supplies < A.cost) return false;
+  G.S.supplies -= A.cost; buyArmor(0);
+  toast(A.name + ' is moving up to the end of the track.');
   bus.emit('hud'); return true;
 }
 
