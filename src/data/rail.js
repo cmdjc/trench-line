@@ -34,7 +34,7 @@ export const TRAINS = {
 // mg dmg 5, cd 0.2, range 280). Shell and mg accuracy are fixed, not per-nation.
 export const ARMOR_TRAINS = {
   gb: { name: 'Naval armoured train', cost: 380, hp: 600, speed: 138, dmg: 25, cd: 1.6, range: 270, splash: 20, shell: 0.25, mg: { dmg: 5, cd: 0.2, range: 280, acc: 0.5 } },
-  de: { name: 'Panzerzug', cost: 420, hp: 680, speed: 125, dmg: 27, cd: 1.75, range: 260, splash: 22, shell: 0.25, mg: { dmg: 5, cd: 0.18, range: 290, acc: 0.5 } },
+  de: { name: 'Panzerzug', cost: 420, hp: 630, speed: 125, dmg: 26, cd: 1.8, range: 260, splash: 20, shell: 0.25, mg: { dmg: 5, cd: 0.18, range: 290, acc: 0.5 } },
   fr: { name: 'Train blindé', cost: 370, hp: 580, speed: 138, dmg: 24, cd: 1.4, range: 260, splash: 20, shell: 0.25, mg: { dmg: 5, cd: 0.22, range: 270, acc: 0.5 } },
   ru: { name: 'Zaamurets armoured train', cost: 350, hp: 640, speed: 130, dmg: 25, cd: 1.7, range: 250, splash: 21, shell: 0.25, mg: { dmg: 5, cd: 0.2, range: 280, acc: 0.5 } },
   us: { name: 'Liberty armored train', cost: 400, hp: 620, speed: 150, dmg: 26, cd: 1.6, range: 260, splash: 20, shell: 0.25, mg: { dmg: 5.5, cd: 0.18, range: 280, acc: 0.5 } },

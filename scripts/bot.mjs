@@ -19,7 +19,7 @@ import { dropTarget } from '../src/sim/drop.js';
 import { tier, nextCost } from '../src/sim/base.js';
 import { gunBlock, bestTarget } from '../src/sim/gun.js';
 import { GUNS } from '../src/data/guns.js';
-import { TRACK_COST, REPAIR_COST, TRAINS } from '../src/data/rail.js';
+import { TRACK_COST, REPAIR_COST, TRAINS, ARMOR_TRAINS } from '../src/data/rail.js';
 import { canLay, trackEnd, canBuyTrain, isArmor } from '../src/sim/rail.js';
 
 const argv = process.argv.slice(2);
@@ -33,6 +33,7 @@ const BASEX = Number(process.env.BASEX || 2); // buy base tiers at this multiple
 newGame(me, foe, map, seed);
 const NORAIL = !!process.env.NORAIL; // scratch comparison: neither side builds track
 const BOTNORAIL = NORAIL || !!process.env.BOTNORAIL; // BOTNORAIL: only the enemy builds
+const BOTNOARMOR = NORAIL || !!process.env.BOTNOARMOR; // BOTNOARMOR: comparison runs with no bot armoured train
 if (NORAIL || process.env.FOENORAIL) G.ai.noRail = true; // FOENORAIL: only the enemy goes without
 const brain = makeRng((seed ^ 0xB07) >>> 0); // decisions stay off the battle stream
 
@@ -92,6 +93,13 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
     else if (trackEnd(0) >= 2 && noTrain && canBuyTrain(0)) { // the first train comes before more track: save for it
       if (G.S.supplies >= TRAINS[G.nation[0]].cost) commands.buyTrainCmd(); else saving = !process.env.NOSAVE;
     } else if (!canLay(0) && G.S.supplies >= 3 * TRACK_COST) commands.layTrackCmd();
+  }
+  // armoured train: once a transport is running, track reaches 3, and supplies are well ahead of its cost
+  if (!BOTNOARMOR) {
+    const hasTransport = G.trains.some(t => t.side === 0 && !isArmor(t));
+    const hasArmor = G.trains.some(t => t.side === 0 && isArmor(t));
+    if (hasTransport && !hasArmor && trackEnd(0) >= 3 && canBuyTrain(0) &&
+        G.S.supplies >= 2 * ARMOR_TRAINS[G.nation[0]].cost) commands.buyArmorCmd();
   }
   watchRail();
   for (const i of [0, 1]) peak[i] = Math.max(peak[i], G.track[i].end);
