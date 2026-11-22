@@ -173,6 +173,48 @@ describe('hud', () => {
   });
 });
 
+describe('field-action groups', () => {
+  it('moves the order groups to float over the field, anchored at the selected trench', () => {
+    refresh();
+    const moveGrp = $('moveGrp'), fortGrp = $('fortGrp');
+    expect(Number.isFinite(parseFloat(moveGrp.style.left))).toBe(true);
+    expect(Number.isFinite(parseFloat(fortGrp.style.left))).toBe(true);
+    expect(moveGrp.closest('.fieldwrap')).toBeTruthy();
+    expect(moveGrp.closest('.orders')).toBeFalsy();
+  });
+
+  it('positions at a double trench without throwing', () => {
+    newGame('gb', 'aq', 'march', 7);
+    G.sel = G.SUPER;
+    expect(() => refresh()).not.toThrow();
+  });
+
+  it('flips side at the player\'s own HQ', () => {
+    G.sel = 1; refresh();
+    const normal = $('moveGrp').style.transform;
+    G.sel = 0; refresh();
+    const atHQ = $('moveGrp').style.transform;
+    expect(atHQ).not.toBe(normal);
+    expect(atHQ).toContain('0%');
+    expect(atHQ).not.toContain('-100%');
+    expect(normal).toContain('-100%');
+  });
+
+  it('defBtn stays hidden with no defence', () => {
+    G.nation[0] = 'de';
+    refresh();
+    expect($('defBtn').hidden).toBe(true);
+  });
+
+  it('keeps advBtn/backBtn/fortBtn/etc. reachable in DOM order after the canvas, before the map strip', () => {
+    const order = [...document.querySelectorAll('#field, #moveGrp, #fortGrp, #map')].map(el => el.id);
+    expect(order.indexOf('field')).toBeLessThan(order.indexOf('moveGrp'));
+    expect(order.indexOf('field')).toBeLessThan(order.indexOf('fortGrp'));
+    expect(order.indexOf('moveGrp')).toBeLessThan(order.indexOf('map'));
+    expect(order.indexOf('fortGrp')).toBeLessThan(order.indexOf('map'));
+  });
+});
+
 describe('HQ gun button', () => {
   const g = GUNS.gb;
   it('shows Aim when ready and disables when short', () => {

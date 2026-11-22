@@ -5,7 +5,8 @@ import { SW } from '../data/superweapons.js';
 import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { CARDS } from '../data/cards.js';
-import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/units.js';
+import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort, WH } from '../data/units.js';
+import { anchorX, stackSide, toScreen } from './fieldActions.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
 import { infCap, tier, nextCost } from '../sim/base.js';
@@ -33,6 +34,17 @@ export function buildMap() {
   let h = ''; const per = (MAPS[G.MAP] && MAPS[G.MAP].per) || 0, tun = tunnelLines();
   for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + (tun.includes(L) ? '\u2293' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i></button>';
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
+}
+
+// Position the floating order-button groups at the selected trench, stacked
+// to the correct side so they don't sit on top of incoming fire.
+export function layoutOrderGroups() {
+  const x = anchorX(G.sel), side = stackSide(G.sel);
+  const moveGrp = $('moveGrp'), fortGrp = $('fortGrp');
+  const movePos = toScreen(x, WH / 2 - 40), fortPos = toScreen(x, WH / 2 + 20);
+  const tf = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
+  moveGrp.style.left = movePos.x + 'px'; moveGrp.style.top = movePos.y + 'px'; moveGrp.style.transform = tf;
+  fortGrp.style.left = fortPos.x + 'px'; fortGrp.style.top = fortPos.y + 'px'; fortGrp.style.transform = tf;
 }
 
 let baseKey = '';
@@ -78,6 +90,7 @@ export function refresh() {
   if (G.NT > 9 && G.sel !== lastSel) { lastSel = G.sel; const mp = $('map'), c = cells[G.sel]; if (c) mp.scrollLeft = c.offsetLeft - mp.clientWidth / 2 + c.offsetWidth / 2; }
   const here = countAt(0, G.sel);
   $('selText').textContent = (G.sel === 0 ? 'Your HQ' : G.sel === G.HQI ? 'Assault on the enemy HQ' : 'Trench ' + G.sel) + ': ' + here + (here === 1 ? ' soldier' : ' troops') + ' under orders. New troops march here.' + (G.sel === G.SUPER ? ' The super trench.' : '') + (isDbl(G.sel) ? ' Super trench: stronger cover, 5 emplacements, +' + DBL_RATE + ' supply a second while held. Hedgehogs stop enemy tanks.' : '') + (isTrench(G.sel) && G.fort[G.sel] ? ' Fortified level ' + G.fort[G.sel] + '.' : '') + (G.nation[0] === 'ah' && isTrench(G.sel) && G.fort[G.sel] < 3 && G.garr[G.sel] > 0 ? ' Garrison digging in: ' + Math.floor(G.garr[G.sel] / GARR_T[G.fort[G.sel]] * 100) + '%.' : '');
+  layoutOrderGroups();
   { const tr = isTrench(G.sel), mine = tr && G.owner[G.sel] === 0, lv = tr ? G.fort[G.sel] : 0, mx = tr ? maxFort(G.sel) : 3, fb = $('fortBtn'), nb = $('nestBtn');
     fb.textContent = !tr ? 'Fortify' : lv >= mx ? 'Fully fortified' : 'Fortify: ' + FORT_COST[lv];
     fb.disabled = !mine || lv >= mx || S.supplies < FORT_COST[lv];

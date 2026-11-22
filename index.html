@@ -17,6 +17,16 @@
 
   <div class="fieldwrap">
     <canvas id="field" tabindex="0" aria-label="Battlefield seen from above. Drag sideways or use the arrow keys to scroll. Use the trench buttons below to select a line."></canvas>
+    <div class="fieldGrp" id="moveGrp">
+      <button class="act alt" id="backBtn">Fall back</button>
+      <button class="act alt" id="gatherBtn">Bring all here</button>
+      <button class="act" id="advBtn">Advance</button>
+    </div>
+    <div class="fieldGrp" id="fortGrp">
+      <button class="act alt" id="fortBtn">Fortify</button>
+      <button class="act alt" id="nestBtn">MG nest</button>
+      <button class="act alt" id="defBtn" hidden>Defence</button>
+    </div>
     <div id="toast" role="status" aria-live="polite"></div>
   </div>
 
@@ -24,16 +34,6 @@
 
   <div class="orders">
     <p id="selText"></p>
-    <div class="obtns">
-      <button class="act alt" id="backBtn">Fall back</button>
-      <button class="act alt" id="gatherBtn">Bring all here</button>
-      <button class="act" id="advBtn">Advance</button>
-    </div>
-    <div class="obtns">
-      <button class="act alt" id="fortBtn">Fortify</button>
-      <button class="act alt" id="nestBtn">MG nest</button>
-      <button class="act alt" id="defBtn">Defence</button>
-    </div>
     <div class="obtns">
       <button class="act alt trkbtn" id="trackBtn"></button>
     </div>
