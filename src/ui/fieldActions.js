@@ -6,6 +6,11 @@ import { posX } from '../sim/geometry.js';
 import { lineOfSegment, nextSegment } from '../sim/rail.js';
 import { cam, metrics } from './camera.js';
 
+// World y of each floating band. Checked against the design doc at camera
+// extremes K 0.8–1.27 so the bands never collide with each other or with
+// the canvas markings.
+export const BAND_Y = Object.freeze({ top: 41, track: 150, move: 240 });
+
 // World x for a trench's field actions, at mid-height of the zigzag.
 export const anchorX = L => posX(0, L, WH / 2, false);
 

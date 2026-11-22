@@ -17,19 +17,19 @@
 
   <div class="fieldwrap">
     <canvas id="field" tabindex="0" aria-label="Battlefield seen from above. Drag sideways or use the arrow keys to scroll. Use the trench buttons below to select a line."></canvas>
-    <div class="fieldGrp" id="fieldActions">
-      <div class="actRow">
-        <button class="act alt" id="backBtn">Fall back</button>
-        <button class="act alt" id="gatherBtn">Bring all here</button>
-        <button class="act" id="advBtn">Advance</button>
-      </div>
-      <div class="actRow">
-        <button class="act alt" id="fortBtn">Fortify</button>
-        <button class="act alt" id="nestBtn">MG nest</button>
-        <button class="act alt" id="defBtn" hidden>Defence</button>
-      </div>
+    <div class="fieldBand" id="topBand" role="group" aria-label="Trench defences">
+      <span class="fb"><button class="act alt" id="fortBtn">Fortify</button></span>
+      <span class="fb"><button class="act alt" id="nestBtn">MG nest</button></span>
+      <span class="fb"><button class="act alt" id="defBtn" hidden>Defence</button></span>
     </div>
-    <button class="act alt trkbtn fieldFloat" id="trackBtn"></button>
+    <div class="fieldBand" id="trackBand" role="group" aria-label="Railway">
+      <span class="fb"><button class="act alt trkbtn" id="trackBtn"></button></span>
+    </div>
+    <div class="fieldBand" id="moveBand" role="group" aria-label="Troop movement">
+      <span class="fb"><button class="act alt" id="backBtn">Fall back</button></span>
+      <span class="fb"><button class="act alt" id="gatherBtn">Bring all here</button></span>
+      <span class="fb"><button class="act" id="advBtn">Advance</button></span>
+    </div>
     <div id="toast" role="status" aria-live="polite"></div>
   </div>
 

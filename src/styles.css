@@ -43,17 +43,17 @@ button:focus-visible,canvas:focus-visible{outline:3px solid var(--brass);outline
 #field{display:block;width:100%;height:clamp(240px,40vh,380px);touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
 #toast{position:absolute;left:8px;right:8px;bottom:8px;padding:7px 10px;background:rgba(29,32,23,.9);color:#f1ebd5;font-size:13px;border-radius:3px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:3}
 #toast.on{opacity:1}
-.fieldGrp{position:absolute;display:flex;flex-direction:column;gap:3px;z-index:2;min-width:0}
-.fieldGrp .actRow{display:flex;gap:3px}
-.fieldFloat{position:absolute;z-index:2;min-width:0}
+.fieldBand{position:absolute;z-index:2;display:flex;gap:4px;min-width:0}
+.fieldBand .fb{display:flex}
+.fb:has(> [hidden]){display:none}
 /* Buttons floating over the battlefield stay small on purpose: the field
    itself is the point, so the strip they form must cover as little of it
    as possible. Below the general ~44px touch-target floor used elsewhere
    on the page, but still a real, tappable button. */
-.fieldGrp .act,.fieldFloat.act{min-height:26px;padding:2px 6px;font-size:12px}
-.fieldFloat.trkbtn{padding:2px 6px}
-.fieldFloat.trkbtn b{font-size:11px}
-.fieldFloat.trkbtn small{font-size:9.5px;margin-top:0}
+.fieldBand .act{min-height:26px;padding:2px 6px;font-size:12px}
+.fieldBand .trkbtn{padding:2px 6px}
+.fieldBand .trkbtn b{font-size:11px}
+.fieldBand .trkbtn small{font-size:9.5px;margin-top:0}
 
 .map{display:flex;gap:2px;margin-top:6px}
 .map button{flex:1;min-width:0;min-height:56px;padding:2px 0;background:var(--panel);border:1px solid var(--line);font-size:12px;line-height:1.15;color:var(--muted)}

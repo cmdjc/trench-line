@@ -22,7 +22,7 @@ import { refresh, buildMap, layoutActions, layoutTrackButton } from '../../src/u
 import { tunnelLines } from '../../src/sim/tunnel.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 import { cutTrack, layTrack } from '../../src/sim/rail.js';
-import { trackGlyphLine, anchorX, toScreen } from '../../src/ui/fieldActions.js';
+import { trackGlyphLine, anchorX, toScreen, BAND_Y } from '../../src/ui/fieldActions.js';
 
 const $ = id => document.getElementById(id);
 
@@ -175,16 +175,32 @@ describe('hud', () => {
 });
 
 describe('field-action groups', () => {
-  it('merges the two order groups into one floating container, anchored at the selected trench', () => {
-    layoutActions();
-    const grp = $('fieldActions');
-    expect(Number.isFinite(parseFloat(grp.style.left))).toBe(true);
-    expect(Number.isFinite(parseFloat(grp.style.top))).toBe(true);
-    expect(grp.closest('.fieldwrap')).toBeTruthy();
-    expect(grp.closest('.orders')).toBeFalsy();
-    // both rows live inside the single container
-    expect(grp.querySelector('#advBtn')).toBeTruthy();
-    expect(grp.querySelector('#fortBtn')).toBeTruthy();
+  it('splits the buttons into three bands, in top/middle/bottom DOM order', () => {
+    const ids = b => [...$(b).querySelectorAll('button')].map(x => x.id);
+    expect(ids('topBand')).toEqual(['fortBtn', 'nestBtn', 'defBtn']);
+    expect(ids('trackBand')).toEqual(['trackBtn']);
+    expect(ids('moveBand')).toEqual(['backBtn', 'gatherBtn', 'advBtn']);
+    for (const b of ['topBand', 'trackBand', 'moveBand']) {
+      expect($(b).closest('.fieldwrap')).toBeTruthy();
+      expect([...$(b).children].every(c => c.matches('span.fb') && c.children.length === 1)).toBe(true);
+    }
+    expect($('fieldActions')).toBeNull();
+  });
+
+  it('keeps tab order: canvas, top band, track band, move band, map strip', () => {
+    const order = [...document.querySelectorAll('#field, #topBand, #trackBand, #moveBand, #map')].map(e => e.id);
+    expect(order).toEqual(['field', 'topBand', 'trackBand', 'moveBand', 'map']);
+  });
+
+  it('places each band at its world y, at its own anchor trench x', () => {
+    G.sel = 2; layoutActions(); layoutTrackButton();
+    const { K } = metrics(), L = trackGlyphLine(0);
+    expect(parseFloat($('topBand').style.top)).toBeCloseTo(BAND_Y.top * K, 5);
+    expect(parseFloat($('moveBand').style.top)).toBeCloseTo(BAND_Y.move * K, 5);
+    expect(parseFloat($('trackBand').style.top)).toBeCloseTo(BAND_Y.track * K, 5);
+    expect(parseFloat($('topBand').style.left)).toBeCloseTo(toScreen(anchorX(2), 0).x, 5);
+    expect(parseFloat($('moveBand').style.left)).toBeCloseTo(toScreen(anchorX(2), 0).x, 5);
+    expect(parseFloat($('trackBand').style.left)).toBeCloseTo(toScreen(anchorX(L), 0).x, 5);
   });
 
   it('positions at a double trench without throwing', () => {
@@ -193,15 +209,14 @@ describe('field-action groups', () => {
     expect(() => layoutActions()).not.toThrow();
   });
 
-  it('flips side at the player\'s own HQ', () => {
+  it('each band leans by stackSide of its own anchor trench', () => {
+    G.sel = 0; layoutActions(); layoutTrackButton();   // track anchor is trench 1, not 0
+    expect($('topBand').style.transform).not.toContain('-100%');
+    expect($('moveBand').style.transform).not.toContain('-100%');
+    expect($('trackBand').style.transform).toContain('-100%');
     G.sel = 1; layoutActions();
-    const normal = $('fieldActions').style.transform;
-    G.sel = 0; layoutActions();
-    const atHQ = $('fieldActions').style.transform;
-    expect(atHQ).not.toBe(normal);
-    expect(atHQ).toContain('0%');
-    expect(atHQ).not.toContain('-100%');
-    expect(normal).toContain('-100%');
+    expect($('topBand').style.transform).toContain('-100%');
+    expect($('moveBand').style.transform).toContain('-100%');
   });
 
   it('defBtn stays hidden with no defence', () => {
@@ -222,40 +237,13 @@ describe('field-action groups', () => {
     expect($('defBtn').hidden).toBe(false);
   });
 
-  it('keeps advBtn/backBtn/fortBtn/etc. reachable in DOM order after the canvas, before the map strip', () => {
-    const order = [...document.querySelectorAll('#field, #fieldActions, #map')].map(el => el.id);
-    expect(order.indexOf('field')).toBeLessThan(order.indexOf('fieldActions'));
-    expect(order.indexOf('fieldActions')).toBeLessThan(order.indexOf('map'));
-  });
-
-  it('hides #fieldActions when its anchor would land fully off-screen', () => {
+  it('hides the top and move bands together when the selected trench is off-screen', () => {
     layoutActions();
-    expect($('fieldActions').hidden).toBe(false);
-    cam.x = 100000; // push the anchor far outside the canvas
-    layoutActions();
-    expect($('fieldActions').hidden).toBe(true);
+    expect($('topBand').hidden).toBe(false); expect($('moveBand').hidden).toBe(false);
+    cam.x = 100000; layoutActions();
+    expect($('topBand').hidden).toBe(true); expect($('moveBand').hidden).toBe(true);
     cam.x = 0; layoutActions();
-    expect($('fieldActions').hidden).toBe(false);
-  });
-
-  it('never collides vertically with the trackBtn band, at either K extreme (CH 240 or 380)', () => {
-    // #fieldActions: two 46px rows + one 6px gap = 98px tall, centred (via
-    // -50% transform) on toScreen(x, WH/2). #trackBtn: one ~46px band,
-    // centred on toScreen(x, 40). Compute both bands in screen px at the
-    // K extremes a real canvas height produces (CH 240 -> K 0.8, CH 380 ->
-    // K 1.2667) and assert they never overlap.
-    const actionsHeight = 98, trackHeight = 46;
-    for (const K of [240 / WH, 380 / WH]) {
-      const actionsCenter = (WH / 2) * K, trackCenter = 40 * K;
-      const actionsTop = actionsCenter - actionsHeight / 2, actionsBottom = actionsCenter + actionsHeight / 2;
-      const trackBottom = trackCenter + trackHeight / 2;
-      expect(trackBottom).toBeLessThan(actionsTop);
-      // and the whole #fieldActions container fits inside the canvas band
-      // for a canvas of that height (CH = K*WH)
-      const CH = K * WH;
-      expect(actionsTop).toBeGreaterThanOrEqual(0);
-      expect(actionsBottom).toBeLessThanOrEqual(CH);
-    }
+    expect($('topBand').hidden).toBe(false);
   });
 });
 
@@ -288,36 +276,36 @@ describe('track button and map-strip rail glyph', () => {
     expect(trackGlyphLine(0)).toBe(null);
   });
 
-  it('trackBtn floats at the segment it would affect', () => {
+  it('trackBand floats at the segment it would affect', () => {
     layoutTrackButton();
     const L = trackGlyphLine(0);
     const expected = toScreen(anchorX(L), 0).x;
-    const tb = $('trackBtn');
+    const tb = $('trackBand');
     expect(tb.closest('.fieldwrap')).toBeTruthy();
     expect(tb.closest('.orders')).toBeFalsy();
     expect(parseFloat(tb.style.left)).toBeCloseTo(expected, 5);
     expect(tb.hidden).toBe(false);
   });
 
-  it('hides trackBtn entirely once the track is complete, rather than leaving it at a stale anchor', () => {
+  it('hides trackBand entirely once the track is complete, rather than leaving it at a stale anchor', () => {
     layoutTrackButton();
-    expect($('trackBtn').hidden).toBe(false);
+    expect($('trackBand').hidden).toBe(false);
     G.track[0].end = G.NT;
     layoutTrackButton();
-    expect($('trackBtn').hidden).toBe(true);
+    expect($('trackBand').hidden).toBe(true);
     // resumes showing and positioning it the moment a segment breaks again
     G.track[0].broken.add(1);
     layoutTrackButton();
-    expect($('trackBtn').hidden).toBe(false);
-    expect(Number.isFinite(parseFloat($('trackBtn').style.left))).toBe(true);
+    expect($('trackBand').hidden).toBe(false);
+    expect(Number.isFinite(parseFloat($('trackBand').style.left))).toBe(true);
   });
 
-  it('hides trackBtn when its own anchor would land fully off-screen', () => {
+  it('hides trackBand when its own anchor would land fully off-screen', () => {
     layoutTrackButton();
-    expect($('trackBtn').hidden).toBe(false);
+    expect($('trackBand').hidden).toBe(false);
     cam.x = 100000;
     layoutTrackButton();
-    expect($('trackBtn').hidden).toBe(true);
+    expect($('trackBand').hidden).toBe(true);
     cam.x = 0;
   });
 });
@@ -607,13 +595,13 @@ describe('game loop', () => {
     expect(G.S.t).toBeGreaterThan(0.1);
   });
 
-  it('repositions #fieldActions/#trackBtn every frame, not just every 0.25s refresh tick', () => {
+  it('repositions the bands every frame, not just every 0.25s refresh tick', () => {
     startLoop(0);
     frame(100);
-    const before = $('fieldActions').style.left;
+    const before = $('topBand').style.left;
     cam.x = 50;                          // simulate a drag/pan moving the camera
     frame(110);                          // 10ms later — well under the 0.25s refresh throttle
-    const after = $('fieldActions').style.left;
+    const after = $('topBand').style.left;
     expect(after).not.toBe(before);
     cam.x = 0;
   });

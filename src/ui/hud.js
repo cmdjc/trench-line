@@ -5,8 +5,8 @@ import { SW } from '../data/superweapons.js';
 import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { CARDS } from '../data/cards.js';
-import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort, WH } from '../data/units.js';
-import { anchorX, stackSide, toScreen, trackGlyphLine } from './fieldActions.js';
+import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/units.js';
+import { anchorX, stackSide, toScreen, trackGlyphLine, BAND_Y } from './fieldActions.js';
 import { metrics } from './camera.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
@@ -37,37 +37,37 @@ export function buildMap() {
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
 }
 
-// Position the single floating actions container at the selected trench,
-// stacked to the correct side so it doesn't sit on top of incoming fire.
-// Both rows (move group, fortify group) live inside it, so one anchor call
-// positions both — this also removes the vertical overlap the two-group
-// layout had on short canvases. Hidden entirely when it would land fully
-// off-screen, so it drops out of tab order while unreachable.
-export function layoutActions() {
-  const x = anchorX(G.sel), side = stackSide(G.sel);
-  const pos = toScreen(x, WH / 2);
-  const el = $('fieldActions');
+// Position a floating band at the screen point for (L, worldY), stacked to
+// the correct side so it doesn't sit on top of incoming fire. Hidden
+// entirely when it would land fully off-screen, so it drops out of tab
+// order while unreachable.
+function placeBand(el, L, worldY) {
+  const side = stackSide(L);
+  const pos = toScreen(anchorX(L), worldY);
   el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
   el.style.transform = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
   const { CW } = metrics();
   el.hidden = pos.x < -50 || pos.x > CW + 50;
 }
 
-// Position the floating track button at the segment it would next affect.
+// Position the top (defences) and move (troop movement) bands at the
+// selected trench. Each has its own anchor trench (here, the same one —
+// G.sel) and stacking side.
+export function layoutActions() {
+  placeBand($('topBand'), G.sel, BAND_Y.top);
+  placeBand($('moveBand'), G.sel, BAND_Y.move);
+}
+
+// Position the floating track band at the segment it would next affect.
 // Not tied to the selection, so it has its own anchor trench and stacking
 // side. When there's nothing left to lay or repair (trackGlyphLine returns
 // null) there is no valid anchor trench, so hide it rather than leaving it
 // at a stale position.
 export function layoutTrackButton() {
-  const tb = $('trackBtn');
+  const band = $('trackBand');
   const L = trackGlyphLine(0);
-  if (L === null) { tb.hidden = true; return; }
-  const side = stackSide(L);
-  const pos = toScreen(anchorX(L), 40);
-  tb.style.left = pos.x + 'px'; tb.style.top = pos.y + 'px';
-  tb.style.transform = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
-  const { CW } = metrics();
-  tb.hidden = pos.x < -50 || pos.x > CW + 50;
+  if (L === null) { band.hidden = true; return; }
+  placeBand(band, L, BAND_Y.track);
 }
 
 let baseKey = '';
