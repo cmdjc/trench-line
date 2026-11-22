@@ -1,4 +1,4 @@
-import { TRAINS, RAIL_Y, TRACK_COST, REPAIR_COST, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED, BIG_SPLASH, AI_RAIL_T, AI_RAIL_SHARE } from '../../src/data/rail.js';
+import { TRAINS, ARMOR_TRAINS, AI_ARMOR_END, RAIL_Y, TRACK_COST, REPAIR_COST, TRAIN_SLOTS, TRIP_SUPPLY, WOUNDED, BIG_SPLASH, AI_RAIL_T, AI_RAIL_SHARE } from '../../src/data/rail.js';
 import { WH, SLOTS, SLOTS5 } from '../../src/data/units.js';
 import { expect, it } from 'vitest';
 import { NATS, NAT } from '../../src/data/nations.js';
@@ -140,6 +140,41 @@ it('train stats are integers where required and within 15% of base', () => {
 });
 it('base train speed is three times the rifle walking speed', () => {
   expect(RAIL_BASE.speed).toBe(138);
+});
+
+const ARMOR_BASE = { cost: 380, hp: 600, speed: 138, dmg: 25, cd: 1.6, range: 260, splash: 20 };
+const ARMOR_MG_BASE = { dmg: 5, cd: 0.2, range: 280 };
+const ARMOR_NAMES = {
+  gb: 'Naval armoured train', de: 'Panzerzug', fr: 'Train blindé', ru: 'Zaamurets armoured train',
+  us: 'Liberty armored train', ah: 'k.u.k. Panzerzug', it: 'Treno armato', aq: 'Iron Penguin',
+};
+it('every nation has an armoured train entry', () => {
+  for (const n of NATS) expect(ARMOR_TRAINS[n], n).toBeTruthy();
+  expect(Object.keys(ARMOR_TRAINS).sort()).toEqual([...NATS].sort());
+});
+it('armoured train names match the national names', () => {
+  for (const n of NATS) expect(ARMOR_TRAINS[n].name, n).toBe(ARMOR_NAMES[n]);
+});
+it('armoured train stats are within 15% of base', () => {
+  for (const n of NATS) {
+    const T = ARMOR_TRAINS[n];
+    for (const k in ARMOR_BASE) {
+      expect(typeof T[k], `${n}.${k}`).toBe('number');
+      expect(T[k], `${n}.${k}`).toBeGreaterThanOrEqual(ARMOR_BASE[k] * 0.85);
+      expect(T[k], `${n}.${k}`).toBeLessThanOrEqual(ARMOR_BASE[k] * 1.15);
+    }
+    for (const k in ARMOR_MG_BASE) {
+      expect(typeof T.mg[k], `${n}.mg.${k}`).toBe('number');
+      expect(T.mg[k], `${n}.mg.${k}`).toBeGreaterThanOrEqual(ARMOR_MG_BASE[k] * 0.85);
+      expect(T.mg[k], `${n}.mg.${k}`).toBeLessThanOrEqual(ARMOR_MG_BASE[k] * 1.15);
+    }
+    expect(Number.isInteger(T.cost), `${n} cost integer`).toBe(true);
+    expect(T.shell, n).toBe(0.25);
+    expect(T.mg.acc, n).toBe(0.5);
+  }
+});
+it('AI_ARMOR_END is 3', () => {
+  expect(AI_ARMOR_END).toBe(3);
 });
 it('RAIL_Y lies on the field, in the middle', () => {
   expect(RAIL_Y).toBeGreaterThanOrEqual(0);
