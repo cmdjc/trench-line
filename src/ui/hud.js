@@ -5,8 +5,8 @@ import { SW } from '../data/superweapons.js';
 import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { CARDS } from '../data/cards.js';
-import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort, WH } from '../data/units.js';
-import { anchorX, stackSide, toScreen, trackGlyphLine } from './fieldActions.js';
+import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/units.js';
+import { anchorX, stackSide, toScreen, trackGlyphLine, BAND_Y } from './fieldActions.js';
 import { metrics } from './camera.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
@@ -21,6 +21,7 @@ import { TRACK_COST, REPAIR_COST, TRAINS, TRAIN_SLOTS } from '../data/rail.js';
 import { canLay, canBuyTrain, trackEnd } from '../sim/rail.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
+import { setTip, initFieldTips, syncRevealSel } from './fieldTips.js';
 import { focusLine } from './camera.js';
 import { tunnelLines } from '../sim/tunnel.js';
 
@@ -37,37 +38,38 @@ export function buildMap() {
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
 }
 
-// Position the single floating actions container at the selected trench,
-// stacked to the correct side so it doesn't sit on top of incoming fire.
-// Both rows (move group, fortify group) live inside it, so one anchor call
-// positions both — this also removes the vertical overlap the two-group
-// layout had on short canvases. Hidden entirely when it would land fully
-// off-screen, so it drops out of tab order while unreachable.
-export function layoutActions() {
-  const x = anchorX(G.sel), side = stackSide(G.sel);
-  const pos = toScreen(x, WH / 2);
-  const el = $('fieldActions');
+// Position a floating band at the screen point for (L, worldY), stacked to
+// the correct side so it doesn't sit on top of incoming fire. Hidden
+// entirely when it would land fully off-screen, so it drops out of tab
+// order while unreachable.
+function placeBand(el, L, worldY) {
+  const side = stackSide(L);
+  const pos = toScreen(anchorX(L), worldY);
   el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
   el.style.transform = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
   const { CW } = metrics();
   el.hidden = pos.x < -50 || pos.x > CW + 50;
 }
 
-// Position the floating track button at the segment it would next affect.
+// Position the top (defences) and move (troop movement) bands at the
+// selected trench. Each has its own anchor trench (here, the same one —
+// G.sel) and stacking side.
+export function layoutActions() {
+  syncRevealSel(G.sel);
+  placeBand($('topBand'), G.sel, BAND_Y.top);
+  placeBand($('moveBand'), G.sel, BAND_Y.move);
+}
+
+// Position the floating track band at the segment it would next affect.
 // Not tied to the selection, so it has its own anchor trench and stacking
 // side. When there's nothing left to lay or repair (trackGlyphLine returns
 // null) there is no valid anchor trench, so hide it rather than leaving it
 // at a stale position.
 export function layoutTrackButton() {
-  const tb = $('trackBtn');
+  const band = $('trackBand');
   const L = trackGlyphLine(0);
-  if (L === null) { tb.hidden = true; return; }
-  const side = stackSide(L);
-  const pos = toScreen(anchorX(L), 40);
-  tb.style.left = pos.x + 'px'; tb.style.top = pos.y + 'px';
-  tb.style.transform = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
-  const { CW } = metrics();
-  tb.hidden = pos.x < -50 || pos.x > CW + 50;
+  if (L === null) { band.hidden = true; return; }
+  placeBand(band, L, BAND_Y.track);
 }
 
 let baseKey = '';
@@ -115,12 +117,12 @@ export function refresh() {
   const here = countAt(0, G.sel);
   $('selText').textContent = (G.sel === 0 ? 'Your HQ' : G.sel === G.HQI ? 'Assault on the enemy HQ' : 'Trench ' + G.sel) + ': ' + here + (here === 1 ? ' soldier' : ' troops') + ' under orders. New troops march here.' + (G.sel === G.SUPER ? ' The super trench.' : '') + (isDbl(G.sel) ? ' Super trench: stronger cover, 5 emplacements, +' + DBL_RATE + ' supply a second while held. Hedgehogs stop enemy tanks.' : '') + (isTrench(G.sel) && G.fort[G.sel] ? ' Fortified level ' + G.fort[G.sel] + '.' : '') + (G.nation[0] === 'ah' && isTrench(G.sel) && G.fort[G.sel] < 3 && G.garr[G.sel] > 0 ? ' Garrison digging in: ' + Math.floor(G.garr[G.sel] / GARR_T[G.fort[G.sel]] * 100) + '%.' : '');
   { const tr = isTrench(G.sel), mine = tr && G.owner[G.sel] === 0, lv = tr ? G.fort[G.sel] : 0, mx = tr ? maxFort(G.sel) : 3, fb = $('fortBtn'), nb = $('nestBtn');
-    fb.textContent = !tr ? 'Fortify' : lv >= mx ? 'Fully fortified' : 'Fortify: ' + FORT_COST[lv];
+    setTip(fb, !tr ? 'Fortify' : lv >= mx ? 'Fully fortified' : 'Fortify: ' + FORT_COST[lv]);
     fb.disabled = !mine || lv >= mx || S.supplies < FORT_COST[lv];
-    nb.textContent = NAT[G.nation[0]].nestLabel + ': ' + nestCost(0); nb.disabled = !mine || freeSlot(G.sel) < 0 || S.supplies < nestCost(0);
+    setTip(nb, NAT[G.nation[0]].nestLabel + ': ' + nestCost(0)); nb.disabled = !mine || freeSlot(G.sel) < 0 || S.supplies < nestCost(0);
     const d = NAT[G.nation[0]].def, db = $('defBtn'); db.hidden = !d;
-    if (d) { db.textContent = d.label + ': ' + d.cost; db.disabled = !mine || !canDef(0, G.sel) || S.supplies < d.cost; } }
-  $('advBtn').textContent = G.sel === G.NT ? 'Storm the HQ' : 'Advance';
+    if (d) { setTip(db, d.label + ': ' + d.cost); db.disabled = !mine || !canDef(0, G.sel) || S.supplies < d.cost; } }
+  setTip($('advBtn'), G.sel === G.NT ? 'Storm the HQ' : 'Advance');
   $('advBtn').disabled = G.sel >= G.HQI || !here; $('backBtn').disabled = G.sel <= 0 || !here;
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
     if (G.aim && (G.aim.kind === 'paris' || G.aim.kind === 'drop') && (!d || swBlock(0))) G.aim = null;
@@ -134,7 +136,10 @@ export function refresh() {
     if (gd && gunAim) { gb.innerHTML = '<b>Confirm target, ' + gd.cost + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < gd.cost ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; gb.disabled = G.aim.x === null || S.supplies < gd.cost || !!gunBlock(0); }
     else if (gd) { const cd = G.gun[0].cd; gb.textContent = cd > 0 ? gd.name + ': ready in ' + Math.ceil(cd) + ' s' : 'Aim ' + gd.name + ': ' + gd.cost; gb.disabled = !!gunBlock(0) || S.supplies < gd.cost; } }
   { const tb = $('trackBtn'), broken = G.track[0].broken.size > 0, c = broken ? REPAIR_COST : TRACK_COST, why = broken ? '' : canLay(0);
-    tb.innerHTML = '<b>' + (broken ? 'Repair track: ' : 'Lay track: ') + c + '</b><small>' + (why || (S.supplies < c ? 'Not enough supplies.' : broken ? 'Segment ' + Math.min(...G.track[0].broken) + ' is broken.' : '')) + '</small>';
+    const head = (broken ? 'Repair track: ' : 'Lay track: ') + c;
+    const sub = why || (S.supplies < c ? 'Not enough supplies.' : broken ? 'Segment ' + Math.min(...G.track[0].broken) + ' is broken.' : '');
+    setTip(tb, head + (sub ? '. ' + sub : ''));
+    tb.querySelector('use').setAttribute('href', broken ? '#i-fix' : '#i-track');
     tb.disabled = !!why || S.supplies < c; }
   { const T = TRAINS[G.nation[0]], bb = $('trainBtn'), slots = G.trains.filter(t => t.side === 0).length >= TRAIN_SLOTS,
       tk = G.track[0], noRun = tk.end === 0 ? (tk.cut ? 'The track is cut.' : 'No track yet.') : tk.broken.has(1) ? 'Repair the broken track first.' : 'The track is cut.',
@@ -147,6 +152,7 @@ export function refresh() {
 }
 
 export function initHud() {
+  initFieldTips();
   $('map').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b && commands.select(+b.dataset.line)) focusLine(+b.dataset.line); });
   $('advBtn').addEventListener('click', () => { if (commands.advance()) focusLine(G.sel); });
   $('backBtn').addEventListener('click', () => { if (commands.fallback()) focusLine(G.sel); });

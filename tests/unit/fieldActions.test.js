@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { G, newGame } from '../../src/sim/state.js';
 import { layTrack } from '../../src/sim/rail.js';
 import { cam } from '../../src/ui/camera.js';
-import { anchorX, stackSide, trackGlyphLine, toScreen } from '../../src/ui/fieldActions.js';
+import { anchorX, stackSide, trackGlyphLine, toScreen, BAND_Y } from '../../src/ui/fieldActions.js';
 
 describe('fieldActions', () => {
   beforeEach(() => newGame('gb', 'de', 'open', 1));
@@ -46,5 +46,9 @@ describe('fieldActions', () => {
   it('shifts by the camera position', () => {
     cam.x = 100;
     expect(toScreen(500, 150)).toEqual({ x: 400, y: 150 });
+  });
+
+  it('pins the three band heights', () => {
+    expect(BAND_Y).toEqual({ top: 41, track: 150, move: 240 });
   });
 });
