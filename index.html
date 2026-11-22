@@ -8,6 +8,16 @@
 <script type="module" src="/src/main.js"></script>
 </head>
 <body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-adv" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gather" viewBox="0 0 24 24"><path d="M6 4l6 8M18 4l-6 8M8 16l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-fort" viewBox="0 0 24 24"><rect x="6" y="8" width="6" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="8" width="6" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="13" width="6" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="9" y="13" width="6" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="15" y="13" width="6" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-nest" viewBox="0 0 24 24"><rect x="8" y="17" width="8" height="3" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="18" x2="19" y2="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="6" x2="19" y2="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-def" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-track" viewBox="0 0 24 24"><line x1="3" y1="9" x2="21" y2="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="15" x2="21" y2="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="6" x2="6" y2="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="6" x2="12" y2="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="18" y1="6" x2="18" y2="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-fix" viewBox="0 0 24 24"><line x1="2" y1="20" x2="10" y2="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="16" x2="10" y2="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="4" y1="14" x2="4" y2="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="8" y1="14" x2="8" y2="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
 <main class="game">
   <header class="top">
     <div class="hq"><span class="nm" id="nmA">Your HQ</span><div class="bar"><i id="hpA"></i></div></div>
@@ -18,17 +28,17 @@
   <div class="fieldwrap">
     <canvas id="field" tabindex="0" aria-label="Battlefield seen from above. Drag sideways or use the arrow keys to scroll. Use the trench buttons below to select a line."></canvas>
     <div class="fieldBand" id="topBand" role="group" aria-label="Trench defences">
-      <span class="fb"><button class="act alt" id="fortBtn">Fortify</button></span>
-      <span class="fb"><button class="act alt" id="nestBtn">MG nest</button></span>
-      <span class="fb"><button class="act alt" id="defBtn" hidden>Defence</button></span>
+      <span class="fb"><button class="fbtn" id="fortBtn" aria-label="Fortify" data-tip="Fortify"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-fort"/></svg></button></span>
+      <span class="fb"><button class="fbtn" id="nestBtn" aria-label="MG nest" data-tip="MG nest"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-nest"/></svg></button></span>
+      <span class="fb"><button class="fbtn" id="defBtn" hidden aria-label="Defence" data-tip="Defence"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-def"/></svg></button></span>
     </div>
     <div class="fieldBand" id="trackBand" role="group" aria-label="Railway">
-      <span class="fb"><button class="act alt trkbtn" id="trackBtn"></button></span>
+      <span class="fb"><button class="fbtn" id="trackBtn" aria-label="Lay track" data-tip="Lay track"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-track"/></svg></button></span>
     </div>
     <div class="fieldBand" id="moveBand" role="group" aria-label="Troop movement">
-      <span class="fb"><button class="act alt" id="backBtn">Fall back</button></span>
-      <span class="fb"><button class="act alt" id="gatherBtn">Bring all here</button></span>
-      <span class="fb"><button class="act" id="advBtn">Advance</button></span>
+      <span class="fb"><button class="fbtn" id="backBtn" aria-label="Fall back" data-tip="Fall back"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back"/></svg></button></span>
+      <span class="fb"><button class="fbtn" id="gatherBtn" aria-label="Bring all here" data-tip="Bring all here"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gather"/></svg></button></span>
+      <span class="fb"><button class="fbtn" id="advBtn" aria-label="Advance" data-tip="Advance"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-adv"/></svg></button></span>
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
   </div>

@@ -21,6 +21,7 @@ import { TRACK_COST, REPAIR_COST, TRAINS, TRAIN_SLOTS } from '../data/rail.js';
 import { canLay, canBuyTrain, trackEnd } from '../sim/rail.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
+import { setTip } from './fieldTips.js';
 import { focusLine } from './camera.js';
 import { tunnelLines } from '../sim/tunnel.js';
 
@@ -115,12 +116,12 @@ export function refresh() {
   const here = countAt(0, G.sel);
   $('selText').textContent = (G.sel === 0 ? 'Your HQ' : G.sel === G.HQI ? 'Assault on the enemy HQ' : 'Trench ' + G.sel) + ': ' + here + (here === 1 ? ' soldier' : ' troops') + ' under orders. New troops march here.' + (G.sel === G.SUPER ? ' The super trench.' : '') + (isDbl(G.sel) ? ' Super trench: stronger cover, 5 emplacements, +' + DBL_RATE + ' supply a second while held. Hedgehogs stop enemy tanks.' : '') + (isTrench(G.sel) && G.fort[G.sel] ? ' Fortified level ' + G.fort[G.sel] + '.' : '') + (G.nation[0] === 'ah' && isTrench(G.sel) && G.fort[G.sel] < 3 && G.garr[G.sel] > 0 ? ' Garrison digging in: ' + Math.floor(G.garr[G.sel] / GARR_T[G.fort[G.sel]] * 100) + '%.' : '');
   { const tr = isTrench(G.sel), mine = tr && G.owner[G.sel] === 0, lv = tr ? G.fort[G.sel] : 0, mx = tr ? maxFort(G.sel) : 3, fb = $('fortBtn'), nb = $('nestBtn');
-    fb.textContent = !tr ? 'Fortify' : lv >= mx ? 'Fully fortified' : 'Fortify: ' + FORT_COST[lv];
+    setTip(fb, !tr ? 'Fortify' : lv >= mx ? 'Fully fortified' : 'Fortify: ' + FORT_COST[lv]);
     fb.disabled = !mine || lv >= mx || S.supplies < FORT_COST[lv];
-    nb.textContent = NAT[G.nation[0]].nestLabel + ': ' + nestCost(0); nb.disabled = !mine || freeSlot(G.sel) < 0 || S.supplies < nestCost(0);
+    setTip(nb, NAT[G.nation[0]].nestLabel + ': ' + nestCost(0)); nb.disabled = !mine || freeSlot(G.sel) < 0 || S.supplies < nestCost(0);
     const d = NAT[G.nation[0]].def, db = $('defBtn'); db.hidden = !d;
-    if (d) { db.textContent = d.label + ': ' + d.cost; db.disabled = !mine || !canDef(0, G.sel) || S.supplies < d.cost; } }
-  $('advBtn').textContent = G.sel === G.NT ? 'Storm the HQ' : 'Advance';
+    if (d) { setTip(db, d.label + ': ' + d.cost); db.disabled = !mine || !canDef(0, G.sel) || S.supplies < d.cost; } }
+  setTip($('advBtn'), G.sel === G.NT ? 'Storm the HQ' : 'Advance');
   $('advBtn').disabled = G.sel >= G.HQI || !here; $('backBtn').disabled = G.sel <= 0 || !here;
   { const d = SW[G.nation[0]], b = $('swBtn'); b.hidden = !d;
     if (G.aim && (G.aim.kind === 'paris' || G.aim.kind === 'drop') && (!d || swBlock(0))) G.aim = null;
@@ -134,7 +135,10 @@ export function refresh() {
     if (gd && gunAim) { gb.innerHTML = '<b>Confirm target, ' + gd.cost + '</b><small>' + (G.aim.x === null ? 'Tap the field to place the target.' : (S.supplies < gd.cost ? 'Not enough supplies yet.' : 'Fire at the marked circle.')) + '</small>'; gb.disabled = G.aim.x === null || S.supplies < gd.cost || !!gunBlock(0); }
     else if (gd) { const cd = G.gun[0].cd; gb.textContent = cd > 0 ? gd.name + ': ready in ' + Math.ceil(cd) + ' s' : 'Aim ' + gd.name + ': ' + gd.cost; gb.disabled = !!gunBlock(0) || S.supplies < gd.cost; } }
   { const tb = $('trackBtn'), broken = G.track[0].broken.size > 0, c = broken ? REPAIR_COST : TRACK_COST, why = broken ? '' : canLay(0);
-    tb.innerHTML = '<b>' + (broken ? 'Repair track: ' : 'Lay track: ') + c + '</b><small>' + (why || (S.supplies < c ? 'Not enough supplies.' : broken ? 'Segment ' + Math.min(...G.track[0].broken) + ' is broken.' : '')) + '</small>';
+    const head = (broken ? 'Repair track: ' : 'Lay track: ') + c;
+    const sub = why || (S.supplies < c ? 'Not enough supplies.' : broken ? 'Segment ' + Math.min(...G.track[0].broken) + ' is broken.' : '');
+    setTip(tb, head + (sub ? '. ' + sub : ''));
+    tb.querySelector('use').setAttribute('href', broken ? '#i-fix' : '#i-track');
     tb.disabled = !!why || S.supplies < c; }
   { const T = TRAINS[G.nation[0]], bb = $('trainBtn'), slots = G.trains.filter(t => t.side === 0).length >= TRAIN_SLOTS,
       tk = G.track[0], noRun = tk.end === 0 ? (tk.cut ? 'The track is cut.' : 'No track yet.') : tk.broken.has(1) ? 'Repair the broken track first.' : 'The track is cut.',

@@ -5,7 +5,7 @@
 import './ui-page.js';
 import '../../src/main.js';                    // boot() wires the whole UI
 import { describe, it, expect, beforeEach } from 'vitest';
-import { G, newGame } from '../../src/sim/state.js';
+import { G, newGame, nestCost } from '../../src/sim/state.js';
 import { endGame } from '../../src/sim/tick.js';
 import { offerCards } from '../../src/sim/cards.js';
 import { META, makeCode, readCode } from '../../src/sim/meta.js';
@@ -13,11 +13,14 @@ import { TECH } from '../../src/data/tech.js';
 import { bus } from '../../src/core/events.js';
 import { cam, vw, resize, focusLine, metrics } from '../../src/ui/camera.js';
 import { clampAim } from '../../src/sim/gun.js';
-import { WH } from '../../src/data/units.js';
+import { WH, FORT_COST } from '../../src/data/units.js';
 import { GUNS } from '../../src/data/guns.js';
 import * as commands from '../../src/sim/commands.js';
 import { swCost } from '../../src/sim/superweapons.js';
 import { nearestDrop } from '../../src/sim/drop.js';
+import { NAT } from '../../src/data/nations.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { refresh, buildMap, layoutActions, layoutTrackButton } from '../../src/ui/hud.js';
 import { tunnelLines } from '../../src/sim/tunnel.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
@@ -123,7 +126,7 @@ describe('hud', () => {
     $('advBtn').click();
     expect(G.sel).toBe(2);
     expect(G.units.every(u => u.line !== 1)).toBe(true);
-    expect($('advBtn').textContent).toBe('Advance');
+    expect($('advBtn').getAttribute('aria-label')).toBe('Advance');
     $('gatherBtn').click();
     expect($('toast').textContent).toBe('No troops behind this line.');
     G.units[0].line = 1; G.units[1].line = 1;
@@ -244,6 +247,56 @@ describe('field-action groups', () => {
     expect($('topBand').hidden).toBe(true); expect($('moveBand').hidden).toBe(true);
     cam.x = 0; layoutActions();
     expect($('topBand').hidden).toBe(false);
+  });
+});
+
+describe('field icon buttons', () => {
+  const FIELD = ['fortBtn', 'nestBtn', 'defBtn', 'trackBtn', 'backBtn', 'gatherBtn', 'advBtn'];
+  const ICON = { fortBtn: '#i-fort', nestBtn: '#i-nest', defBtn: '#i-def', trackBtn: '#i-track', backBtn: '#i-back', gatherBtn: '#i-gather', advBtn: '#i-adv' };
+
+  it('every field button is a round icon button whose icon survives refresh()', () => {
+    G.S.supplies = 500; refresh(); refresh();
+    for (const id of FIELD) {
+      const b = $(id);
+      expect(b.classList.contains('fbtn')).toBe(true);
+      expect(b.classList.contains('act')).toBe(false);
+      expect(b.querySelector('svg.ico use').getAttribute('href')).toBe(ICON[id]);
+      expect(document.querySelector('svg.sprite symbol' + ICON[id])).toBeTruthy();
+      expect(b.textContent.trim()).toBe('');                       // no visible words
+      expect(b.getAttribute('data-tip')).toBe(b.getAttribute('aria-label'));
+    }
+  });
+
+  it('refresh() writes the same descriptions as before, into aria-label', () => {
+    G.S.supplies = 500; G.sel = 1; refresh();
+    expect($('fortBtn').getAttribute('aria-label')).toBe('Fortify: ' + FORT_COST[G.fort[1]]);
+    expect($('nestBtn').getAttribute('aria-label')).toBe(NAT.gb.nestLabel + ': ' + nestCost(0));
+    expect($('defBtn').getAttribute('aria-label')).toBe(NAT.gb.def.label + ': ' + NAT.gb.def.cost);
+    expect($('advBtn').getAttribute('aria-label')).toBe('Advance');
+    expect($('backBtn').getAttribute('aria-label')).toBe('Fall back');
+    expect($('gatherBtn').getAttribute('aria-label')).toBe('Bring all here');
+    G.sel = G.NT; refresh();
+    expect($('advBtn').getAttribute('aria-label')).toBe('Storm the HQ');
+  });
+
+  it('the track icon swaps to the wrench while a segment is broken', () => {
+    G.owner[1] = 0; layTrack(0); G.track[0].broken.add(1); refresh();
+    expect($('trackBtn').querySelector('use').getAttribute('href')).toBe('#i-fix');
+    G.track[0].broken.clear(); refresh();
+    expect($('trackBtn').querySelector('use').getAttribute('href')).toBe('#i-track');
+  });
+
+  it('30px bands never collide at either K extreme (CH 240 or 380)', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
+    expect(css).toMatch(/--fb:\s*30px/);
+    const r = 15;                                  // half of --fb
+    for (const K of [240 / WH, 380 / WH]) {
+      const top = BAND_Y.top * K, mid = BAND_Y.track * K, bot = BAND_Y.move * K;
+      expect(top - r).toBeGreaterThan(12 * K);     // below the ownership pennant (y 4–12)
+      expect(top + r).toBeLessThan(mid - r);
+      expect(mid + r).toBeLessThan(bot - r);
+      expect(bot + r).toBeLessThan(283 * K);       // above the fort pips (y ≈ 287)
+    }
   });
 });
 
@@ -733,8 +786,8 @@ describe('responsive width', () => {
 describe('railway buttons', () => {
   it('lay track: label, reason when the trench is not held, click lays and charges', () => {
     G.S.supplies = 500; G.owner[1] = 1; bus.emit('hud');
-    expect($('trackBtn').textContent).toContain('Lay track: 20');
-    expect($('trackBtn').textContent).toContain('Trench 1 is not held.');
+    expect($('trackBtn').getAttribute('aria-label')).toContain('Lay track: 20');
+    expect($('trackBtn').getAttribute('aria-label')).toContain('Trench 1 is not held.');
     expect($('trackBtn').disabled).toBe(true);
     G.owner[1] = 0; bus.emit('hud');
     expect($('trackBtn').disabled).toBe(false);
@@ -744,12 +797,12 @@ describe('railway buttons', () => {
   });
   it('turns into repair track when a segment is broken', () => {
     G.S.supplies = 500; G.owner[1] = 0; G.track[0].end = 1; G.track[0].broken.add(1); bus.emit('hud');
-    expect($('trackBtn').textContent).toContain('Repair track: 20');
+    expect($('trackBtn').getAttribute('aria-label')).toContain('Repair track: 20');
     expect($('trackBtn').disabled).toBe(false);
     $('trackBtn').click();
     expect(G.track[0].broken.size).toBe(0);
     expect(G.S.supplies).toBe(480);
-    expect($('trackBtn').textContent).toContain('Lay track: 20');
+    expect($('trackBtn').getAttribute('aria-label')).toContain('Lay track: 20');
   });
   it('train button shows its national name and cost, and says why it is off', () => {
     G.S.supplies = 500; bus.emit('hud');
