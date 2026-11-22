@@ -5,7 +5,9 @@ import { SW } from '../data/superweapons.js';
 import { NAT } from '../data/nations.js';
 import { MAPS } from '../data/maps.js';
 import { CARDS } from '../data/cards.js';
-import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort } from '../data/units.js';
+import { FORT_COST, GARR_T, DBL_RATE, SUPER_CARD_T, maxFort, WH } from '../data/units.js';
+import { anchorX, stackSide, toScreen, trackGlyphLine } from './fieldActions.js';
+import { metrics } from './camera.js';
 import { G, incomeNow, isDbl, fmt, nestCost } from '../sim/state.js';
 import { isTrench, count, countAt, anyTank, tanks, cost, full } from '../sim/geometry.js';
 import { infCap, tier, nextCost } from '../sim/base.js';
@@ -31,8 +33,41 @@ export function toast(msg) {
 let lastSel = -1;
 export function buildMap() {
   let h = ''; const per = (MAPS[G.MAP] && MAPS[G.MAP].per) || 0, tun = tunnelLines();
-  for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + (tun.includes(L) ? '\u2293' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i></button>';
+  for (let L = 0; L <= G.HQI; L++) h += '<button data-line="' + L + '" aria-pressed="false"' + (per && L > 1 && L <= G.NT && (L - 1) % per === 0 ? ' class="gap"' : '') + '><b>' + (L === 0 || L === G.HQI ? 'HQ' : (L === G.SUPER || isDbl(L) ? '\u2605' : '') + (tun.includes(L) ? '\u2293' : '') + L) + '</b><span class="me"></span><br><span class="foe"></span><i class="pips"></i><i class="rail"></i></button>';
   const m = $('map'); m.innerHTML = h; m.classList.toggle('long', G.NT > 9); lastSel = -1;
+}
+
+// Position the single floating actions container at the selected trench,
+// stacked to the correct side so it doesn't sit on top of incoming fire.
+// Both rows (move group, fortify group) live inside it, so one anchor call
+// positions both — this also removes the vertical overlap the two-group
+// layout had on short canvases. Hidden entirely when it would land fully
+// off-screen, so it drops out of tab order while unreachable.
+export function layoutActions() {
+  const x = anchorX(G.sel), side = stackSide(G.sel);
+  const pos = toScreen(x, WH / 2);
+  const el = $('fieldActions');
+  el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+  el.style.transform = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
+  const { CW } = metrics();
+  el.hidden = pos.x < -50 || pos.x > CW + 50;
+}
+
+// Position the floating track button at the segment it would next affect.
+// Not tied to the selection, so it has its own anchor trench and stacking
+// side. When there's nothing left to lay or repair (trackGlyphLine returns
+// null) there is no valid anchor trench, so hide it rather than leaving it
+// at a stale position.
+export function layoutTrackButton() {
+  const tb = $('trackBtn');
+  const L = trackGlyphLine(0);
+  if (L === null) { tb.hidden = true; return; }
+  const side = stackSide(L);
+  const pos = toScreen(anchorX(L), 40);
+  tb.style.left = pos.x + 'px'; tb.style.top = pos.y + 'px';
+  tb.style.transform = 'translate(' + (side > 0 ? '0%' : '-100%') + ', -50%)';
+  const { CW } = metrics();
+  tb.hidden = pos.x < -50 || pos.x > CW + 50;
 }
 
 let baseKey = '';
@@ -66,13 +101,14 @@ export function refresh() {
   { const left = Math.max(1, Math.ceil(S.need - S.cardKills)); $('cardText').textContent = 'Next card in about ' + left + (left === 1 ? ' kill' : ' kills'); }
   const m = Math.floor(S.t / 60), s = Math.floor(S.t % 60); $('clock').textContent = m + ':' + (s < 10 ? '0' : '') + s;
   $('hpA').style.width = (G.bases[0].hp / G.bases[0].max * 100) + '%'; $('hpB').style.width = (G.bases[1].hp / G.bases[1].max * 100) + '%';
-  const cells = $('map').children;
+  const cells = $('map').children, railL = trackGlyphLine(0);
   for (let L = 0; L <= G.HQI; L++) {
     const c = cells[L], a = countAt(0, L), b = countAt(1, L);
     c.querySelector('.me').textContent = a || '\u00a0'; c.querySelector('.foe').textContent = b || '\u00a0';
     c.querySelector('.pips').textContent = '\u25aa'.repeat(G.fort[L]);
+    c.querySelector('.rail').textContent = railL === L ? '\u2550' : '';
     c.setAttribute('aria-pressed', L === G.sel ? 'true' : 'false');
-    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : '') + (tunnelLines().includes(L) ? ', tunnel' : ''));
+    c.setAttribute('aria-label', (L === 0 ? 'Your HQ' : L === G.HQI ? 'Enemy HQ' : 'Trench ' + L) + ': ' + a + ' of yours, ' + b + ' enemy' + (G.fort[L] ? ', fortified level ' + G.fort[L] : '') + (tunnelLines().includes(L) ? ', tunnel' : '') + (railL === L ? (G.track[0].broken.size > 0 ? ', track to repair' : ', next track segment') : ''));
     c.classList.toggle('mine', G.owner[L] === 0); c.classList.toggle('theirs', G.owner[L] === 1);
   }
   if (G.NT > 9 && G.sel !== lastSel) { lastSel = G.sel; const mp = $('map'), c = cells[G.sel]; if (c) mp.scrollLeft = c.offsetLeft - mp.clientWidth / 2 + c.offsetWidth / 2; }
