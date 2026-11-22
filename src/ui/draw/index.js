@@ -42,6 +42,7 @@ export function draw() {
   drawWireBelts(vis);
   if (vis(G.bases[0].x + 60) || vis(G.bases[0].x - 60)) drawBase(0);
   if (vis(G.bases[1].x + 60) || vis(G.bases[1].x - 60)) drawBase(1);
+  drawTrack(vis); // behind the trenches: the rail passes under them at each crossing
   for (let L = 1; L <= G.NT; L++) {
     if (!vis(G.LX[L])) continue;
     const so = isDbl(L) ? 15 : 0;
@@ -62,7 +63,6 @@ export function draw() {
     if (L === G.SUPER) { ctx.fillStyle = '#e8c25a'; ctx.fillText('SUPER TRENCH', G.LX[L] + 20, WH - 32); }
   }
   drawTunnels(vis);
-  drawTrack(vis);
   // selected line
   if (G.running) {
     const sx = isTrench(G.sel) ? G.LX[G.sel] : posX(0, G.sel, 150, false), hw = isDbl(G.sel) ? 32 : 17;
