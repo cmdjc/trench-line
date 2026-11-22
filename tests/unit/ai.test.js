@@ -11,7 +11,7 @@ import { NAT, AI_INCOME, AI_RAMP } from '../../src/data/nations.js';
 import { SW } from '../../src/data/superweapons.js';
 import { GUNS, AI_GUN_SHARE } from '../../src/data/guns.js';
 import { DEPOT_RATE, SUPER_INC } from '../../src/data/units.js';
-import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS, ARMOR_TRAINS } from '../../src/data/rail.js';
+import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS, ARMOR_TRAINS, AI_ARMOR_END } from '../../src/data/rail.js';
 import { trackEnd, canLay, buyTrain, isArmor } from '../../src/sim/rail.js';
 
 const toasts = [];
@@ -384,6 +384,13 @@ describe('enemy railway', () => {
   });
   it('buys an armoured train at end 3 after its first transport, saving for it', () => {
     setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 3; buyTrain(1);
+    G.ai.railFund = acost() - 1; buyTicks(3);
+    expect(armors()).toBe(0); expect(mineTrains()).toBe(1);
+    G.ai.railFund = acost(); buyTicks();
+    expect(armors()).toBe(1); expect(G.ai.railFund).toBe(0);
+  });
+  it('buys an armoured train right at the tuned AI_ARMOR_END threshold', () => {
+    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = AI_ARMOR_END; buyTrain(1);
     G.ai.railFund = acost() - 1; buyTicks(3);
     expect(armors()).toBe(0); expect(mineTrains()).toBe(1);
     G.ai.railFund = acost(); buyTicks();

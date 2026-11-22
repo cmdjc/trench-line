@@ -258,7 +258,7 @@ function moveArmor(t, dt) {
   const fwd = fwdOf(t.side), home = G.LX[homeOf(t.side)], end = trackEnd(t.side);
   let goal = end > 0 ? segDist(t.side, end) : 0, p = (t.x - home) * fwd;
   const fence = breakBehind(t.side, p);
-  if (fence >= 0) goal = Math.max(goal, fence);            // never cross a break behind it
+  if (fence >= 0) goal = Math.max(goal, Math.min(fence, p)); // never cross a break behind it, and never advance past a break just appeared under it
   const step = t.T.speed * dt;
   t.moving = Math.abs(goal - p) > 1e-6;
   p = p < goal ? Math.min(goal, p + step) : Math.max(goal, p - step);

@@ -1,4 +1,4 @@
-// Railways: laid track with sleepers, broken segments, and transport trains. No rng; pure drawing.
+// Railways: laid track with sleepers, broken segments, and transport and armoured trains. No rng; pure drawing.
 import { ctx, line, circle, BAG, BAGD } from './helpers.js';
 import { G } from '../../sim/state.js';
 import { NAT } from '../../data/nations.js';

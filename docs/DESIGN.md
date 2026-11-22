@@ -196,8 +196,8 @@ Chosen by you: buildable railways. You lay track from your HQ one segment at a t
 
 ## 12. Railways (stage 2: armoured train)
 
-Chosen by you, matching Task 4's enemy build: a second, combat national train that shares the track with
-the transport. Stage 2 of `docs/superpowers/specs/2026-11-20-railways-stage1-design.md`.
+Chosen by you, matching the enemy's own armoured train: a second, combat national train that shares the
+track with the transport. The full intent is in `docs/superpowers/specs/2026-11-22-armoured-train-design.md`.
 
 - **Entity**: `buyArmor(side)` spawns a `{ kind: 'armor' }` entry in `G.trains`, at the HQ, with its
   national `ARMOR_TRAINS` stats. It never carries riders (`riders` stays `[]` forever, so `dismountAll`
@@ -231,8 +231,7 @@ the transport. Stage 2 of `docs/superpowers/specs/2026-11-20-railways-stage1-des
   holds, and supplies are at least twice the train's cost. `BOTNOARMOR=1` disables it, for comparison
   runs; `NORAIL` implies `BOTNOARMOR`. Unlike the enemy AI, the bot spends from its single shared
   supply pool, so it only buys one when the normal game's economy comfortably affords it — it does not
-  pause other spending to save up, since that was tried and tuned back out (see the balance section
-  below).
+  pause other spending to save up for one.
 
 | Nation | Train | Cost | Hp | Speed | Cannon dmg | Cannon cd | Range | Splash | MG dmg | MG cd | MG range |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -258,8 +257,10 @@ the transport. Stage 2 of `docs/superpowers/specs/2026-11-20-railways-stage1-des
   to the absolute floor of the ±15% band did not clear either remaining one, and a longer `MAXS=1800`
   run confirmed both are a genuine balance shift (Russia v Germany plain seed 3 loses outright at 1720 s;
   Austria-Hungary v Germany march seed 1 is still grinding at 1800 s against a 764 s baseline win), not
-  a 900 s budget artifact. These two are accepted, documented known limitations, the same treatment as
-  Task 4's `march seed 5` edge case, rather than chasing two single-seed flips past the ±15% band.
+  a 900 s budget artifact. These two are accepted, documented known limitations — the same treatment given
+  to a similar known limitation found during testing, where the track's end briefly sits out of weapon
+  range near the end of a long battle in one specific tested scenario — rather than chasing two
+  single-seed flips past the ±15% band.
 - **Anti-goal check**: an armoured train must not end up holding a trench alone, i.e. it must help the
   attacker push rather than make trench fighting pointless. Compared the bot's own `sel` and `losses` on
   plain and march, with its armour-buying rule on versus `BOTNOARMOR=1` off, same 48 seeds each (every
@@ -267,7 +268,7 @@ the transport. Stage 2 of `docs/superpowers/specs/2026-11-20-railways-stage1-des
   against 64.27 without — statistically indistinguishable. The bot's own armoured train almost never
   gets bought inside this matrix's economy and 900 s budget (1–2 of 48 runs), so the rule is close to
   inert there; it never makes the bot's own trench fighting pointless. The imbalance found above comes
-  entirely from the *enemy* AI's armoured train (built and reviewed in Task 4); this pass only
+  entirely from the *enemy* AI's armoured train, built and reviewed earlier in this stage; this pass only
   re-confirmed its effect inside a wider matrix, it did not change that AI logic.
 
 ## 13. Tunnel trenches (Long March)

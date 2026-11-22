@@ -365,6 +365,21 @@ describe('armoured train', () => {
     expect(t.x).toBeCloseTo(G.LX[3], 3);
   });
 
+  it('strands in place when a break appears on the segment it is currently crossing', () => {
+    track3(); C.buyArmorCmd();
+    const t = G.trains[0];
+    for (let i = 0; i < 400; i++) stepTrains(0.05); // settle at the end of the track (segment 3)
+    G.owner[4] = 0; layTrack(0); // extend the track so it has somewhere further to go
+    for (let i = 0; i < 20; i++) stepTrains(0.05); // partway across the newly laid segment, not yet at its end
+    expect(t.x).not.toBeCloseTo(G.LX[4], 3);
+    const x0 = t.x;
+    G.track[0].broken.add(4); // the segment it is currently crossing just broke
+    stepTrains(0.05);
+    expect(t.x).toBeCloseTo(x0, 3); // strands in place, same as a transport train would
+    for (let i = 0; i < 400; i++) stepTrains(0.05);
+    expect(t.x).toBeCloseTo(x0, 3); // and stays there, never advancing across the break
+  });
+
   it('side 1 mirrored', () => {
     G.owner[G.HQI - 1] = G.owner[G.HQI - 2] = 1;
     layTrack(1); layTrack(1);

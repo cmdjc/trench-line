@@ -1,4 +1,4 @@
-// Railways, stage 1: track and transport train constants and national trains.
+// Railways: track, transport train and armoured train constants and national trains.
 // Pure data, no browser APIs. Design: docs/superpowers/specs/2026-11-20-railways-stage1-design.md
 
 import { STATS, WH } from './units.js';
