@@ -15,8 +15,8 @@ import { gunBlock, fireGun, bestTarget } from './gun.js';
 import { GUNS, AI_GUN_SHARE } from '../data/guns.js';
 import { AI_DROP_T } from '../data/drop.js';
 import { BASE, AI_BASE_SHARE } from '../data/base.js';
-import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS } from '../data/rail.js';
-import { canLay, layTrack, repairTrack, canBuyTrain, buyTrain, trackEnd } from './rail.js';
+import { AI_RAIL_T, AI_RAIL_SHARE, TRACK_COST, REPAIR_COST, TRAINS, ARMOR_TRAINS, AI_ARMOR_END } from '../data/rail.js';
+import { canLay, layTrack, repairTrack, canBuyTrain, buyTrain, buyArmor, isArmor, trackEnd } from './rail.js';
 
 const aiCost = k => Math.round(ut(1, k).cost * G.M[1].cost[k]);
 
@@ -28,7 +28,7 @@ export function aiStep(dt) {
   const rshare = G.S.t >= AI_RAIL_T && !ai.noRail ? AI_RAIL_SHARE : 0;
   ai.fund += inc * share; ai.money += inc * (1 - share - gshare - rshare);
   if (rshare) {
-    const rc = TRAINS[G.nation[1]].cost * 2; ai.railFund += inc * rshare;
+    const rc = Math.max(TRAINS[G.nation[1]].cost * 2, ARMOR_TRAINS[G.nation[1]].cost); ai.railFund += inc * rshare;
     if (ai.railFund > rc) { ai.money += ai.railFund - rc; ai.railFund = rc; }
   }
   if (gshare) {
@@ -86,8 +86,10 @@ function aiGun() {
   ai.gunFund -= d.cost; fireGun(1, t.x, t.y);
 }
 
-// Railway: paid from its own fund after 90 s, one purchase per buy tick, no rng. Repair a break first, else lay
-// the next segment; the first train is bought once track is 2 long (before laying more), a second at 3.
+// Railway: paid from its own fund after 90 s, one purchase per buy tick, no rng. Repair a break first; the first
+// train is bought once track is 2 long (before laying more); once a transport is in and track reaches
+// AI_ARMOR_END, an armoured train is next (saved for ahead of laying or a second transport); then lay track, and
+// finally a second transport at end 3.
 function aiRail() {
   const ai = G.ai;
   if (G.S.t < AI_RAIL_T || ai.noRail) return;
@@ -95,9 +97,16 @@ function aiRail() {
     if (ai.railFund >= REPAIR_COST) { ai.railFund -= REPAIR_COST; repairTrack(1); }
     return;
   }
-  const T = TRAINS[G.nation[1]], mine = G.trains.filter(t => t.side === 1).length, end = trackEnd(1);
+  const T = TRAINS[G.nation[1]], A = ARMOR_TRAINS[G.nation[1]];
+  const mine = G.trains.filter(t => t.side === 1 && !isArmor(t)).length;
+  const armor = G.trains.some(t => t.side === 1 && isArmor(t));
+  const end = trackEnd(1);
   if (!mine && end >= 2 && canBuyTrain(1)) {   // first train comes before any more track: save for it
     if (ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
+    return;
+  }
+  if (mine >= 1 && !armor && end >= AI_ARMOR_END && canBuyTrain(1)) {   // then an armoured train: save for it,
+    if (ai.railFund >= A.cost) { ai.railFund -= A.cost; buyArmor(1); } // ahead of laying more track or a 2nd transport
     return;
   }
   if (!canLay(1)) {

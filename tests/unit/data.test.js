@@ -173,8 +173,8 @@ it('armoured train stats are within 15% of base', () => {
     expect(T.mg.acc, n).toBe(0.5);
   }
 });
-it('AI_ARMOR_END is 3', () => {
-  expect(AI_ARMOR_END).toBe(3);
+it('AI_ARMOR_END is 2', () => {
+  expect(AI_ARMOR_END).toBe(2);
 });
 it('RAIL_Y lies on the field, in the middle', () => {
   expect(RAIL_Y).toBeGreaterThanOrEqual(0);

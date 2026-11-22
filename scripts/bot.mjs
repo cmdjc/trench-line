@@ -20,7 +20,7 @@ import { tier, nextCost } from '../src/sim/base.js';
 import { gunBlock, bestTarget } from '../src/sim/gun.js';
 import { GUNS } from '../src/data/guns.js';
 import { TRACK_COST, REPAIR_COST, TRAINS } from '../src/data/rail.js';
-import { canLay, trackEnd, canBuyTrain } from '../src/sim/rail.js';
+import { canLay, trackEnd, canBuyTrain, isArmor } from '../src/sim/rail.js';
 
 const argv = process.argv.slice(2);
 const json = argv.includes('--json');
@@ -42,14 +42,23 @@ bus.on('game:end', d => { end = d; });
 const settledAt = L => G.units.filter(u => u.side === 0 && u.line === L).every(u => u.settled);
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp']; // same rotation as the AI
 const pref = ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
-// rail usage, sampled once a second: a "trip" is a train turning at the HQ for another run
+// rail usage, sampled once a second: a "trip" is a train turning at the HQ for another run.
+// Armoured trains are reported separately (armor/foeArmor), never in trains.bought/trips; their shots and
+// mgShots are kept per train id so a destroyed train's shots still count in the final total.
 const rail = [{ trips: 0, riders: 0, healed: 0, bought: 0 }, { trips: 0, riders: 0, healed: 0, bought: 0 }];
+const armorBought = [0, 0];
+const armorStats = [new Map(), new Map()]; // id -> { shots, mgShots }
 const seen = new Set(), seenT = new Map();
 function watchRail() {
   for (const t of G.trains) {
     const p = seenT.get(t.id);
-    if (!p) rail[t.side].bought++;
-    else if (p.dir !== t.dir && t.dir === (t.side ? -1 : 1)) rail[t.side].trips++;
+    if (isArmor(t)) {
+      if (!p) armorBought[t.side]++;
+      armorStats[t.side].set(t.id, { shots: t.shots, mgShots: t.mgShots });
+    } else {
+      if (!p) rail[t.side].bought++;
+      else if (p.dir !== t.dir && t.dir === (t.side ? -1 : 1)) rail[t.side].trips++;
+    }
     seenT.set(t.id, { dir: t.dir });
   }
   for (const u of G.units) {
@@ -57,6 +66,11 @@ function watchRail() {
     seen.add(u.id + ':' + u.riding);
     if (u.homeLine !== undefined) rail[u.side].healed++; else rail[u.side].riders++;
   }
+}
+function armorReport(side) {
+  let shots = 0, mgShots = 0;
+  for (const v of armorStats[side].values()) { shots += v.shots; mgShots += v.mgShots; }
+  return { bought: armorBought[side], shots, mgShots };
 }
 const peak = [0, 0];
 let saving = false, want = null, sw = 0, gunShots = 0, foeGunShots = 0, drops = 0, foeDrops = 0;
@@ -149,6 +163,7 @@ const result = {
   kills: G.S.kills, losses: G.S.losses, cards: G.S.cards, sw, gunShots, foeGunShots, drops, foeDrops,
   base: BASE_ROT.map(i => tier(0, i)).join(''), foeBase: BASE_ROT.map(i => tier(1, i)).join(''),
   track: peak[0], trains: rail[0], foeTrack: peak[1], foeTrains: rail[1],
+  armor: armorReport(0), foeArmor: armorReport(1),
   forts: G.fort.join(''), hq: Math.round(G.bases[0].hp) + '/' + Math.round(G.bases[1].hp),
 };
 if (json) console.log(JSON.stringify(result));
