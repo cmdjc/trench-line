@@ -26,6 +26,7 @@ import { tunnelLines } from '../../src/sim/tunnel.js';
 import { startLoop, frame } from '../../src/ui/loop.js';
 import { cutTrack, layTrack } from '../../src/sim/rail.js';
 import { trackGlyphLine, anchorX, toScreen, BAND_Y } from '../../src/ui/fieldActions.js';
+import { clearReveal, revealedButton } from '../../src/ui/fieldTips.js';
 
 const $ = id => document.getElementById(id);
 
@@ -297,6 +298,91 @@ describe('field icon buttons', () => {
       expect(mid + r).toBeLessThan(bot - r);
       expect(bot + r).toBeLessThan(283 * K);       // above the fort pips (y ≈ 287)
     }
+  });
+});
+
+describe('field button touch reveal', () => {
+  beforeEach(() => clearReveal());
+
+  const touchTap = (el, type = 'touch') => {
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerType: type, bubbles: true }));
+    el.dispatchEvent(new PointerEvent('pointerup', { pointerType: type, bubbles: true, cancelable: true }));
+    el.click();          // jsdom: no-op on a disabled button, a real click otherwise
+  };
+
+  it('a mouse or keyboard click acts at once', () => {
+    G.S.supplies = 200; refresh();
+    $('fortBtn').click();                                  // jsdom click(): PointerEvent, pointerType ''
+    expect(G.fort[1]).toBe(1);
+    expect(revealedButton()).toBeNull();
+  });
+
+  it('first touch tap reveals without acting, the second tap acts', () => {
+    G.S.supplies = 200; refresh();
+    touchTap($('fortBtn'));
+    expect(G.fort[1]).toBe(0);
+    expect(revealedButton()).toBe($('fortBtn'));
+    expect($('fortBtn').parentElement.classList.contains('revealed')).toBe(true);
+    touchTap($('fortBtn'));
+    expect(G.fort[1]).toBe(1);
+    expect(revealedButton()).toBeNull();
+  });
+
+  it('pen behaves like touch', () => {
+    G.S.supplies = 200; refresh();
+    touchTap($('fortBtn'), 'pen');
+    expect(G.fort[1]).toBe(0);
+    expect(revealedButton()).toBe($('fortBtn'));
+  });
+
+  it('a disabled button can be revealed by tapping its wrapper', () => {
+    G.S.supplies = 0; refresh();
+    expect($('fortBtn').disabled).toBe(true);
+    touchTap($('fortBtn').parentElement);                  // pointer-events:none sends the real tap here
+    expect(revealedButton()).toBe($('fortBtn'));
+  });
+
+  it('a reveal on a disabled button never swallows a later click', () => {
+    G.S.supplies = 0; refresh();
+    touchTap($('fortBtn').parentElement);
+    G.S.supplies = 200; refresh();
+    $('fortBtn').click();
+    expect(G.fort[1]).toBe(1);
+  });
+
+  it('aria-label is the same before, during and after a reveal', () => {
+    G.S.supplies = 200; refresh();
+    const label = $('fortBtn').getAttribute('aria-label');
+    touchTap($('fortBtn'));
+    expect($('fortBtn').getAttribute('aria-label')).toBe(label);
+    expect($('fortBtn').getAttribute('data-tip')).toBe(label);
+    clearReveal();
+    expect($('fortBtn').getAttribute('aria-label')).toBe(label);
+  });
+
+  it('revealing a button in another band clears the first, without acting', () => {
+    G.S.supplies = 200; refresh();
+    touchTap($('fortBtn'));
+    touchTap($('advBtn'));
+    expect(revealedButton()).toBe($('advBtn'));
+    expect($('fortBtn').parentElement.classList.contains('revealed')).toBe(false);
+    expect(G.sel).toBe(1);                                 // advance did not fire
+    expect(G.fort[1]).toBe(0);
+  });
+
+  it('tapping elsewhere clears the reveal', () => {
+    touchTap($('advBtn'));
+    $('field').dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', bubbles: true }));
+    expect(revealedButton()).toBeNull();
+  });
+
+  it('a G.sel change clears any reveal', () => {
+    G.S.supplies = 200; refresh();
+    touchTap($('fortBtn'));
+    G.sel = 0; layoutActions();                            // same path the sim's own front-line pull-back takes
+    expect(revealedButton()).toBeNull();
+    G.sel = 1; refresh(); $('fortBtn').click();
+    expect(G.fort[1]).toBe(1);                             // and nothing is left to swallow the next click
   });
 });
 

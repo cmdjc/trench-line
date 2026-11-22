@@ -21,7 +21,7 @@ import { TRACK_COST, REPAIR_COST, TRAINS, TRAIN_SLOTS } from '../data/rail.js';
 import { canLay, canBuyTrain, trackEnd } from '../sim/rail.js';
 import * as commands from '../sim/commands.js';
 import { $ } from './dom.js';
-import { setTip } from './fieldTips.js';
+import { setTip, initFieldTips, syncRevealSel } from './fieldTips.js';
 import { focusLine } from './camera.js';
 import { tunnelLines } from '../sim/tunnel.js';
 
@@ -55,6 +55,7 @@ function placeBand(el, L, worldY) {
 // selected trench. Each has its own anchor trench (here, the same one —
 // G.sel) and stacking side.
 export function layoutActions() {
+  syncRevealSel(G.sel);
   placeBand($('topBand'), G.sel, BAND_Y.top);
   placeBand($('moveBand'), G.sel, BAND_Y.move);
 }
@@ -151,6 +152,7 @@ export function refresh() {
 }
 
 export function initHud() {
+  initFieldTips();
   $('map').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b && commands.select(+b.dataset.line)) focusLine(+b.dataset.line); });
   $('advBtn').addEventListener('click', () => { if (commands.advance()) focusLine(G.sel); });
   $('backBtn').addEventListener('click', () => { if (commands.fallback()) focusLine(G.sel); });
