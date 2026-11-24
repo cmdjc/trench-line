@@ -210,7 +210,7 @@ Object.assign(NU.it, {
       { t: 'r', c: '#14140e', x: 25, y: -3.4, w: 1.4, h: 2.4 }, { t: 'em', x: -12, y: 0, s: 0.9 }],
       tur: [{ x: 2, r: 8.5, len: 36, gt: 3.4, guns: 1 }], mgf: [[27, -4], [27, 4]] })
 });
-/* Antarctica: realistic designs from both eras, painted snow white and built to enormous sizes */
+/* Antarctica: realistic designs from both eras, painted snow white and big, and whose shells chill what they hit */
 const SW1 = '#e8eef2', SW2 = '#c4d1da', SBL = '#5d8fb8', AQMG = { dmg: 5, cd: 0.22, range: 210, acc: 0.5 };
 const aqd = (L, W, x) => Object.assign({ cb: SW1, ch: SW2, L, W }, x);
 const AQ_TANKS = {
@@ -227,7 +227,7 @@ const AQ_TANKS = {
       { t: 'r', c: SBL, x: -36, y: -1.6, w: 70, h: 3.2 }, { t: 'r', c: 'h', o: 1, x: -34, y: -9, w: 20, h: 18 },
       { t: 'r', c: '#14140e', x: 34, y: -4.4, w: 1.4, h: 2.4 }, { t: 'r', c: '#14140e', x: 34, y: 2, w: 1.4, h: 2.4 }, { t: 'em', x: -24, y: 0, s: 1.2 }],
       tur: [{ x: 3, r: 11, len: 42, gt: 3.6, guns: 1 }], mgf: [[35, -3.2], [35, 3.2]] })],
-  tkM: [{ name: 'Vinson', pl: 'Vinson tanks', cost: 760, hp: 1800, dmg: 48, cd: 1.4, range: 260, splash: 26, speed: 17, w: 3.5, park: 50, len: 48, bar: [56, -40], mg: AQMG,
+  tkM: [{ name: 'Vinson', pl: 'Vinson tanks', cost: 650, hp: 1400, dmg: 40, cd: 1.4, range: 260, splash: 24, speed: 18, w: 3.5, park: 50, len: 48, bar: [56, -40], mg: AQMG,
     role: 'Giant rhomboid with a turret and sponson guns.' },
     aqd(48, 30, { tr: [[14, 24]], parts: [
       { t: 'r', c: 'h', o: 1, x: -10, y: 24, w: 26, h: 6 }, { t: 'r', c: 'h', o: 1, x: -10, y: -30, w: 26, h: 6 },
@@ -237,7 +237,7 @@ const AQ_TANKS = {
       { t: 'r', c: SBL, x: -44, y: -1.8, w: 88, h: 3.6 }, { t: 'r', c: 'h', o: 1, x: -34, y: -10, w: 22, h: 20 },
       { t: 'r', c: '#14140e', x: 44, y: -5, w: 1.6, h: 2.6 }, { t: 'r', c: '#14140e', x: 44, y: 2.4, w: 1.6, h: 2.6 }, { t: 'em', x: -24, y: 0, s: 1.4 }],
       tur: [{ x: 4, r: 13, len: 44, gt: 4, guns: 1 }], mgf: [[37, -27.5], [37, 27.5]] })],
-  tkH: [{ name: 'Erebus', pl: 'Erebus tanks', cost: 1150, hp: 3100, dmg: 70, cd: 1.8, range: 280, splash: 34, speed: 14, w: 5, big: true, park: 62, len: 60, bar: [70, -52], mg: { dmg: 6, cd: 0.2, range: 230, acc: 0.5 },
+  tkH: [{ name: 'Erebus', pl: 'Erebus tanks', cost: 850, hp: 2100, dmg: 52, cd: 1.8, range: 280, splash: 27, speed: 16, w: 5, big: true, park: 62, len: 60, bar: [70, -52], mg: { dmg: 6, cd: 0.2, range: 230, acc: 0.5 },
     role: 'Heavy with a monster gun and a rear turret. Very tough.' },
     aqd(60, 34, { base: '#2a2a20', tr: [[22, 34]], parts: [
       { t: 'p', c: 'b', o: 1, pts: [[-58, -18], [-52, -22], [50, -22], [60, -10], [60, 10], [50, 22], [-52, 22], [-58, 18]] },
@@ -245,7 +245,7 @@ const AQ_TANKS = {
       { t: 'c', c: 'h', o: 1, x: -8, y: -17, r: 5 }, { t: 'c', c: 'h', o: 1, x: -8, y: 17, r: 5 },
       { t: 'r', c: '#14140e', x: 56, y: -6, w: 1.8, h: 3 }, { t: 'r', c: '#14140e', x: 56, y: 3, w: 1.8, h: 3 }, { t: 'em', x: -42, y: 0, s: 1.9 }],
       tur: [{ x: 16, r: 17, len: 60, gt: 5, guns: 1 }, { x: -24, r: 10, len: 30, gt: 3, guns: 1 }], mgf: [[-8, -17], [-8, 17], [57, -4.5], [57, 4.5]] })],
-  tkS: [{ name: 'Pole', pl: 'Pole tanks', cost: 1950, hp: 5600, dmg: 96, cd: 2.3, range: 360, splash: 42, speed: 11, w: 8, big: true, park: 80, len: 78, bar: [88, -62], mg: { dmg: 6, cd: 0.14, range: 260, acc: 0.5 },
+  tkS: [{ name: 'Pole', pl: 'Pole tanks', cost: 1650, hp: 4900, dmg: 90, cd: 2.3, range: 360, splash: 36, speed: 13, w: 8, big: true, park: 80, len: 78, bar: [88, -62], mg: { dmg: 6, cd: 0.14, range: 260, acc: 0.5 },
     role: 'Land cruiser with three turrets. Slow, enormous and very costly.' },
     aqd(78, 40, { base: '#2a2a20', tr: [[28, 40], [18, 26]], parts: [
       { t: 'p', c: 'b', o: 1, pts: [[-76, -15], [-68, -17], [66, -17], [78, -9], [78, 9], [66, 17], [-68, 17], [-76, 15]] },
