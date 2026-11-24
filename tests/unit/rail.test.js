@@ -8,6 +8,7 @@ import { stepUnits as step } from '../../src/sim/combat.js';
 import { spawn, walkFront, countAt, count, tanks } from '../../src/sim/geometry.js';
 import { infCap } from '../../src/sim/base.js';
 import { RAIL_Y, BARRIER_R, TRAINS, TRAIN_SLOTS, TRIP_SUPPLY, TRIP_FULL, ARMOR_TRAINS } from '../../src/data/rail.js';
+import { CHILL_DUR } from '../../src/data/units.js';
 import { rng } from '../../src/core/rng.js';
 
 const pay = d => Math.round(TRIP_SUPPLY * Math.min(1, d / TRIP_FULL)); // trip pay for a run d px out
@@ -528,6 +529,47 @@ describe('armoured train: weapons', () => {
     const a = rng.float();
     rng.reseed(5);
     expect(a).toBe(rng.float());
+  });
+});
+
+describe('armoured train: antarctica chill', () => {
+  const track3 = () => { G.owner[2] = G.owner[3] = 0; layTrack(0); layTrack(0); layTrack(0); };
+  let t;
+  beforeEach(() => {
+    newGame('aq', 'de', 'open', 7);
+    G.S.supplies = 2000;
+    track3();
+    C.buyArmorCmd();
+    t = G.trains[0];
+    t.x = G.LX[3];
+  });
+  const foe = dx => { const e = spawn(1, 'rifle', 4, true); e.x = t.x + dx; e.y = RAIL_Y; e.settled = true; e.fall = 0; return e; };
+
+  it('iron penguin shells chill', () => {
+    const e = foe(200);
+    stepTrains(0.05);
+    expect(G.shells).toContainEqual(expect.objectContaining({ side: 0, type: 'tank' }));
+    step(0.3);
+    expect(e.hp).toBeLessThan(e.max);
+    expect(e.chilled).toBe(CHILL_DUR);
+  });
+
+  it('iron penguin machine guns never chill', () => {
+    const e = foe(100); e.hp = e.max = 1e6;
+    t.cd = 99;
+    for (let i = 0; i < 200; i++) stepTrains(0.05);
+    expect(t.mgShots).toBeGreaterThan(0);
+    expect(e.hp).toBeLessThan(e.max);
+    expect(e.chilled).toBeUndefined();
+  });
+
+  it('trains are never chilled', () => {
+    const tr = { side: 1, kind: 'transport', dir: -1, x: t.x + 150, hp: 300, max: 300, riders: [], T: { ...TRAINS.de, speed: 0 } };
+    G.trains.push(tr);
+    G.shells.push({ x0: 0, y0: 0, x1: tr.x, y1: RAIL_Y, t: 1, dur: 1, side: 0, type: 'tank', dmg: 10, splash: 30 });
+    step(0.01);
+    expect(tr.hp).toBeLessThan(300);
+    expect('chilled' in tr).toBe(false);
   });
 });
 

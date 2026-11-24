@@ -2,7 +2,7 @@ import { TRAINS, ARMOR_TRAINS, AI_ARMOR_END, RAIL_Y, TRACK_COST, REPAIR_COST, TR
 import { WH, SLOTS, SLOTS5 } from '../../src/data/units.js';
 import { expect, it } from 'vitest';
 import { NATS, NAT } from '../../src/data/nations.js';
-import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
+import { STATS, tkList, SPECIAL, UT, CHILL_MULT, CHILL_DUR } from '../../src/data/units.js';
 import { CARDS, CARDTXT } from '../../src/data/cards.js';
 import { TECH, TECH_IDS } from '../../src/data/tech.js';
 import { MAPS } from '../../src/data/maps.js';
@@ -190,4 +190,35 @@ it('emplacement slots clear the rail lane and stay on the field', () => {
     for (const i of [m - 1, m + 1]) expect(Math.abs(ys[m] - ys[i])).toBeGreaterThanOrEqual(24);
     for (const y of ys) { expect(y).toBeGreaterThanOrEqual(22); expect(y).toBeLessThanOrEqual(278); }
   }
+});
+it('chill constants', () => {
+  expect([CHILL_MULT, CHILL_DUR]).toEqual([0.6, 4]);
+});
+it('antarctica heavy tanks are detuned', () => {
+  expect(STATS.aq.tkM).toEqual(expect.objectContaining({ cost: 650, hp: 1400, dmg: 40, splash: 24, speed: 18, cd: 1.4, range: 260, w: 3.5 }));
+  expect(STATS.aq.tkH).toEqual(expect.objectContaining({ cost: 850, hp: 2100, dmg: 52, splash: 27, speed: 16, cd: 1.8, range: 280, w: 5, big: true }));
+  expect(STATS.aq.tkS).toEqual(expect.objectContaining({ cost: 1650, hp: 4900, dmg: 90, splash: 36, speed: 13, cd: 2.3, range: 360, w: 8, big: true }));
+});
+it('ross and weddell are untouched', () => {
+  expect(STATS.aq.tkL).toEqual(expect.objectContaining({ cost: 160, hp: 380, dmg: 6, cd: 0.17, range: 270, speed: 30, w: 1, atk: 'mg', shell: 0, splash: 0 }));
+  expect(STATS.aq.tank).toEqual(expect.objectContaining({ cost: 460, hp: 950, dmg: 36, cd: 1.5, range: 240, splash: 22, speed: 20, w: 2, atk: 'tank', shell: 0.25, mg: { dmg: 5, cd: 0.22, range: 210, acc: 0.5 } }));
+});
+it('southern colossus is untouched', () => {
+  expect(SPECIAL.colossus).toEqual(expect.objectContaining({ cost: 2500, hp: 9000, dmg: 120, cd: 2.0, range: 400, splash: 50, speed: 9, atk: 'tank', shell: 0.25 }));
+});
+it('antarctica tank line keeps its unlock order', () => {
+  expect(tkList('aq')).toEqual(['tkL', 'tank', 'tkM', 'tkH', 'tkS']);
+});
+it('the pole stays the toughest tank in the game', () => {
+  const classes = ['tkL', 'tank', 'tkM', 'tkH', 'tkS'];
+  for (const n of NATS) {
+    if (n === 'aq') continue;
+    const max = Math.max(...classes.filter(k => STATS[n][k]).map(k => STATS[n][k].hp));
+    expect(STATS.aq.tkS.hp, n).toBeGreaterThan(max);
+  }
+  expect(STATS.de.tkS.hp).toBe(4500);
+  expect(STATS.aq.tkS.hp).toBe(4900);
+});
+it('antarctica blurb describes the chill', () => {
+  expect(NAT.aq.blurb).toBe('Defence: bunkers, two to a trench, that shelter six troops each. The bunker must be destroyed before they can be hurt. Only 20 fragile infantry, but 20 places for big snow-white tanks whose shells chill whatever they hit, infantry and tanks alike, slowing it down for a few seconds. Starts poor, but income grows faster than anyone’s. Superweapon: ' + (SW.aq ? SW.aq.name : 'Tsar Tank') + '.');
 });
