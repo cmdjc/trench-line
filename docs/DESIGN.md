@@ -153,7 +153,7 @@ Chosen by you: buildable railways. You lay track from your HQ one segment at a t
 - **Long March starting railway**: on the Long March only, each side starts with segments 1 to 5 (its first belt, `MAPS.march.startTrack`) laid for free and one free transport train at its HQ (`startTrains`). The track still runs only as far as the furthest held, intact segment, so the pre-laid stretch ahead of your troops comes into use as you take its trenches. A trench taken by the other side destroys the segment ending there and every one beyond it, whether or not you had held it, and it must be relaid at cost. Every other map starts with no track and no trains.
 - **Trains**: one national train per nation, bought at the HQ once there is track, shared cap `TRAIN_SLOTS` 3 per side. Base stats are cost 150, hp 300, capacity 6, speed 3 times a rifleman (138); each nation stays within 15%. Trains are armoured like a light tank, shuttle between the HQ and the end of the track, and wait about a second at the HQ for stragglers. A train never crosses a broken segment: if a break appears behind it, outbound riders get off where the train is and walk on, wounded riders get off and walk home, the train runs back to the forward edge of the break and waits there until it is repaired, and that trip pays nothing. Losing a trench is different: the train runs back to the new end of the track as before and its riders get off there. A destroyed train leaves a wreck on the rail lane, and losing one of yours shows "<train name> was destroyed.".
 - **Riders**: a foot soldier at the HQ waits for the train only when riding to the end of the track beats walking there, so track never slows reinforcements. Waiting troops stand still but aim and fire as normal. A stranded train is not waited for. Armour, emplacements and paratroopers never ride. Settled wounded below 40% health (`WOUNDED`) in the end trench board for the HQ and are healed to full on arrival, then sent back to their line. If a train is destroyed the riders get off where it stood, wounded stay wounded. A round trip that carried anyone pays on return, in proportion to how far out it went: `Math.round(TRIP_SUPPLY * min(1, far / TRIP_FULL))`, with `TRIP_SUPPLY` 15 and `TRIP_FULL` 1150 px (five default trench gaps). A one-trench shuttle pays 3 a trip, so three trains shuttling one trench earn 0.38 supplies a second, where a flat 15 a trip earned 1.88 (more than the base income of 3 per second at times).
-- **Enemy**: from 90 seconds (`AI_RAIL_T`) 10% of its income goes to a rail fund (`AI_RAIL_SHARE`). It repairs breaks first, buys its first train once its track is 2 long (before laying more), lays more track, and buys a second train at 3. The fund is capped at two trains' cost, the rest returns to units. It uses no random numbers.
+- **Enemy**: from 90 seconds (`AI_RAIL_T`) 15% of its income goes to a rail fund (`AI_RAIL_SHARE`). It repairs breaks first, buys its first train once its track is 2 long (before laying more), then keeps laying track whenever a new segment becomes available. Only once the front stalls (no segment can be laid) does it, with that first transport in and track at `AI_ARMOR_END`, save for an armoured train (§12) ahead of laying more or a second transport; track-laying resumes first if a new segment opens up again. A second transport follows once track reaches 3. The fund is capped at `max(2 × a transport's cost, the armoured train's cost)` (previously two trains' cost), the rest returns to units. It uses no random numbers. A train (transport or armoured) never crosses a broken segment behind it: rather than stopping or reversing, it simply stops in place at the forward edge of the break and waits there until it is repaired (commit `716365a`).
 - **Headless bot**: it lays track whenever supplies are at least 3 times the cost and the next trench is held, repairs breaks, saves for one train once the track is 2 long, and reports `track` (longest track laid), `trains` and `foeTrack`, `foeTrains` (trains bought, round trips, riders carried out and wounded carried home). `NORAIL=1` turns railways off for both sides, `FOENORAIL=1` only for the enemy and `BOTNORAIL=1` only for the bot, for scratch comparisons.
 - **Numbers changed**: `TRACK_COST`, from 40 to 20, and trip pay now scales with distance (above). At 40 the bot's track cost more than it saved on the Long March (it reached line 8.9 against 11.3 with no track, in 700 seconds). Train capacity 8 and speed 4 times a rifleman halved arrival times but needed many test changes, and the cheaper track alone was enough. The track cost sits near a cliff at 20: in the earlier Long March runs (before the starting railway) 20 was where track started to pay and 40 left the bot worse off than walking. Re-measured with the starting railway (gb v de and de v gb, seeds 1 to 6, 700 s cap), costs 15, 20, 25, 30 and 40 reached line 14.9, 11.8, 15.2, 13.3 and 11.1 with the bot laying about 18 segments at 15 to 30 and 15.8 at 40; none of those runs was won and 0 to 2 of 12 finished, so the cliff no longer shows as clearly but 40 is still the worst. Changing the cost is not part of this fix.
 
@@ -221,22 +221,40 @@ track with the transport. The full intent is in `docs/superpowers/specs/2026-11-
   same `canBuyTrain(side)` gate (track must be running, a slot must be free) — buying one is buying
   against the same pool as the other.
 - **Enemy priority order and fund cap**: `aiRail()` repairs a break first; then the first transport,
-  once track is 2 long; then, once that transport is in and the track reaches `AI_ARMOR_END` (2), the
-  armoured train, saved for ahead of laying more track or a second transport; then track; then a second
-  transport at end 3. The rail fund's cap (previously two trains' cost) now also covers the armoured
-  train: `max(2 × a transport's cost, the armoured train's cost)`, so the fund can actually accumulate
-  enough to buy one without first overflowing into ordinary unit spending.
+  once track is 2 long; then it keeps laying track whenever a new segment is available (a held, intact
+  trench to extend into). Only once the front stalls and no segment can be laid does it, with that first
+  transport in and track at `AI_ARMOR_END` (2), save for an armoured train, ahead of laying more (once a
+  new segment does open up, laying it again takes priority over the save) or a second transport; a
+  second transport still follows once track reaches 3. (A post-merge fix found the shipped code checked
+  the armoured-train save-up step *before* lay-track, so it froze track at whatever end it had the
+  moment a transport was bought and never laid another segment until it could afford an armoured train —
+  repeating every time that train was destroyed. The order above is the fix.) The rail fund's cap
+  (previously two trains' cost) now also covers the armoured train: `max(2 × a transport's cost, the
+  armoured train's cost)`, so the fund can actually accumulate enough to buy one without first
+  overflowing into ordinary unit spending.
+- **Real-battle check** (the plan's required verification): `gb` v `de`, plain and march, seeds 1–6,
+  `MAXS=900`. The enemy buys an armoured train and fires it in at least 4 of these 12 battles, with both
+  `shots > 0` and `mgShots > 0` in every battle where one was bought. One edge case is accepted even if
+  it shows 0 shots: a side that is steamrolling advances its infantry front faster than its armoured
+  train, which only ever holds at the end of *its own* track, can follow — so the train can lag far
+  behind its own front and stay out of weapon range for most of the battle. This is a real, expected
+  property of "holds at the end of track" when that side is winning fast, not a transient or
+  non-contiguous-recapture quirk. (It did not come up in the 12 battles behind the numbers above — every
+  armoured train bought there had `shots > 0` — but it remains an accepted outcome if a future run hits
+  it.)
 - **The bot rule** (`scripts/bot.mjs`): after its own railway block, the headless bot buys one armoured
   train once it has a transport running, no armoured train yet, `trackEnd(0) >= 3`, `canBuyTrain(0)`
   holds, and supplies are at least twice the train's cost. `BOTNOARMOR=1` disables it, for comparison
   runs; `NORAIL` implies `BOTNOARMOR`. Unlike the enemy AI, the bot spends from its single shared
   supply pool, so it only buys one when the normal game's economy comfortably affords it — it does not
-  pause other spending to save up for one.
+  pause other spending to save up for one. A separate `BOTFORCEARMOR=1` buys one as soon as it is
+  affordable and track exists at all, skipping that caution; it exists only to make the anti-goal check
+  below actually exercise the bot's own armoured train, and is not used for balance or this check.
 
 | Nation | Train | Cost | Hp | Speed | Cannon dmg | Cannon cd | Range | Splash | MG dmg | MG cd | MG range |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Britain | Naval armoured train | 380 | 600 | 138 | 25 | 1.6 | 270 | 20 | 5 | 0.2 | 280 |
-| Germany | Panzerzug | 420 | 630 | 125 | 26 | 1.8 | 260 | 20 | 5 | 0.18 | 290 |
+| Germany | Panzerzug | 420 | 680 | 125 | 27 | 1.75 | 260 | 22 | 5 | 0.18 | 290 |
 | France | Train blindé | 370 | 580 | 138 | 24 | 1.4 | 260 | 20 | 5 | 0.22 | 270 |
 | Russia | Zaamurets armoured train | 350 | 640 | 130 | 25 | 1.7 | 250 | 21 | 5 | 0.2 | 280 |
 | USA | Liberty armored train | 400 | 620 | 150 | 26 | 1.6 | 260 | 20 | 5.5 | 0.18 | 280 |
@@ -251,25 +269,33 @@ track with the transport. The full intent is in `docs/superpowers/specs/2026-11-
   Germany open +10). Two categories exceeded it: Austria-Hungary v Germany on march (−33.3) and Russia v
   Germany on plain (−33.3), both 3-seed samples where exactly one seed flips from a clean win to a long
   grind or loss once the enemy fields its armoured train and the player nation's economy is too weak to
-  field its own in time. Germany's own `ARMOR_TRAINS` entry was nerfed from the original
-  `{hp:680, dmg:27, cd:1.75, splash:22}` to `{hp:630, dmg:26, cd:1.8, splash:20}` (still within ±15% of
-  base) to bring the overall picture in from 7 violating categories to these 2; pushing Germany's stats
-  to the absolute floor of the ±15% band did not clear either remaining one, and a longer `MAXS=1800`
-  run confirmed both are a genuine balance shift (Russia v Germany plain seed 3 loses outright at 1720 s;
-  Austria-Hungary v Germany march seed 1 is still grinding at 1800 s against a 764 s baseline win), not
-  a 900 s budget artifact. These two are accepted, documented known limitations — the same treatment given
-  to a similar known limitation found during testing, where the track's end briefly sits out of weapon
-  range near the end of a long battle in one specific tested scenario — rather than chasing two
-  single-seed flips past the ±15% band.
+  field its own in time. A longer `MAXS=1800` run confirmed both are a genuine balance shift (Russia v
+  Germany plain seed 3 loses outright at 1720 s; Austria-Hungary v Germany march seed 1 is still grinding
+  at 1800 s against a 764 s baseline win), not a 900 s budget artifact. These two are accepted, documented
+  known limitations, rather than chasing two single-seed flips past the ±15% band. (An earlier pass
+  nerfed Germany's `ARMOR_TRAINS` entry below the plan's exact values, on the claim that it brought the
+  picture in from 7 violating categories to these 2. That claim did not hold up: re-running the full
+  144-battle matrix with the plan's original German stats at this point in the branch reproduces the
+  same 2 violations above, and reverting the nerf changes the outcome of only 1 of the 144 battles — us v
+  Germany open seed 2, won before and after. Germany's `ARMOR_TRAINS` entry is back to the plan's exact
+  values, `{hp:680, dmg:27, cd:1.75, splash:22}`, cost 420.)
 - **Anti-goal check**: an armoured train must not end up holding a trench alone, i.e. it must help the
-  attacker push rather than make trench fighting pointless. Compared the bot's own `sel` and `losses` on
-  plain and march, with its armour-buying rule on versus `BOTNOARMOR=1` off, same 48 seeds each (every
-  nation v Germany, seeds 1–3, both maps): avg `sel` 11.21 either way, avg `losses` 64.10 with the rule
-  against 64.27 without — statistically indistinguishable. The bot's own armoured train almost never
-  gets bought inside this matrix's economy and 900 s budget (1–2 of 48 runs), so the rule is close to
-  inert there; it never makes the bot's own trench fighting pointless. The imbalance found above comes
-  entirely from the *enemy* AI's armoured train, built and reviewed earlier in this stage; this pass only
-  re-confirmed its effect inside a wider matrix, it did not change that AI logic.
+  attacker push rather than make trench fighting pointless. The bot's own armoured-train rule almost
+  never fires in ordinary play (1–2 of 48 runs in the matrix below with it on), so comparing `sel` and
+  `losses` with that rule on versus off barely exercises the check at all. To actually test it, the bot
+  script gained a `BOTFORCEARMOR=1` flag that buys an armoured train as soon as it is affordable and
+  track exists (skipping the ordinary rule's "has a transport running" and "2× cost" caution), used only
+  for this targeted verification run, never for balance or Task 4's real-battle check. With it, the bot's
+  own armoured train is bought in 24 of 48 seeds (every nation v Germany, seeds 1–3, plain and march) —
+  a real, meaningfully exercised sample, not 1–2 of 48. Compared against the same 48 seeds with
+  `BOTNOARMOR=1` (identical to the ordinary rule's own 48-seed result, since it almost never buys one
+  anyway): avg `sel` 11.90 forced versus 11.13 without, avg `losses` 59.54 forced versus 64.58 without,
+  wins 5 versus 4 of 48. The bot's own armoured train, bought far more aggressively than it ever is in
+  real play, pushes slightly further and loses fewer troops, not more — it does not make holding a trench
+  pointless. The imbalance found above comes from the *enemy* AI's armoured train; Task 4, which built
+  that AI logic, was not independently reviewed before this stage merged, and a post-merge fix wave is
+  what first re-verified the enemy's real-battle behaviour (including the track-laying freeze fixed
+  above) the way the plan required.
 
 ## 13. Tunnel trenches (Long March)
 

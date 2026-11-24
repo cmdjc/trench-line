@@ -34,6 +34,10 @@ newGame(me, foe, map, seed);
 const NORAIL = !!process.env.NORAIL; // scratch comparison: neither side builds track
 const BOTNORAIL = NORAIL || !!process.env.BOTNORAIL; // BOTNORAIL: only the enemy builds
 const BOTNOARMOR = NORAIL || !!process.env.BOTNOARMOR; // BOTNOARMOR: comparison runs with no bot armoured train
+// BOTFORCEARMOR: buy one as soon as it is affordable and track exists, skipping the "has a transport
+// running" and "2x cost" caution, so the anti-goal check (an armoured train must not make holding a
+// trench pointless) can actually be exercised -- in ordinary play the bot almost never buys one at all.
+const BOTFORCEARMOR = !!process.env.BOTFORCEARMOR;
 if (NORAIL || process.env.FOENORAIL) G.ai.noRail = true; // FOENORAIL: only the enemy goes without
 const brain = makeRng((seed ^ 0xB07) >>> 0); // decisions stay off the battle stream
 
@@ -96,10 +100,15 @@ for (let sec = 0; sec < MAXS && G.running; sec++) {
   }
   // armoured train: once a transport is running, track reaches 3, and supplies are well ahead of its cost
   if (!BOTNOARMOR) {
-    const hasTransport = G.trains.some(t => t.side === 0 && !isArmor(t));
     const hasArmor = G.trains.some(t => t.side === 0 && isArmor(t));
-    if (hasTransport && !hasArmor && trackEnd(0) >= 3 && canBuyTrain(0) &&
-        G.S.supplies >= 2 * ARMOR_TRAINS[G.nation[0]].cost) commands.buyArmorCmd();
+    if (BOTFORCEARMOR) {
+      if (!hasArmor && trackEnd(0) >= 1 && canBuyTrain(0) &&
+          G.S.supplies >= ARMOR_TRAINS[G.nation[0]].cost) commands.buyArmorCmd();
+    } else {
+      const hasTransport = G.trains.some(t => t.side === 0 && !isArmor(t));
+      if (hasTransport && !hasArmor && trackEnd(0) >= 3 && canBuyTrain(0) &&
+          G.S.supplies >= 2 * ARMOR_TRAINS[G.nation[0]].cost) commands.buyArmorCmd();
+    }
   }
   watchRail();
   for (const i of [0, 1]) peak[i] = Math.max(peak[i], G.track[i].end);
