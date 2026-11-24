@@ -382,19 +382,30 @@ describe('enemy railway', () => {
     expect(canLay(1)).not.toBe('');
     buyTicks(2); expect(G.track[1].end).toBe(0); expect(trackEnd(1)).toBe(0);
   });
-  it('buys an armoured train at end 3 after its first transport, saving for it', () => {
-    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 3; buyTrain(1);
+  it('buys an armoured train once the front stalls, after its first transport, saving for it', () => {
+    // only the trenches up to end 3 are held, so canLay(1) is blocked and the front cannot be laid further
+    setup(); G.owner.fill(0); for (const k of [1, 2, 3]) G.owner[G.HQI - k] = 1; G.track[1].end = 3; buyTrain(1);
     G.ai.railFund = acost() - 1; buyTicks(3);
     expect(armors()).toBe(0); expect(mineTrains()).toBe(1);
     G.ai.railFund = acost(); buyTicks();
     expect(armors()).toBe(1); expect(G.ai.railFund).toBe(0);
   });
-  it('buys an armoured train right at the tuned AI_ARMOR_END threshold', () => {
-    setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = AI_ARMOR_END; buyTrain(1);
+  it('buys an armoured train right at the tuned AI_ARMOR_END threshold, once the front stalls', () => {
+    const k0 = Math.max(AI_ARMOR_END, 1);
+    setup(); G.owner.fill(0); for (let k = 1; k <= k0; k++) G.owner[G.HQI - k] = 1;
+    G.track[1].end = AI_ARMOR_END; buyTrain(1);
     G.ai.railFund = acost() - 1; buyTicks(3);
     expect(armors()).toBe(0); expect(mineTrains()).toBe(1);
     G.ai.railFund = acost(); buyTicks();
     expect(armors()).toBe(1); expect(G.ai.railFund).toBe(0);
+  });
+  it('keeps laying track while it can, instead of freezing to save for an armoured train', () => {
+    // the whole board is held (the front never stalls), so track should keep growing well past
+    // AI_ARMOR_END instead of the AI pausing track-laying forever to save for an armoured train
+    setup(); G.owner.fill(1); G.owner[0] = 0; buyTrain(1);
+    for (let i = 0; i < 10; i++) { G.ai.railFund = 999; buyTicks(); }
+    expect(G.track[1].end).toBeGreaterThan(AI_ARMOR_END + 5);
+    expect(armors()).toBe(0); // never paused mid-growth to buy armour while track could still be laid
   });
   it('no armoured train without a transport first', () => {
     setup(); G.owner.fill(1); G.owner[0] = 0; G.track[1].end = 3; G.ai.railFund = 999;

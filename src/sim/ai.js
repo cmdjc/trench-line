@@ -87,9 +87,10 @@ function aiGun() {
 }
 
 // Railway: paid from its own fund after 90 s, one purchase per buy tick, no rng. Repair a break first; the first
-// train is bought once track is 2 long (before laying more); once a transport is in and track reaches
-// AI_ARMOR_END, an armoured train is next (saved for ahead of laying or a second transport); then lay track, and
-// finally a second transport at end 3.
+// train is bought once track is 2 long (before laying more); after that, track keeps being laid whenever a new
+// segment is available; only once the front stalls and no segment can be laid does it, with a transport already
+// in and track at AI_ARMOR_END, save for an armoured train (ahead of a second transport); a second transport
+// still follows at end 3.
 function aiRail() {
   const ai = G.ai;
   if (G.S.t < AI_RAIL_T || ai.noRail) return;
@@ -105,12 +106,12 @@ function aiRail() {
     if (ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
     return;
   }
-  if (mine >= 1 && !armor && end >= AI_ARMOR_END && canBuyTrain(1)) {   // then an armoured train: save for it,
-    if (ai.railFund >= A.cost) { ai.railFund -= A.cost; buyArmor(1); } // ahead of laying more track or a 2nd transport
+  if (!canLay(1)) {   // keep laying whenever a new segment is available, so the armour save below never
+    if (ai.railFund >= TRACK_COST) { ai.railFund -= TRACK_COST; layTrack(1); } // freezes track at its current end
     return;
   }
-  if (!canLay(1)) {
-    if (ai.railFund >= TRACK_COST) { ai.railFund -= TRACK_COST; layTrack(1); }
+  if (mine >= 1 && !armor && end >= AI_ARMOR_END && canBuyTrain(1)) {   // only once no further track can be laid
+    if (ai.railFund >= A.cost) { ai.railFund -= A.cost; buyArmor(1); } // does it save for an armoured train instead
     return;
   }
   if (mine === 1 && end >= 3 && canBuyTrain(1) && ai.railFund >= T.cost) { ai.railFund -= T.cost; buyTrain(1); }
