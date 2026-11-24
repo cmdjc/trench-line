@@ -34,7 +34,7 @@
   |---|---|---|---|---|---|---|
   | `tkM` | Vinson | 760 → **650** | 1800 → **1400** | 48 → **40** | 26 → **24** | 17 → **18** |
   | `tkH` | Erebus | 1150 → **850** | 3100 → **2100** | 70 → **52** | 34 → **27** | 14 → **16** |
-  | `tkS` | Pole | 1950 → **1350** | 5600 → **3600** | 96 → **62** | 42 → **31** | 11 → **14** |
+  | `tkS` | Pole | 1950 → **1650** | 5600 → **4900** | 96 → **90** | 42 → **36** | 11 → **13** |
 
 - **Untouchable:** the `AQ_TANKS.tkL` (Ross) and `AQ_TANKS.tank` (Weddell) rows stay byte-identical. `SPECIAL.colossus` in `src/data/units.js`, `ARMOR_TRAINS.aq` in `src/data/rail.js`, `src/sim/rail.js` and `src/sim/superweapons.js` get no edits at all. `git diff main -- src/sim/rail.js src/data/rail.js src/sim/superweapons.js src/data/superweapons.js` must be empty at the end of every task.
 - **Blurb copy** (exact; replaces the whole `aq` `blurb` string):
@@ -111,8 +111,9 @@
   - `ross and weddell are untouched`: `STATS.aq.tkL` matches `objectContaining({ cost: 160, hp: 380, dmg: 6, cd: 0.17, range: 270, speed: 30, w: 1, atk: 'mg', shell: 0, splash: 0 })`. `STATS.aq.tank` matches `objectContaining({ cost: 460, hp: 950, dmg: 36, cd: 1.5, range: 240, splash: 22, speed: 20, w: 2, atk: 'tank', shell: 0.25, mg: { dmg: 5, cd: 0.22, range: 210, acc: 0.5 } })`.
   - `southern colossus is untouched`: `SPECIAL.colossus` matches `objectContaining({ cost: 2500, hp: 9000, dmg: 120, cd: 2.0, range: 400, splash: 50, speed: 9, atk: 'tank', shell: 0.25 })`.
   - `antarctica tank line keeps its unlock order`: `tkList('aq')` equals `['tkL', 'tank', 'tkM', 'tkH', 'tkS']`.
+  - `the pole stays the toughest tank in the game`: for every nation key in `NATS`, compute the max `hp` across that nation's own tank-class entries (`tkL`, `tank`, `tkM`, `tkH`, `tkS` — whichever exist on `STATS[nation]`, after national overrides). `STATS.aq.tkS.hp` (4900) must be strictly greater than every other nation's maximum, including Germany's Ratte (`STATS.de.tkS.hp`, 4500). This is the real, pinned version of the spec's "Pole stays the toughest tank in the game" claim — not a prose assertion.
   - `antarctica blurb describes the chill`: `NAT.aq.blurb` equals the exact Global Constraints string.
-- [ ] **Step 2:** Run `npx vitest run tests/unit/data.test.js`. Expect FAIL on the detune and blurb tests only. The untouched, colossus and order tests already pass, because they guard against regressions.
+- [ ] **Step 2:** Run `npx vitest run tests/unit/data.test.js`. Expect FAIL on the detune, blurb and toughest-tank tests. The untouched, colossus and order tests already pass, because they guard against regressions.
 - [ ] **Step 3:** Edit the three `AQ_TANKS` rows, the comment and the blurb. Touch no other field.
 - [ ] **Step 4:** Run `npm run check`. Expect PASS. Run `git diff main -- src/data/units.js`. Inside `AQ_TANKS`, the diff shows only the `tkM`/`tkH`/`tkS` stat lines, plus Task 1's constants and the comment.
 - [ ] **Step 5:** Commit `feat: detune antarctica's three heaviest tanks; chill blurb`.
@@ -164,4 +165,4 @@
   - Blurb: Task 2.
   - Determinism: Task 1 test, plus the Task 3 control rows.
   - Bot tuning: Task 3.
-- **Known spec tension, not resolved here:** the spec says Pole "stays the single biggest tank in the regular, buyable tank roster by a clear margin". Its own target numbers (3600 hp, 62 dmg) put Pole below Germany's Ratte (4500 hp, 100 dmg). The plan uses the spec's table as instructed and pins no "biggest tank" test. See the open question raised with the plan.
+- **Pole stays the toughest tank in the game:** the spec's target numbers were corrected before implementation (Pole now targets 4900 hp, above every other nation's heaviest tank, including Germany's Ratte at 4500 hp). Task 2 adds a test that reads every nation's heaviest tank class and asserts Pole's `hp` is the maximum — a real, pinned check, not a prose claim.

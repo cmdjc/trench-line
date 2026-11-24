@@ -84,12 +84,17 @@ slower for a few seconds.
   |---|---|---|
   | Vinson (`tkM`) | cost 760, hp 1800, dmg 48, splash 26, speed 17 | cost ~650, hp ~1400, dmg ~40, splash ~24, speed ~18 |
   | Erebus (`tkH`) | cost 1150, hp 3100, dmg 70, splash 34, speed 14 | cost ~850, hp ~2100, dmg ~52, splash ~27, speed ~16 |
-  | Pole (`tkS`) | cost 1950, hp 5600, dmg 96, splash 42, speed 11 | cost ~1350, hp ~3600, dmg ~62, splash ~31, speed ~14 |
+  | Pole (`tkS`) | cost 1950, hp 5600, dmg 96, splash 42, speed 11 | cost ~1650, hp ~4900, dmg ~90, splash ~36, speed ~13 |
 
-  Ross (`tkL`) and Weddell (`tank`) are unchanged. Pole stays the single
-  biggest tank in the regular, buyable tank roster by a clear margin — just
-  not by a factor of two or three over the next-largest thing anyone else
-  fields. (Antarctica's superweapon, the Southern Colossus, is bigger
+  Ross (`tkL`) and Weddell (`tank`) are unchanged. Pole stays the toughest
+  (highest-hp) tank in the game, and among the costliest, by a real but
+  modest margin over the next-biggest thing anyone else fields (Germany's
+  Ratte: cost 1500, hp 4500, dmg 100) — not the 2-3x margin it currently
+  has. (Checked against every nation's heaviest tank, not just Germany's:
+  this is the comparison that actually matters, and the original target
+  numbers in an earlier draft of this table dropped Pole *below* Ratte,
+  which contradicted this very claim — caught before implementation, fixed
+  here.) (Antarctica's superweapon, the Southern Colossus, is bigger
   still, but it's its own category, same as every other nation's
   superweapon — it isn't part of this comparison.)
 
