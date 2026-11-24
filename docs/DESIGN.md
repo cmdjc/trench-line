@@ -361,17 +361,17 @@ Chosen by you: the railway runs through the middle of the battlefield, trenches 
 ## 15. Antarctica chill
 
 Chosen by you: Antarctica tank shells chill what they hit, and the three heaviest Antarctica tanks (Vinson,
-Erebus, Pole) are detuned from their earlier extremes. Intent: `docs/superpowers/sdd/2026-11-24-antarctica-chill/`
-(design, implementation plan and this task's brief).
+Erebus, Pole) are detuned from their earlier extremes. Intent: `docs/superpowers/specs/2026-11-24-antarctica-chill-design.md`.
 
-- **The mechanic**: every Antarctica tank cannon (the five tank variants, the Iron Penguin armoured train's
-  cannon, and the Southern Colossus's turrets) sets any unit it damages to `CHILL_MULT` (0.6, i.e. 60%) of
-  its walking speed for `CHILL_DUR` (4) s, armour included. It reuses the existing `hurt()`/shell-splash hit
-  loop rather than adding a new one, so the Iron Penguin and the Southern Colossus inherit it automatically
-  with no separate wiring. A repeat hit refreshes the timer rather than stacking a second debuff. Machine
-  gun fire (the sidearm on every Antarctica tank, and `fireArmor`'s machine-gun branch) never applies chill,
-  and trains are never chilled, only slowed-down-walking units. The effect uses no new rng, so battles stay
-  fully deterministic for a given seed.
+- **The mechanic**: every Antarctica tank cannon (four of the five tank variants, the Iron Penguin armoured
+  train's cannon, and the Southern Colossus's turrets) sets any unit it damages to `CHILL_MULT` (0.6, i.e.
+  60%) of its walking speed for `CHILL_DUR` (4) s, armour included. It reuses the existing `hurt()`/shell-splash
+  hit loop rather than adding a new one, so the Iron Penguin and the Southern Colossus inherit it automatically
+  with no separate wiring. A repeat hit refreshes the timer rather than stacking a second debuff. Ross
+  (`tkL`) has no cannon at all — it's built `mgOnly` (`atk: 'mg'`, `shell: 0`), so its only guns are machine
+  guns, and it never fires the shell-splash hit that triggers chill. Machine gun fire in general (including
+  `fireArmor`'s machine-gun branch) never applies chill, and trains are never chilled, only slowed-down-walking
+  units. The effect uses no new rng, so battles stay fully deterministic for a given seed.
 - **Detune table** (Vinson, Erebus, Pole only; Ross and Weddell are unchanged): Pole remains the toughest
   tank in the game by hp, now a pinned cross-nation test rather than a prose claim (`STATS.aq.tkS.hp` is the
   max of every nation's heaviest tank class, 4900 vs. Germany's Ratte at 4500).
@@ -431,15 +431,39 @@ Erebus, Pole) are detuned from their earlier extremes. Intent: `docs/superpowers
   all 172 battles' `won` flags matched exactly), well inside the ±20-point bar. The two control rows are
   byte-identical JSON between baseline and branch, confirming no non-`aq` path moved. No tuning of
   `CHILL_MULT`, `CHILL_DUR` or the detuned stats was needed.
-- **Why the detune and the chill barely move win rate here**: a one-off instrumented run (not committed)
-  counted enemy-AI tank spawns by type across the same `X v aq` matrix, on both `main` and this branch.
-  Erebus (`tkH`) and Pole (`tkS`) were fielded by the enemy AI **zero times in 76 battles, on both branches**
-  — `AI_UNLOCK` gates them at 640 s and 1000 s respectively, `tkS` can never unlock inside this matrix's
-  900 s cap, and even where a match ran the full 900 s (several march/plain seeds), the AI's armour-limit
-  and affordability gates (`aiCost(k) <= ai.money * 2 + 60`, `full(1, k)`) kept it from ever buying an
-  Erebus. The detuned numbers and the chill debuff on the bigger tanks are therefore inert in this budget;
-  the small, non-zero time/`sel`/`losses` deltas seen above come from chill on the tanks that *do* get
-  fielded (Ross, Weddell), which the mechanic always covered and which Task 2 did not change.
+- **Why the detune and the chill barely move win rate here — the real reason**: a one-off instrumented run
+  (not committed) counted enemy-AI tank spawns by type across the same `X v aq` matrix, on both `main` and
+  this branch. Erebus (`tkH`) and Pole (`tkS`) were fielded by the enemy AI **zero times in 76 battles, on
+  both branches**, and this is not an artifact of the 900 s time cap used here: the same result holds at
+  `MAXS=1800` too (76 battles, zero Vinsons, zero Erebus, zero Poles fielded by the enemy). The actual cause
+  is structural, not time-budget: the enemy AI's armour-slot cap (20 trained tank slots) fills up entirely
+  with cheap Ross before it can ever afford or choose to buy Vinson, Erebus or Pole, at any battle length.
+  So the 172-battle matrix above confirms chill's mechanics work and don't break anything, but it does **not**
+  balance-test the detuned heavy-tank stats themselves — the enemy AI structurally never buys those tanks,
+  at this budget or any other. The small, non-zero time/`sel`/`losses` deltas seen in the table come from
+  the enemy's Iron Penguin (armoured train) being chilled or chilling, not from Ross: Ross is mg-only
+  (`atk: 'mg'`, `shell: 0`) and cannot ever trigger chill. Of the battles that differ between `main` and this
+  branch at `MAXS=1800`, 11 of 11 had the enemy's Iron Penguin fielded; only 2 had a Weddell (the one
+  Antarctica tank below `tkM` that fires a cannon and can chill).
+- **What a human fielding the heavies actually sees**: because the headless bot's own `pref` list never buys
+  past the base `tank`, the matrix above can't say anything about Vinson/Erebus/Pole either. A separate bot
+  configuration that forces Antarctica to prefer `tkS`/`tkH`/`tkM` over cheaper units was run across all 7
+  nations, open map, seeds 1–10, `MAXS=1800`, main vs. this branch:
+
+  | Opponent | Win rate, main → branch |
+  |---|---|
+  | Britain | 40% → 50% |
+  | Germany | 90% → 90% |
+  | France | 20% → 30% |
+  | Russia | 20% → 40% |
+  | USA | 40% → 40% |
+  | Austria-Hungary | 20% → 10% |
+  | Italy | 40% → 60% |
+
+  Overall 38.6% → 45.7%. The branch bought roughly twice as many heavies (Vinson 41→77, Erebus 26→51, Pole
+  6→15 across the run) because the lower cost outweighs the lower stats. In other words, for a human who
+  actually fields Antarctica's heavy tanks, this detune lands closer to a mild buff than a nerf in net
+  practical effect, even though every individual unit's raw stats went down.
 
 ## Known quirks
 
