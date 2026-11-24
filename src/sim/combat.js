@@ -4,7 +4,7 @@
 // miss-tracer quirk (DESIGN.md "Known quirks" #3): the faint tracer is now
 // the else-branch of the hit roll, not an unconditional extra.
 
-import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_INC } from '../data/units.js';
+import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_INC, CHILL_MULT, CHILL_DUR } from '../data/units.js';
 import { G, isDbl, toast, hidden } from './state.js';
 import { isTrench, posX, exposed } from './geometry.js';
 import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
@@ -71,6 +71,7 @@ export function stepUnits(dt) {
     const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
     if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
     else if (u.scramble > 0) u.scramble -= dt;
+    if (u.chilled > 0) u.chilled -= dt;
     const sacc = u.scramble > 0 ? DROP_SCRAMBLE_ACC : 1;
     let best = null, bd = 1e9, blocked = false;
     for (const e of G.units) {
@@ -112,7 +113,7 @@ export function stepUnits(dt) {
     const dy = ty - u.y;
     if (falling || u.waiting) u.moving = false; // waiting at the HQ for a train: stands still, still fires
     else if ((Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) && !blocked) {
-      const sp = T.speed * (T.armor ? 1 : m.speed) * dt * wireSlow(u);
+      const sp = T.speed * (T.armor ? 1 : m.speed) * dt * wireSlow(u) * (u.chilled > 0 ? CHILL_MULT : 1);
       let nx = u.x + sgn * Math.min(sp, Math.abs(dx));
       if (limX !== null) nx = sgn > 0 ? Math.min(nx, Math.max(u.x, limX)) : Math.max(nx, Math.min(u.x, limX));
       /* hedgehogs: an enemy-held double trench stops tanks short of its belt (giants roll over) */
@@ -224,7 +225,8 @@ export function stepUnits(dt) {
     }
     if (s.base && !s.noBase) hurtBase(1 - s.side, s.dmg);
     else {
-      for (const e of G.units) { if (e.side === s.side || e.hp <= 0 || hidden(e)) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) hurt(e, s.dmg, s.type, null, s.cov, true); }
+      const chill = G.nation[s.side] === 'aq' && s.type === 'tank';
+      for (const e of G.units) { if (e.side === s.side || e.hp <= 0 || hidden(e)) continue; if (Math.hypot(e.x - s.x1, e.y - s.y1) <= s.splash) { hurt(e, s.dmg, s.type, null, s.cov, true); if (chill) e.chilled = CHILL_DUR; } }
       for (const t of G.trains) if (t.side !== s.side && Math.hypot(t.x - s.x1, RAIL_Y - s.y1) <= s.splash) hurtTrain(t, s.dmg, s.type);
     }
   }

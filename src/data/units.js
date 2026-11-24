@@ -70,6 +70,8 @@ NU.ah = {};
 /* ---------- tank variants: every country fields several kinds of armour ---------- */
 /* w = how much of the armour limit a vehicle uses. draw = parts for the generic tank renderer. */
 export const TKB = { pl: 'tanks', hp: 300, dmg: 20, cd: 1.5, range: 220, splash: 18, speed: 26, shell: 0.25, moveFire: true, armor: true, atk: 'tank', w: 1, len: 21 };
+// Antarctica tank shells apply a temporary speed debuff ("chill") to anything they damage.
+export const CHILL_MULT = 0.6, CHILL_DUR = 4;
 export function tkv(o, d, mgOnly) {
   const T = Object.assign({}, TKB, mgOnly ? { atk: 'mg', shell: 0, splash: 0, acc: 0.5 } : {}, o);
   T.draw = d; const m = d.tur && d.tur[0]; if (m) T.turret = { x: m.x, len: m.len };

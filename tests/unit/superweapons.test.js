@@ -3,7 +3,7 @@ import { newGame, G } from '../../src/sim/state.js';
 import { spawn, tanks } from '../../src/sim/geometry.js';
 import { stepUnits } from '../../src/sim/combat.js';
 import { targetFor, aimPoint, swBlock, useSW, detonate, stepSW, swCost } from '../../src/sim/superweapons.js';
-import { WH } from '../../src/data/units.js';
+import { WH, CHILL_DUR } from '../../src/data/units.js';
 import { raise } from '../../src/sim/base.js';
 import { fireSuperweapon } from '../../src/sim/commands.js';
 import { bus } from '../../src/core/events.js';
@@ -354,5 +354,24 @@ describe('national superweapon upgrades', () => {
     G.S.t = 300; G.shells = [];
     expect(useSW(0, { x: 300, y: 100 })).toBe(true);
     expect(G.sw[0].cd).toBe(65);
+  });
+});
+
+describe('antarctica chill', () => {
+  it('southern colossus shells chill', () => {
+    game('aq', 'gb');
+    G.units = []; G.shells = [];
+    G.bases[0].cd = G.bases[1].cd = 999;
+    const c = spawn(0, 'colossus', 3, true); c.cd = 0.001;
+    const foe = spawn(1, 'rifle', 7, true);
+    foe.x = c.x + 250; foe.y = c.y; foe.tx = foe.x; foe.ly = foe.y;
+    foe.hp = foe.max = 1e6;
+    let sawTankShell = false;
+    for (let i = 0; i < 20 && !(foe.chilled > 0); i++) {
+      stepUnits(0.05);
+      if (G.shells.some(s => s.side === 0 && s.type === 'tank')) sawTankShell = true;
+    }
+    expect(sawTankShell).toBe(true);
+    expect(foe.chilled).toBe(CHILL_DUR);
   });
 });

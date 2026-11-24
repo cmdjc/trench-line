@@ -7,7 +7,7 @@ import { bus } from '../../src/core/events.js';
 import { G, newGame } from '../../src/sim/state.js';
 import { spawn, trenchX } from '../../src/sim/geometry.js';
 import { stepUnits } from '../../src/sim/combat.js';
-import { WH, GARR_T, SPECIAL } from '../../src/data/units.js';
+import { WH, GARR_T, SPECIAL, CHILL_MULT, CHILL_DUR } from '../../src/data/units.js';
 
 const toasts = [];
 bus.on('toast', m => toasts.push(m));
@@ -421,5 +421,150 @@ describe('barrage card', () => {
     expect(deep.x).toBeLessThan(back.x);
     stepUnits(1);
     expect(G.shells.length).toBe(3); // no new volley inside the window
+  });
+});
+
+describe('antarctica chill', () => {
+  beforeEach(() => {
+    newGame('aq', 'de', 'open', 1);
+    G.units.length = 0;
+    G.shells.length = 0;
+    G.bases[0].cd = G.bases[1].cd = 999;
+  });
+
+  /** drops a landed shell straight onto e's position */
+  function land(side, type, e, extra = {}) {
+    const s = { x0: 0, y0: 0, x1: e.x, y1: e.y, t: 1, dur: 1, side, type, dmg: 1, splash: 40, ...extra };
+    G.shells.push(s);
+    return s;
+  }
+
+  it('chills armour and infantry alike', () => {
+    const rifle = mute(pin(spawn(1, 'rifle', 5, true)));
+    const tank = mute(pin(spawn(1, 'tkL', 5, true)));
+    tank.x = rifle.x; tank.y = rifle.y; tank.tx = tank.x; tank.ly = tank.y;
+    const far = mute(pin(spawn(1, 'rifle', 5, true)));
+    far.x = rifle.x + 300; far.tx = far.x;
+    const friend = spawn(0, 'rifle', 5, true);
+    friend.x = rifle.x; friend.y = rifle.y;
+    const rHp = rifle.hp, tHp = tank.hp, fHp = friend.hp;
+
+    land(0, 'tank', rifle);
+    stepUnits(0.01);
+
+    expect(rifle.chilled).toBe(CHILL_DUR);
+    expect(rifle.hp).toBeLessThan(rHp);
+    expect(tank.chilled).toBe(CHILL_DUR);
+    expect(tank.hp).toBeLessThan(tHp);
+    expect(far.chilled).toBeUndefined();
+    expect(friend.chilled).toBeUndefined();
+    expect(friend.hp).toBe(fHp);
+  });
+
+  it('only aq tank shells chill', () => {
+    const e1 = mute(pin(spawn(1, 'rifle', 5, true)));
+    land(0, 'mortar', e1);
+    stepUnits(0.01);
+    expect(e1.chilled).toBeUndefined();
+
+    newGame('gb', 'de', 'open', 1);
+    G.units.length = 0; G.shells.length = 0; G.bases[0].cd = G.bases[1].cd = 999;
+    const e2 = mute(pin(spawn(1, 'rifle', 5, true)));
+    land(0, 'tank', e2);
+    stepUnits(0.01);
+    expect(e2.chilled).toBeUndefined();
+
+    newGame('aq', 'de', 'open', 1);
+    G.units.length = 0; G.shells.length = 0; G.bases[0].cd = G.bases[1].cd = 999;
+    const e3 = mute(pin(spawn(1, 'rifle', 5, true)));
+    land(0, 'tank', e3, { base: true });
+    stepUnits(0.01);
+    expect(e3.chilled).toBeUndefined();
+  });
+
+  it('a repeat hit refreshes, never stacks', () => {
+    const e = mute(pin(spawn(1, 'rifle', 5, true)));
+    e.chilled = 1;
+    land(0, 'tank', e);
+    stepUnits(0.01);
+    expect(e.chilled).toBe(CHILL_DUR);
+
+    land(0, 'tank', e);
+    land(0, 'tank', e);
+    stepUnits(0.01);
+    expect(e.chilled).toBe(CHILL_DUR);
+  });
+
+  /** fresh lone unit walking 60 px toward tx, clear of hedgehogs and every other unit */
+  function freshWalker(type) {
+    G.units.length = 0; G.shells.length = 0;
+    const e = mute(spawn(1, type, 5, true));
+    e.tx = e.x - 60; e.ly = e.y; e.settled = false;
+    return e;
+  }
+  function stepDist(e, dt) { const x0 = e.x; stepUnits(dt); return x0 - e.x; }
+
+  it('chilled units walk at CHILL_MULT speed', () => {
+    for (const type of ['rifle', 'tkL']) {
+      const e = freshWalker(type);
+      const d1 = stepDist(e, 0.1);
+      e.chilled = CHILL_DUR;
+      const d2 = stepDist(e, 0.1);
+      expect(d2 / d1).toBeCloseTo(CHILL_MULT, 6);
+      expect(e.chilled).toBeCloseTo(CHILL_DUR - 0.1, 9);
+    }
+  });
+
+  it('chill wears off after CHILL_DUR', () => {
+    const base = freshWalker('rifle');
+    const d1 = stepDist(base, 0.1);
+
+    const e = freshWalker('rifle');
+    e.chilled = 0.05;
+    const d2 = stepDist(e, 0.1);
+    expect(e.chilled).toBeLessThanOrEqual(0);
+    expect(d2).toBe(d1);
+
+    const after = e.chilled;
+    stepUnits(0.1);
+    expect(e.chilled).toBe(after);
+  });
+
+  it('instant-hit fire never chills', () => {
+    const w = spawn(0, 'tank', 3, true); w.cd = 99;
+    const foeA = pin(spawn(1, 'rifle', 7, true));
+    foeA.x = w.x + 100; foeA.y = w.y; foeA.tx = foeA.x; foeA.hp = foeA.max = 1e6;
+    const h0 = foeA.hp;
+    for (let i = 0; i < 200; i++) { stepUnits(0.05); expect(G.shells.length).toBe(0); }
+    expect(foeA.hp).toBeLessThan(h0);
+    expect(foeA.chilled).toBeUndefined();
+
+    G.units.length = 0; G.shells.length = 0;
+    const r = spawn(0, 'tkL', 3, true); r.cd = 0.001;
+    const foeB = pin(spawn(1, 'rifle', 7, true));
+    foeB.x = r.x + 100; foeB.y = r.y; foeB.tx = foeB.x; foeB.hp = foeB.max = 1e6;
+    const h1 = foeB.hp;
+    let sawShell = false;
+    for (let i = 0; i < 100; i++) { stepUnits(0.05); if (G.shells.length) sawShell = true; }
+    expect(foeB.hp).toBeLessThan(h1);
+    expect(sawShell).toBe(false);
+    expect(foeB.chilled).toBeUndefined();
+  });
+
+  it('chill draws no rng', () => {
+    function once(nat) {
+      newGame(nat, 'de', 'open', 1);
+      G.units.length = 0; G.shells.length = 0;
+      G.bases[0].cd = G.bases[1].cd = 999;
+      const e = mute(pin(spawn(1, 'rifle', 5, true)));
+      land(0, 'tank', e);
+      rng.reseed(5);
+      stepUnits(0.01);
+      return { v: rng.float(), chilled: e.chilled };
+    }
+    const a = once('aq'), b = once('gb');
+    expect(a.v).toBe(b.v);
+    expect(a.chilled).toBe(CHILL_DUR);
+    expect(b.chilled).toBeUndefined();
   });
 });

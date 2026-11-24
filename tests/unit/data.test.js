@@ -2,7 +2,7 @@ import { TRAINS, ARMOR_TRAINS, AI_ARMOR_END, RAIL_Y, TRACK_COST, REPAIR_COST, TR
 import { WH, SLOTS, SLOTS5 } from '../../src/data/units.js';
 import { expect, it } from 'vitest';
 import { NATS, NAT } from '../../src/data/nations.js';
-import { STATS, tkList, SPECIAL, UT } from '../../src/data/units.js';
+import { STATS, tkList, SPECIAL, UT, CHILL_MULT, CHILL_DUR } from '../../src/data/units.js';
 import { CARDS, CARDTXT } from '../../src/data/cards.js';
 import { TECH, TECH_IDS } from '../../src/data/tech.js';
 import { MAPS } from '../../src/data/maps.js';
@@ -190,4 +190,7 @@ it('emplacement slots clear the rail lane and stay on the field', () => {
     for (const i of [m - 1, m + 1]) expect(Math.abs(ys[m] - ys[i])).toBeGreaterThanOrEqual(24);
     for (const y of ys) { expect(y).toBeGreaterThanOrEqual(22); expect(y).toBeLessThanOrEqual(278); }
   }
+});
+it('chill constants', () => {
+  expect([CHILL_MULT, CHILL_DUR]).toEqual([0.6, 4]);
 });
