@@ -55,13 +55,14 @@ Chosen by you: 45 trenches, fortified belts with wide gaps, same stats, a super 
 
 ## 6. United States of Antarctica
 
-Chosen by you: a nation that never was, WWI-and-WWII realistic designs at humongous size, 20 fragile infantry, 20 armour, bunkers, a colossal tank superweapon, snow-white tanks, five variants, Antarctic place names, a flag with the white continent on blue, and a poor start with fast income growth.
+Chosen by you: a nation that never was, WWI-and-WWII realistic designs with big tanks whose shells chill what they hit, 20 fragile infantry, 20 armour, bunkers, a colossal tank superweapon, snow-white tanks, five variants, Antarctic place names, a flag with the white continent on blue, and a poor start with fast income growth.
 
 - Infantry cap 20, normal prices, 30 health for riflemen. Ice Trooper, Blizzard gunner, Sledge raider, Polar Ranger, Frost mortar crew.
 - Economy: starts with 15 supplies and +2 a second; income grows 0.7 a second every minute (the USA's is 0.4).
 - **Bunkers**: a separate button (120 supplies, 600 health), up to two per trench. Settled troops walk in, six per bunker. Shots at sheltered troops hit the bunker instead and splash only reaches the bunker. Sheltered troops fire at full effect. When a bunker falls, the survivors are left exposed.
 - **Southern Colossus**: 2,500 supplies, 9,000 health, four turrets, machine guns, crushing treads, 150 s cooldown, one at a time, does not count toward the armour limit.
 - The enemy waits until it holds 60% of a superweapon's cost before choosing one, but only for costs of 1,500 or more (in practice, only the Colossus).
+- **Chill**: Antarctica tank cannon shells (including the Iron Penguin's and the Southern Colossus's) set every enemy unit they hit to 60% (`CHILL_MULT` 0.6) walking speed for 4 s (`CHILL_DUR`), armour included. A repeat hit refreshes the timer and never stacks. Machine guns never chill, and trains are never chilled.
 
 ## 7. Merge: Wide open plain, hedgehogs, and Russia's line-up
 
@@ -356,6 +357,89 @@ Chosen by you: the railway runs through the middle of the battlefield, trenches 
 
   The bot loses fewer trains with the rail in the middle at 0.15, not more; the earlier 0.10 build's higher losses came from giving the enemy more money for units instead of rail. Nothing here looks too fragile.
 - **Long March** (default bot, seeds 1 to 6, `MAXS=1800`). The bot still never wins there, which is known and accepted. At 0.15 the branch has 4 of 12 battles time out, against 2 of 12 on main and 6 of 12 on the earlier 0.10 build; finished battles take about as long as on main.
+
+## 15. Antarctica chill
+
+Chosen by you: Antarctica tank shells chill what they hit, and the three heaviest Antarctica tanks (Vinson,
+Erebus, Pole) are detuned from their earlier extremes. Intent: `docs/superpowers/sdd/2026-11-24-antarctica-chill/`
+(design, implementation plan and this task's brief).
+
+- **The mechanic**: every Antarctica tank cannon (the five tank variants, the Iron Penguin armoured train's
+  cannon, and the Southern Colossus's turrets) sets any unit it damages to `CHILL_MULT` (0.6, i.e. 60%) of
+  its walking speed for `CHILL_DUR` (4) s, armour included. It reuses the existing `hurt()`/shell-splash hit
+  loop rather than adding a new one, so the Iron Penguin and the Southern Colossus inherit it automatically
+  with no separate wiring. A repeat hit refreshes the timer rather than stacking a second debuff. Machine
+  gun fire (the sidearm on every Antarctica tank, and `fireArmor`'s machine-gun branch) never applies chill,
+  and trains are never chilled, only slowed-down-walking units. The effect uses no new rng, so battles stay
+  fully deterministic for a given seed.
+- **Detune table** (Vinson, Erebus, Pole only; Ross and Weddell are unchanged): Pole remains the toughest
+  tank in the game by hp, now a pinned cross-nation test rather than a prose claim (`STATS.aq.tkS.hp` is the
+  max of every nation's heaviest tank class, 4900 vs. Germany's Ratte at 4500).
+
+  | Tank | Stat | Old | Final |
+  |---|---|---|---|
+  | Vinson (`tkM`) | cost | 760 | 650 |
+  | Vinson | hp | 1800 | 1400 |
+  | Vinson | dmg | 48 | 40 |
+  | Vinson | splash | 26 | 24 |
+  | Vinson | speed | 17 | 18 |
+  | Erebus (`tkH`) | cost | 1150 | 850 |
+  | Erebus | hp | 3100 | 2100 |
+  | Erebus | dmg | 70 | 52 |
+  | Erebus | splash | 34 | 27 |
+  | Erebus | speed | 14 | 16 |
+  | Pole (`tkS`) | cost | 1950 | 1650 |
+  | Pole | hp | 5600 | 4900 |
+  | Pole | dmg | 96 | 90 |
+  | Pole | splash | 42 | 36 |
+  | Pole | speed | 11 | 13 |
+
+- **Bot coverage**: the headless bot as a player only ever buys the base `tank` from its `pref` list, so as
+  `aq` it fields Weddells (which already chill) and never Vinson, Erebus or Pole. The detuned stats only show
+  up on the enemy side, where the AI picks from every affordable, unlocked class (`aiCost(k) <= ai.money * 2
+  + 60`, gated by `AI_UNLOCK`: `tkM` 520 s, `tkH` 640 s, `tkS` 1000 s). The balance matrix below therefore
+  runs both directions (`aq` as the bot and `aq` as the enemy).
+- **Balance check**: `MAXS=900`, baseline on `main` against this branch, `aq` against each of `gb de fr ru us
+  ah it` and the reverse direction, open map seeds 1–10; `aq` v `de` and `de` v `aq` on plain and march,
+  seeds 1–3; a control (`de` v `gb` and `gb` v `de` on open, seeds 1–10) to confirm no non-`aq` path moved.
+  172 battles each side, 344 total.
+
+  | Matchup / map | Baseline WR | Branch WR | Δ | Baseline time | Branch time | Baseline sel | Branch sel | Baseline losses | Branch losses |
+  |---|---|---|---|---|---|---|---|---|---|
+  | Austria-Hungary v Antarctica, open | 60.0% | 60.0% | +0.0 | 369.6 | 369.6 | 5.80 | 5.80 | 16.10 | 16.10 |
+  | Antarctica v Austria-Hungary, open | 0.0% | 0.0% | +0.0 | 237.8 | 237.8 | 0.00 | 0.00 | 34.20 | 34.20 |
+  | Antarctica v Germany, march | 0.0% | 0.0% | +0.0 | 872.3 | 872.3 | 5.00 | 5.00 | 143.67 | 143.67 |
+  | Antarctica v Germany, open | 30.0% | 30.0% | +0.0 | 505.8 | 505.7 | 4.40 | 4.20 | 35.90 | 35.30 |
+  | Antarctica v Germany, plain | 0.0% | 0.0% | +0.0 | 596.3 | 596.3 | 3.33 | 3.33 | 65.00 | 65.00 |
+  | Antarctica v France, open | 20.0% | 20.0% | +0.0 | 323.2 | 323.2 | 2.70 | 2.70 | 28.40 | 28.40 |
+  | Antarctica v Britain, open | 10.0% | 10.0% | +0.0 | 331.1 | 331.1 | 1.70 | 1.70 | 35.40 | 35.40 |
+  | Antarctica v Italy, open | 10.0% | 10.0% | +0.0 | 405.1 | 405.1 | 2.60 | 2.60 | 37.40 | 37.40 |
+  | Antarctica v Russia, open | 0.0% | 0.0% | +0.0 | 352.2 | 352.2 | 1.00 | 1.00 | 51.10 | 50.80 |
+  | Antarctica v USA, open | 0.0% | 0.0% | +0.0 | 412.9 | 412.9 | 0.80 | 1.00 | 57.90 | 51.00 |
+  | Germany v Antarctica, march | 0.0% | 0.0% | +0.0 | 900.0 | 900.0 | 11.00 | 11.00 | 69.00 | 69.00 |
+  | Germany v Antarctica, open | 30.0% | 30.0% | +0.0 | 536.2 | 532.0 | 3.60 | 3.60 | 47.30 | 45.60 |
+  | Germany v Antarctica, plain | 0.0% | 0.0% | +0.0 | 713.0 | 713.0 | 5.67 | 3.67 | 42.33 | 42.67 |
+  | France v Antarctica, open | 50.0% | 50.0% | +0.0 | 588.9 | 588.9 | 7.20 | 7.20 | 69.90 | 69.90 |
+  | Britain v Antarctica, open | 80.0% | 80.0% | +0.0 | 450.0 | 450.0 | 8.50 | 8.40 | 35.70 | 36.20 |
+  | Italy v Antarctica, open | 20.0% | 20.0% | +0.0 | 661.5 | 661.5 | 5.10 | 5.10 | 61.90 | 61.90 |
+  | Russia v Antarctica, open | 30.0% | 30.0% | +0.0 | 711.1 | 711.1 | 6.10 | 5.80 | 93.50 | 94.40 |
+  | USA v Antarctica, open | 50.0% | 50.0% | +0.0 | 680.7 | 680.7 | 7.00 | 7.00 | 79.80 | 79.80 |
+  | **Control**: Germany v Britain, open | 10.0% | 10.0% | +0.0 | 316.4 | 316.4 | 1.00 | 1.00 | 42.60 | 42.60 |
+  | **Control**: Britain v Germany, open | 100.0% | 100.0% | +0.0 | 341.8 | 341.8 | 9.80 | 9.80 | 14.10 | 14.10 |
+
+  Every `aq` matchup's win rate is identical, baseline to branch (checked per-seed, not just per-category:
+  all 172 battles' `won` flags matched exactly), well inside the ±20-point bar. The two control rows are
+  byte-identical JSON between baseline and branch, confirming no non-`aq` path moved. No tuning of
+  `CHILL_MULT`, `CHILL_DUR` or the detuned stats was needed.
+- **Why the detune and the chill barely move win rate here**: a one-off instrumented run (not committed)
+  counted enemy-AI tank spawns by type across the same `X v aq` matrix, on both `main` and this branch.
+  Erebus (`tkH`) and Pole (`tkS`) were fielded by the enemy AI **zero times in 76 battles, on both branches**
+  — `AI_UNLOCK` gates them at 640 s and 1000 s respectively, `tkS` can never unlock inside this matrix's
+  900 s cap, and even where a match ran the full 900 s (several march/plain seeds), the AI's armour-limit
+  and affordability gates (`aiCost(k) <= ai.money * 2 + 60`, `full(1, k)`) kept it from ever buying an
+  Erebus. The detuned numbers and the chill debuff on the bigger tanks are therefore inert in this budget;
+  the small, non-zero time/`sel`/`losses` deltas seen above come from chill on the tanks that *do* get
+  fielded (Ross, Weddell), which the mechanic always covered and which Task 2 did not change.
 
 ## Known quirks
 

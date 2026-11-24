@@ -147,9 +147,9 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 |---|---|---|---|---|---|---|---|
 | Ross | 160 | 380 | 6 | 270 | 30 | 1 | Light tank with twin machine guns. Huge for a light tank, and costly. |
 | Weddell | 460 | 950 | 36 | 240 | 20 | 2 | Medium tank with a long gun. Big for its class. |
-| Vinson | 760 | 1800 | 48 | 260 | 17 | 3.5 | Giant rhomboid with a turret and sponson guns. |
-| Erebus | 1150 | 3100 | 70 | 280 | 14 | 5 | Heavy with a monster gun and a rear turret. Very tough. |
-| Pole | 1950 | 5600 | 96 | 360 | 11 | 8 | Land cruiser with three turrets. Slow, enormous and very costly. |
+| Vinson | 650 | 1400 | 40 | 260 | 18 | 3.5 | Giant rhomboid with a turret and sponson guns. |
+| Erebus | 850 | 2100 | 52 | 280 | 16 | 5 | Heavy with a monster gun and a rear turret. Very tough. |
+| Pole | 1650 | 4900 | 90 | 360 | 13 | 8 | Land cruiser with three turrets. Slow, enormous and very costly. |
 
 **Italy** (armour limit 8)
 
