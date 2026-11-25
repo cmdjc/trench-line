@@ -19,9 +19,10 @@ ultimate superweapon.
 
 - **A ninth playable nation**, added to `NATS` alongside the existing
   eight. Nothing about the existing eight changes.
-- **Standard infantry roster** (rifle, mg, sniper), **a smaller infantry
-  cap (~20)** reflecting "quality over quantity" the way Austria-Hungary
-  already works, and **no raider** — its slot is replaced by:
+- **Standard infantry roster** (rifle, mg, sniper, mortar — all five base
+  infantry types stay except raider), **a smaller infantry cap (~20)**
+  reflecting "quality over quantity" the way Austria-Hungary already
+  works, and **no raider** — its slot, and only its slot, is replaced by:
 - **The Rammstoßtrupp**, a tough, medium-armoured squad that fires a
   back-mounted mortar at range and switches to an armour-breaking ram in
   melee, specifically to cover the mortar's own minimum-range dead zone
@@ -117,12 +118,21 @@ ultimate superweapon.
   single biggest, rarest, most expensive unit the nation can field.
 - **The Repair Workshop (`def`).** A new building kind, distinct from
   every existing `def` kind (`wire`/`pillbox`/`depot`/`pit`/`mines`/
-  `bunker`): it does not shelter troops, slow attackers, or shell them. It
-  sits in a trench and heals/repairs friendly mechs (`T.armor` units)
-  within some radius of that trench over time, at some rate, while it
-  stands. It has no effect on infantry, and no effect on enemy units at
-  all — it is pure logistics, matching the industrialist theme the way
-  the USA's income depot is pure economy rather than combat.
+  `bunker`): it does not shelter troops, slow attackers, or shell them.
+  Mechanically, it extends the passive in-trench healing every nation
+  already has (`combat.js`: a settled, unexposed unit holding a trench
+  slowly heals) so that it also heals a settled mech (`T.armor`) holding
+  that same trench, wherever a Workshop has been built there — a
+  one-line addition to an existing check, not a new spatial-radius
+  scanning system. This deliberately does NOT heal a mech merely passing
+  through or retreating past the trench; it has to be dug in and holding
+  it, the same condition that already gates infantry healing. That keeps
+  it a genuine incentive to garrison a trench with your mechs rather than
+  a reusable healing oasis for damaged mechs to duck in and out of
+  mid-battle. It has no effect on infantry beyond the existing passive
+  heal they already get, and no effect on enemy units at all — it is pure
+  logistics, matching the industrialist theme the way the USA's income
+  depot is pure economy rather than combat.
 - **Visuals.** Dark grey/black palette, a stahlhelm-style helmet for
   infantry, boxy/angular mech silhouettes with jointed leg art instead of
   tread art (the builder's call on exact shapes, within this palette).
@@ -162,7 +172,12 @@ ultimate superweapon.
 - The exact nation key (`sx` or similar), exact `style`/colour values, and
   which existing tank-tier slot (`tkM` vs `tkH`) best fits Erlkönig's
   artillery role once real numbers exist.
-- The Repair Workshop's exact heal rate, radius and cost.
+- The Repair Workshop's exact heal rate and cost, and that it heals a
+  settled mech holding the same trench (reusing the existing passive
+  in-trench heal condition) rather than anything within a geometric
+  radius — settled on by the controller before planning, since a builder
+  check flagged this as a real mechanic-shape ambiguity in an earlier
+  draft, not just a numbers question.
 - Whether `style: 'stahl'` is reused from Germany or a new helmet style is
   added — a small art question, not a mechanical one.
 
