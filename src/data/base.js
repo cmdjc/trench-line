@@ -27,6 +27,7 @@ export const KUK_DMG = 1.15, KUK_HP = 1.15, KUK_CAP = 5;      // ah
 export const DOCK_CD = 100, DOCK_HP = 1.3, DOCK_DMG = 1.3, DOCK_SCALE = 1.15; // aq
 export const TELE_RANGE = [0, 3, 6, Infinity];                // it, trenches from own HQ, by tier
 export const CONSCRIPT = [null, { t: 20, n: 1 }, { t: 12, n: 1 }, { t: 12, n: 3 }]; // ru
+export const FOUNDRY_HEAL = 1.5, FOUNDRY_CD = 100, FOUNDRY_HP = 1.3;                 // sx
 
 const pct = m => Math.round((m - 1) * 100);
 
@@ -76,5 +77,9 @@ export const BASE = {
     `Every ${CONSCRIPT[2].t} seconds, ${CONSCRIPT[2].n} free conscript joins your army.`,
     `Every ${CONSCRIPT[3].t} seconds, ${CONSCRIPT[3].n} free conscripts join your army.`] }
 };
+BASE.sx = { name: 'Ore Mountain Foundry', tiers: [
+  `Repair workshops mend mechs ${pct(FOUNDRY_HEAL)}% faster.`,
+  `Rübezahl is ready again after ${FOUNDRY_CD} seconds instead of ${SW.sx.cd}.`,
+  `Rübezahl has ${pct(FOUNDRY_HP)}% more health.`] };
 
 export const baseIds = nation => [...SHARED, nation];

@@ -28,6 +28,7 @@ export const TRAINS = {
   ah: { name: 'k.u.k. Feldbahn', cost: 150, hp: 280, cap: 6, speed: BASE_SPEED },
   it: { name: 'Ferrovia da campo', cost: 155, hp: 300, cap: 6, speed: BASE_SPEED },
   aq: { name: 'Penguin Express', cost: 165, hp: 340, cap: 6, speed: 120 },
+  sx: { name: 'Sächsische Feldbahn', cost: 160, hp: 340, cap: 6, speed: 125 },
 };
 
 // Per-nation stats stay within 15% of base (cost 380, hp 600, speed 138, dmg 25, cd 1.6, range 260, splash 20;
@@ -41,4 +42,5 @@ export const ARMOR_TRAINS = {
   ah: { name: 'k.u.k. Panzerzug', cost: 380, hp: 600, speed: 138, dmg: 25, cd: 1.6, range: 260, splash: 20, shell: 0.25, mg: { dmg: 5, cd: 0.2, range: 280, acc: 0.5 } },
   it: { name: 'Treno armato', cost: 375, hp: 590, speed: 138, dmg: 26, cd: 1.6, range: 280, splash: 19, shell: 0.25, mg: { dmg: 5, cd: 0.21, range: 270, acc: 0.5 } },
   aq: { name: 'Iron Penguin', cost: 420, hp: 680, speed: 125, dmg: 28, cd: 1.8, range: 260, splash: 23, shell: 0.25, mg: { dmg: 5, cd: 0.2, range: 280, acc: 0.5 } },
+  sx: { name: 'Sächsischer Panzerzug', cost: 420, hp: 680, speed: 120, dmg: 28, cd: 1.8, range: 250, splash: 22, shell: 0.25, mg: { dmg: 5, cd: 0.21, range: 270, acc: 0.5 } },
 };

@@ -257,8 +257,54 @@ const AQ_TANKS = {
 NU.aq = NU.aq || {};
 for (const k in AQ_TANKS) { const [o, d, mg] = AQ_TANKS[k]; NU.aq[k] = tkv(o, d, !!mg); }
 
+/* Saxon Dominion: tough, slow infantry (cap 20) and a walking-mech line named for German folklore.
+ * The Rammstoßtrupp (raider slot) fires a mortar at range and a ram to cover its own dead zone. */
+NU.sx = {
+  rifle: { name: 'Grenadier', pl: 'Grenadiers', cost: 22, hp: 46, speed: 40, role: 'Tough, steady rifleman. A little slower than most.' },
+  mg: { name: 'Dreyse gunner', pl: 'Dreyse gunners', cost: 64, hp: 51, speed: 28, role: 'Heavy gun crew. Sturdy, but slow to move.' },
+  sniper: { name: 'Jäger', pl: 'Jäger', cost: 60, hp: 34, speed: 37, role: 'Long reach. Picks men out of trenches.' },
+  mortar: { name: 'Granatwerfer crew', pl: 'Granatwerfer crews', cost: 98, hp: 40, speed: 27, role: 'Shells trenches up to two lines away. Sturdy crew.' },
+  raider: { name: 'Rammstoßtrupp', pl: 'Rammstoßtrupps', cost: 70, hp: 90, shield: 0.7, speed: 34, atk: 'mortar', dmg: 18, cd: 4.5, range: 400, min: 90, splash: 28, shell: 1.1, arc: 1, sprite: 'ramm',
+    ram: { dmg: 24, cd: 1.2, range: 90, acc: 0.8, atk: 'raider', heavy: 2 },
+    role: 'Armoured assault squad. Lobs mortar bombs at range and rams anything that gets inside the mortar’s reach. The ram hits armour and emplacements hard.' }
+};
+const SX_TANKS = {
+  tkL: [{ name: 'Kobold', pl: 'Kobolds', cost: 85, hp: 160, dmg: 5, cd: 0.2, range: 220, speed: 44, thin: true, w: 0.5, park: 26, len: 12, bar: [20, -15],
+    role: 'Small, quick scout mech on two pairs of legs. Machine gun only, and bullets hurt it.' },
+    { L: 12, W: 8, tr: [], legs: [[-6, 5], [6, 5]], parts: [
+      { t: 'p', c: 'b', o: 1, pts: [[-6, -4], [4, -4], [6, -2], [6, 2], [4, 4], [-6, 4]] },
+      { t: 'r', c: 'h', o: 1, x: -4, y: -2.6, w: 5, h: 5.2 },
+      { t: 'em', x: -1, y: 0, s: 0.4 }],
+      fl: [[6, -1.8], [6, 1.8]] }, true],
+  tank: [{ name: 'Krampus', pl: 'Krampus mechs', cost: 300, hp: 650, dmg: 30, cd: 1.5, range: 240, splash: 22, speed: 19, w: 1,
+    mg: { dmg: 5, cd: 0.24, range: 210, acc: 0.5 }, park: 40, len: 22, bar: [34, -22],
+    role: 'Versatile medium mech with a turret gun and a machine gun.' },
+    { L: 22, W: 14, tr: [], legs: [[-14, 7], [0, 7], [14, 7]], parts: [
+      { t: 'p', c: 'b', o: 1, pts: [[-11, -7], [7, -7], [11, -3], [11, 3], [7, 7], [-11, 7]] },
+      { t: 'r', c: 'h', o: 1, x: -8, y: -5, w: 10, h: 10 },
+      { t: 'em', x: -4, y: 0, s: 0.7 }],
+      tur: [{ x: 2, r: 8, len: 24, gt: 3, guns: 1 }] }],
+  tkM: [{ name: 'Erlkönig', pl: 'Erlkönig mechs', cost: 430, hp: 360, dmg: 60, cd: 4.2, range: 620, splash: 36, speed: 16, w: 1.5,
+    atk: 'mortar', min: 140, shell: 1.8, arc: 2, cov: 0.75, moveFire: false, thin: true, rear: true, park: 44, len: 18, bar: [30, -20],
+    role: 'Walking artillery. Enormous reach, but thin armour and it cannot fire up close or on the move.' },
+    { L: 18, W: 11, tr: [], legs: [[-10, 6], [10, 6]], parts: [
+      { t: 'p', c: 'b', o: 1, pts: [[-9, -5.5], [5, -5.5], [9, -2.5], [9, 2.5], [5, 5.5], [-9, 5.5]] },
+      { t: 'r', c: 'h', o: 1, x: -7, y: -4, w: 9, h: 8 },
+      { t: 'em', x: -3, y: 0, s: 0.6 }],
+      tur: [{ x: 0, r: 6, len: 40, gt: 3.4, guns: 1 }] }],
+  tkH: [{ name: 'Eisenhans', pl: 'Eisenhans mechs', cost: 720, hp: 2000, dmg: 46, cd: 1.6, range: 260, splash: 26, speed: 11, w: 3,
+    mg: { dmg: 6, cd: 0.18, range: 230, acc: 0.5 }, park: 50, len: 32, bar: [44, -28],
+    role: 'Walking fortress. Very heavy armour, a big gun and machine guns, but very slow.' },
+    { L: 32, W: 20, tr: [], legs: [[-22, 9], [-7, 9], [8, 9], [23, 9]], parts: [
+      { t: 'p', c: 'b', o: 1, pts: [[-16, -10], [10, -10], [16, -4], [16, 4], [10, 10], [-16, 10]] },
+      { t: 'r', c: 'h', o: 1, x: -13, y: -7, w: 14, h: 14 },
+      { t: 'em', x: -7, y: 0, s: 1.1 }],
+      tur: [{ x: 4, r: 11, len: 34, gt: 4, guns: 1 }], mgf: [[14, -6], [14, 6]] }]
+};
+for (const k in SX_TANKS) { const [o, d, mg] = SX_TANKS[k]; NU.sx[k] = tkv(o, d, !!mg); }
+
 /* fully assembled per-nation stats: base type ← nation override */
-export const STATS = { gb: {}, de: {}, fr: {}, ru: {}, us: {}, ah: {}, it: {}, aq: {} };
+export const STATS = { gb: {}, de: {}, fr: {}, ru: {}, us: {}, ah: {}, it: {}, aq: {}, sx: {} };
 for (const n of NATS) for (const k of ORDER) if (UT[k] || NU[n][k]) STATS[n][k] = Object.assign({}, UT[k], NU[n][k] || {});
 
 /* the armour a country can field, cheapest first */
@@ -291,6 +337,17 @@ SPECIAL.colossus = tkv({ name: 'Southern Colossus', cost: 2500, hp: 9000, dmg: 1
     { t: 'r', c: '#14140e', x: 99, y: -6, w: 2.2, h: 3.8 }, { t: 'r', c: '#14140e', x: 99, y: 2.4, w: 2.2, h: 3.8 }, { t: 'em', x: -82, y: 0, s: 2.8 }],
     tur: [{ x: 58, r: 24, len: 96, gt: 6.4, guns: 2, gw: 7 }, { x: 16, r: 18, len: 70, gt: 5, guns: 2, gw: 5 }, { x: -30, r: 13, len: 46, gt: 3.8, guns: 1 }, { x: -70, r: 10, len: 36, gt: 3, guns: 1 }],
     mgf: [[-20, -17], [-20, 17], [24, -18], [24, 18]] }));
+/* Saxony's superweapon: Rübezahl, the mountain giant, biggest of the mech line */
+SPECIAL.ruebezahl = tkv({ name: 'Rübezahl', cost: 1800, hp: 6000, dmg: 95, cd: 2.0, range: 360, splash: 42, speed: 9, big: true, sup: true,
+  park: 90, len: 70, bar: [80, -50], crush: 54, crushDps: 120, mg: { dmg: 6, cd: 0.12, range: 260, acc: 0.5 } },
+  { L: 70, W: 40, base: '#1a1b1d', tr: [], legs: [[-50, 14], [-25, 14], [0, 14], [25, 14], [50, 14]], parts: [
+    { t: 'p', c: 'b', o: 1, pts: [[-35, -20], [25, -20], [35, -10], [35, 10], [25, 20], [-35, 20]] },
+    { t: 'r', c: 'h', o: 1, x: -28, y: -14, w: 30, h: 28 },
+    { t: 'em', x: -16, y: 0, s: 2 }],
+    tur: [{ x: 30, r: 18, len: 62, gt: 5, guns: 2, gw: 5 }, { x: -15, r: 10, len: 36, gt: 3, guns: 1 }],
+    mgf: [[-5, -20], [-5, 20], [33, -9], [33, 9]] });
+/* Saxony's defence building: a utility structure that mends mechs dug in at its trench, never fires */
+SPECIAL.workshop = { name: 'Repair workshop', cost: 110, hp: 240, dmg: 0, cd: 9, range: 0, acc: 0, speed: 0, nest: true, noFire: true, workshop: true };
 
 /** Stats lookup for a concrete nation (prototype `ut(side,k)` minus the side indirection). */
 export const utOf = (nation, k) => STATS[nation][k] || SPECIAL[k];
@@ -307,3 +364,4 @@ export const BW = 10;
 export const GARR_T = [50, 85, 130, 200];
 export const DEPOT_RATE = 0.8, SUPER_INC = 3, SUPER_CARD_T = 180;
 export const BUNKER_CAP = 6, BUNKER_MAX = 2;
+export const WORKSHOP_HEAL = 6;

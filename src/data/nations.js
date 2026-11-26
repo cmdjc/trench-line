@@ -4,7 +4,7 @@
 
 import { SW } from './superweapons.js';
 
-export const NATS = ['gb', 'de', 'fr', 'ru', 'us', 'ah', 'it', 'aq'];
+export const NATS = ['gb', 'de', 'fr', 'ru', 'us', 'ah', 'it', 'aq', 'sx'];
 
 export const NAT = {
   gb: { name: 'Britain', body: '#c0ad6c', hat: '#7d7741', style: 'brodie', inf: 40, tanks: 8, nest: 'nest', nestLabel: 'MG nest', def: { kind: 'wire', label: 'Wire', cost: 70 }, blurb: 'Defence: wire entanglements that slow attackers. Riflemen fire 15% faster. Lewis gunners fire on the move, trench raiders are cheap and tough, and the Mk V tank is quick with two guns but thinner armour.' },
@@ -16,6 +16,8 @@ export const NAT = {
   it: { name: 'Italy', body: '#7f917b', hat: '#4d5f50', style: 'alpino', inf: 40, tanks: 8, nest: 'nest', nestLabel: 'MG nest', def: { kind: 'pit', label: 'Gun pit', cost: 120, make: 'pit65' }, blurb: 'Defence: 65 mm mountain gun pits that lob shells into trenches. Alpini are tough but slow, and take 15% less damage in trenches. Arditi are fast shock troops, and the Fiat-Revelli is a sturdy gun that is slow to move.' },
   ru: { name: 'Russia', body: '#8fa05a', hat: '#535f2d', style: 'cap', inf: 60, tanks: 10, nest: 'nest', nestLabel: 'MG nest', def: { kind: 'mines', label: 'Mines', cost: 60 }, blurb: 'Defence: hidden minefields. Conscripts are weak but very cheap, with room for 60 infantry. The Maxim gun has a shield, the Vezdekhod is a quick, cheap light tank you can field 10 of, and the Mendeleev is a slow ironclad.' }
 };
+/* Saxon Dominion: an industrialist, mech-focused nation, appended last */
+NAT.sx = { name: 'Saxon Dominion', body: '#4a4e52', hat: '#1f2124', style: 'stahl', inf: 20, tanks: 8, nest: 'nest', nestLabel: 'MG nest', def: { kind: 'workshop', label: 'Repair workshop', cost: 110 }, blurb: 'Defence: repair workshops that mend mechs dug in at their trench. Only 20 infantry, tougher and slower than most, and the Rammstoßtrupp lobs mortar bombs at range and rams anything that gets inside them. Its armour walks: boxy mechs on jointed legs, from the little Kobold through the long-range Erlkönig to the Eisenhans fortress.' };
 
 for (const n in NAT) NAT[n].blurb += ' Superweapon: ' + (SW[n] ? SW[n].name : 'Tsar Tank') + '.';
 

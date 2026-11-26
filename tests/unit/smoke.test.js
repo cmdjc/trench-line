@@ -8,7 +8,7 @@ import { takeCard } from '../../src/sim/cards.js';
 import { tanks } from '../../src/sim/geometry.js';
 import { NAT } from '../../src/data/nations.js';
 
-const NATS = ['gb', 'de', 'fr', 'ru', 'us', 'ah', 'it', 'aq'];
+const NATS = ['gb', 'de', 'fr', 'ru', 'us', 'ah', 'it', 'aq', 'sx'];
 
 // One four-minute run: top up both sides like the original harness so the game
 // never starves, tick in 0.04 s substeps, take whatever card is offered.
