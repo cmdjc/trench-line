@@ -65,10 +65,21 @@ export function puff(x, y, dark) { G.smoke.push({ x, y, r: dark ? 3 : 2, life: d
 export function boom(x, y, r) { G.booms.push({ x, y, r, life: 0.45, max: 0.45 }); if (G.booms.length > 30) G.booms.shift(); }
 export function tracer(x1, y1, x2, y2, w, col) { G.tracers.push({ x1, y1, x2, y2, w, col, life: 0.08 }); if (G.tracers.length > 90) G.tracers.shift(); }
 
+/* Rammstoßtrupp melee: fires the ram sub-profile instead of the mortar when the nearest target
+   is inside the mortar's own minimum range (its dead zone). Bonus damage vs armour/emplacements. */
+function fireRam(u, e, m, sacc, dir, fx, fy) {
+  const R = u.T.ram;
+  u.cd = R.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08; u.mode = 'ram';
+  const dmg = R.dmg * m.dmg[u.type] * (u.dmgMul || 1) * (e.train || e.T.armor || e.T.nest ? R.heavy : 1);
+  // R.atk is 'raider', for which accVs() is always 1, so it is not called
+  if (rng.float() < R.acc * sacc) { tracer(u.x - fx + dir * 9, u.y - fy, e.x, e.y, 1.6, '#ffe9a8'); hurt(e, dmg, R.atk, u); }
+  else tracer(u.x - fx + dir * 9, u.y - fy, e.x + (rng.float() - 0.5) * 30, e.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
+}
+
 export function stepUnits(dt) {
   for (const u of G.units) {
     if (u.hp <= 0 || hidden(u)) continue;
-    const T = u.T, m = G.M[u.side], minR = T.min || 0, falling = u.fall > 0;
+    const T = u.T, m = G.M[u.side], minR = T.min || 0, seekR = T.ram ? 0 : minR, falling = u.fall > 0;
     if (falling) { u.fall -= dt; if (u.fall <= 0) u.scramble = DROP_SCRAMBLE; }
     else if (u.scramble > 0) u.scramble -= dt;
     if (u.chilled > 0) u.chilled -= dt;
@@ -77,7 +88,7 @@ export function stepUnits(dt) {
     for (const e of G.units) {
       if (e.side === u.side || e.hp <= 0 || hidden(e)) continue;
       const dx = e.x - u.x, d = Math.hypot(dx, e.y - u.y);
-      if (d < bd && d >= minR) { bd = d; best = e; }
+      if (d < bd && d >= seekR) { bd = d; best = e; }
       if (Math.abs(dx) < 40 && !(e.settled && e.line === u.line)) blocked = true;
       if (T.crush && d < T.crush) hurt(e, T.crushDps * dt * (u.dmgMul || 1), 'raider', null, undefined, true);
     }
@@ -86,7 +97,7 @@ export function stepUnits(dt) {
       for (const tr of G.trains) {
         if (tr.side === u.side || tr.hp <= 0) continue;
         const d = Math.hypot(tr.x - u.x, RAIL_Y - u.y);
-        if (d < bd && d >= minR && d <= T.range) { bd = d; best = { x: tr.x, y: RAIL_Y, hp: tr.hp, settled: false, T: {}, train: tr }; }
+        if (d < bd && d >= seekR && d <= T.range) { bd = d; best = { x: tr.x, y: RAIL_Y, hp: tr.hp, settled: false, T: {}, train: tr }; }
       }
     }
     if (T.crush) blocked = false;
@@ -166,8 +177,10 @@ export function stepUnits(dt) {
       else if (T.spons) { ox = u.x + dir * T.spons[0]; oy = u.y + u.gun * T.spons[1]; }
       else ox = u.x + dir * 31;
     }
-    if (best && bd <= T.range) {
-      u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
+    const ram = !!T.ram && !!best && bd < minR; // nearest target is inside the mortar's dead zone
+    if (ram) fireRam(u, best, m, sacc, dir, fx, fy);
+    else if (best && bd <= T.range) {
+      u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08; if (T.ram) u.mode = 'mortar';
       if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: best.x, y1: best.y, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg, splash: T.splash, cov: T.cov, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
       else if (rng.float() < T.acc * sacc * accVs(u, best)) { tracer(u.x - fx + dir * 9, u.y - fy, best.x, best.y, u.type === 'sniper' ? 1.4 : 1, '#ffe9a8'); hurt(best, dmg, T.atk || u.type, u); }
       else tracer(u.x - fx + dir * 9, u.y - fy, best.x + (rng.float() - 0.5) * 30, best.y + (rng.float() - 0.5) * 30, 0.8, 'rgba(255,233,168,.6)');
@@ -176,10 +189,14 @@ export function stepUnits(dt) {
     } else {
       const b = G.bases[1 - u.side], d = Math.abs(b.x - u.x);
       if (d <= T.range && d >= minR) {
-        u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08;
+        u.cd = T.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08; if (T.ram) u.mode = 'mortar';
         const by = WH / 2 + (rng.float() - 0.5) * 70;
         if (T.shell) G.shells.push({ x0: ox, y0: oy, x1: b.x - dir * 20, y1: by, t: 0, dur: T.shell, side: u.side, type: T.atk || u.type, dmg: dmg * 1.5, base: true, siege: T.siege, arc: T.arc || (u.type === 'mortar' && !T.flat ? 1 : 0.1) });
         else { tracer(u.x + dir * 9, u.y - fy, b.x - dir * 25, by, 1, '#ffe9a8'); hurtBase(1 - u.side, dmg * (u.type !== 'raider' && d > 120 ? 0.25 : 1)); }
+      } else if (T.ram && d < minR) { // rams the enemy HQ from inside the dead zone
+        u.cd = T.ram.cd * m.cd[u.type] * (0.85 + rng.range(0, 0.3)); u.flash = 0.08; u.mode = 'ram';
+        tracer(u.x + dir * 9, u.y, b.x - dir * 25, u.y, 1, '#ffe9a8');
+        hurtBase(1 - u.side, T.ram.dmg * m.dmg[u.type] * (u.dmgMul || 1));
       }
     }
   }
