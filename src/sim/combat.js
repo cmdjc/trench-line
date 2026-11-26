@@ -7,7 +7,7 @@
 import { COV, ARM, NESTCOV, FORTD, FORTA, WH, BW, HEDGE, GARR_T, maxFort, SUPER_INC, CHILL_MULT, CHILL_DUR } from '../data/units.js';
 import { G, isDbl, toast, hidden } from './state.js';
 import { isTrench, posX, exposed } from './geometry.js';
-import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper } from './fortify.js';
+import { stepFields, stepBunkers, stepJobs, wireSlow, buildSuper, workshopAt, workshopRate } from './fortify.js';
 import { hasTrack, isBigShell, breakAt, cutTrack, segmentIndexFor, hurtTrain } from './rail.js';
 import { RAIL_Y } from '../data/rail.js';
 import { rng } from '../core/rng.js';
@@ -145,7 +145,8 @@ export function stepUnits(dt) {
       u.moving = false;
       if (Math.abs(dx) <= 1.5 && Math.abs(dy) <= 1.5) { u.x = tx; u.settled = true; }
     }
-    if (u.settled && m.heal && isTrench(u.line) && u.hp < u.max && !exposed(u)) u.hp = Math.min(u.max, u.hp + m.heal * dt);
+    const wh = T.armor && u.settled && u.hp < u.max && isTrench(u.line) && workshopAt(u.side, u.line) ? workshopRate(u.side) : 0;
+    if (u.settled && (m.heal || wh) && isTrench(u.line) && u.hp < u.max && !exposed(u)) u.hp = Math.min(u.max, u.hp + (m.heal + wh) * dt);
     u.cd -= dt; u.flash -= dt;
     const dir = u.side ? -1 : 1;
     if (T.armor) {

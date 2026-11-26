@@ -269,6 +269,34 @@ describe('fields', () => {
   });
 });
 
+describe('sx: repair workshop', () => {
+  beforeEach(() => { newGame('sx', 'de', 'open', 1); toasts.length = 0; });
+
+  it('builds a workshop job, blocking a second one in the same trench for either side', () => {
+    G.owner[2] = 0;
+    expect(FT.canDef(0, 2)).toBe(true);
+    expect(FT.buildDef(0, 2)).toBe(true);
+    expect(G.jobs).toHaveLength(1);
+    expect(G.jobs[0].make).toBe('workshop');
+    expect(G.fields).toHaveLength(0);
+    expect(FT.canDef(0, 2)).toBe(false);
+
+    G.jobs[0].sap.settled = true;
+    FT.stepJobs(0.05);
+    FT.stepJobs(4);
+    G.jobs[0].gun.settled = true;
+    FT.stepJobs(0.05);
+    const w = G.units.find(u => u.T.workshop);
+    expect(w).toBeTruthy();
+    expect(w.line).toBe(2);
+    expect(w.fixed).toBe(true);
+    expect(toasts.at(-1)).toBe('Repair workshop ready at trench 2.');
+
+    expect(FT.canDef(0, 3)).toBe(true);
+    expect(FT.canDef(1, 2)).toBe(false);
+  });
+});
+
 describe('stepBunkers', () => {
   it('settled troops shelter in a same-line bunker; a dead bunker frees them', () => {
     newGame('aq', 'de', 'open', 1);

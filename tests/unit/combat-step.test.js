@@ -7,6 +7,7 @@ import { bus } from '../../src/core/events.js';
 import { G, newGame } from '../../src/sim/state.js';
 import { spawn, trenchX } from '../../src/sim/geometry.js';
 import { stepUnits } from '../../src/sim/combat.js';
+import { raise } from '../../src/sim/base.js';
 import { WH, GARR_T, SPECIAL, CHILL_MULT, CHILL_DUR, ARM, NESTCOV } from '../../src/data/units.js';
 
 const toasts = [];
@@ -725,6 +726,129 @@ describe('rammstosstrupp', () => {
     foe2.x = m.x + 300; foe2.y = m.y;
     rng.reseed(9);
     stepUnits(0.01);
+    const b = rng.float();
+
+    expect(a).toBe(b);
+  });
+});
+
+describe('repair workshop', () => {
+  beforeEach(() => {
+    newGame('sx', 'de', 'open', 1);
+    G.units.length = 0; G.shells.length = 0;
+    G.bases[0].cd = G.bases[1].cd = 999;
+    G.M[0].heal = 0;
+  });
+
+  it('heals a settled mech holding the trench', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 100;
+    stepUnits(1);
+    expect(k.hp).toBeCloseTo(k.max - 100 + 6);
+  });
+
+  it('is capped at max', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 1;
+    stepUnits(1);
+    expect(k.hp).toBe(k.max);
+  });
+
+  it('no workshop, no heal', () => {
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 100;
+    stepUnits(1);
+    expect(k.hp).toBe(k.max - 100);
+  });
+
+  it('not one trench over', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 4, true); k.settled = true; k.hp = k.max - 100;
+    stepUnits(1);
+    expect(k.hp).toBe(k.max - 100);
+  });
+
+  it('not a mech passing through', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 5, true);
+    k.line = 5; k.settled = false; k.x = G.LX[3]; k.hp = k.max - 100;
+    for (let i = 0; i < 10; i++) stepUnits(0.1);
+    expect(k.hp).toBe(k.max - 100);
+  });
+
+  it('not a retreating mech', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 1, true);
+    k.line = 1; k.settled = false; k.x = G.LX[3]; k.hp = k.max - 100;
+    for (let i = 0; i < 10; i++) stepUnits(0.1);
+    expect(k.hp).toBe(k.max - 100);
+  });
+
+  it('not an enemy mech', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const e = mute(pin(spawn(1, 'tank', 3, true))); e.settled = true; e.hp = e.max - 100;
+    stepUnits(1);
+    expect(e.hp).toBe(e.max - 100);
+  });
+
+  it('infantry get only m.heal', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const r = spawn(0, 'rifle', 3, true); r.settled = true; r.hp = r.max - 10;
+    stepUnits(1);
+    expect(r.hp).toBe(r.max - 10);
+    G.M[0].heal = 1;
+    stepUnits(1);
+    expect(r.hp).toBeCloseTo(r.max - 10 + 1);
+  });
+
+  it('adds to m.heal for mechs', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 100;
+    G.M[0].heal = 1;
+    stepUnits(1);
+    expect(k.hp).toBeCloseTo(k.max - 100 + 7);
+  });
+
+  it('dead workshop stops healing', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 100;
+    w.hp = 0;
+    stepUnits(1);
+    expect(k.hp).toBe(k.max - 100);
+  });
+
+  it('foundry tier 1 heals faster', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 100;
+    raise(0, 'nat');
+    stepUnits(1);
+    expect(k.hp).toBeCloseTo(k.max - 100 + 9);
+  });
+
+  it('a captured workshop serves its captor', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    w.side = 1;
+    const disarm = u => { u.T = { ...u.T, mg: null }; return u; };
+    const k = disarm(mute(pin(spawn(0, 'tank', 3, true)))); k.settled = true; k.hp = k.max - 100;
+    const e = disarm(mute(pin(spawn(1, 'tank', 3, true)))); e.settled = true; e.hp = e.max - 100;
+    stepUnits(1);
+    expect(k.hp).toBe(k.max - 100);
+    expect(e.hp).toBeCloseTo(e.max - 100 + 6);
+  });
+
+  it('heal draws no rng', () => {
+    const w = spawn(0, 'workshop', 3, true); w.fixed = true;
+    const k = spawn(0, 'tank', 3, true); k.settled = true; k.hp = k.max - 100;
+    rng.reseed(9);
+    stepUnits(1);
+    const a = rng.float();
+
+    newGame('sx', 'de', 'open', 1);
+    G.units.length = 0; G.shells.length = 0;
+    G.bases[0].cd = G.bases[1].cd = 999;
+    G.M[0].heal = 0;
+    const k2 = spawn(0, 'tank', 3, true); k2.settled = true; k2.hp = k2.max - 100;
+    rng.reseed(9);
+    stepUnits(1);
     const b = rng.float();
 
     expect(a).toBe(b);
