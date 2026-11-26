@@ -732,6 +732,43 @@ describe('rammstosstrupp', () => {
   });
 });
 
+describe('saxon mechs', () => {
+  beforeEach(() => {
+    newGame('sx', 'de', 'open', 1);
+    G.units.length = 0; G.shells.length = 0;
+    G.bases[0].cd = G.bases[1].cd = 999;
+  });
+
+  it('erlkönig holds fire up close', () => {
+    const u = spawn(0, 'tkM', 5, true); u.settled = true; u.cd = 0.001;
+    const foe = mute(pin(spawn(1, 'rifle', 7, true))); foe.x = u.x + 100; foe.y = u.y;
+    for (let i = 0; i < 40; i++) stepUnits(1);
+    expect(G.shells.length).toBe(0);
+  });
+
+  it('erlkönig shells at range', () => {
+    const u = spawn(0, 'tkM', 5, true); u.settled = true; u.cd = 0.001;
+    const foe = mute(pin(spawn(1, 'rifle', 7, true))); foe.x = u.x + 300; foe.y = u.y;
+    stepUnits(0.1);
+    expect(G.shells).toContainEqual(expect.objectContaining({ type: 'mortar' }));
+  });
+
+  it('erlkönig never fires on the move', () => {
+    const u = spawn(0, 'tkM', 5, true); u.cd = 0.001; u.tx = u.x + 300;
+    const foe = mute(pin(spawn(1, 'rifle', 7, true))); foe.x = u.x + 300; foe.y = u.y; foe.line = u.line;
+    stepUnits(0.1);
+    expect(G.shells.length).toBe(0);
+  });
+
+  it('rübezahl crushes', () => {
+    const u = spawn(0, 'ruebezahl', 5, true); u.settled = true;
+    const foe = mute(pin(spawn(1, 'rifle', 7, true))); foe.x = u.x + 40; foe.y = u.y;
+    const hp0 = foe.hp;
+    stepUnits(1);
+    expect(foe.hp).toBeLessThan(hp0);
+  });
+});
+
 describe('repair workshop', () => {
   beforeEach(() => {
     newGame('sx', 'de', 'open', 1);

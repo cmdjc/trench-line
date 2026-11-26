@@ -10,7 +10,7 @@ import { dropTarget, validDrop, spawnDrop } from './drop.js';
 import { DROP_RANGE } from '../data/drop.js';
 import { rng } from '../core/rng.js';
 import { tier } from './base.js';
-import { TUNNEL_T, MINE_COST, MINE_R, MINE_TANK, MINE_NEST, PARIS_CD, PARIS_DMG, PARIS_SPLASH, PARIS_GAP, DOCK_CD, DOCK_HP, DOCK_DMG, DOCK_SCALE } from '../data/base.js';
+import { TUNNEL_T, MINE_COST, MINE_R, MINE_TANK, MINE_NEST, PARIS_CD, PARIS_DMG, PARIS_SPLASH, PARIS_GAP, DOCK_CD, DOCK_HP, DOCK_DMG, DOCK_SCALE, FOUNDRY_CD, FOUNDRY_HP } from '../data/base.js';
 
 export function targetFor(side) {
   if (side === 0) {
@@ -42,6 +42,7 @@ export function swBlock(side) {
   const d = SW[G.nation[side]], st = G.sw[side];
   if (!d) return 'none';
   if (st.tunnel) return 'Tunnelling under trench ' + st.tunnel.line + ': ' + Math.ceil(st.tunnel.t) + ' seconds to go.';
+  if (d.kind === 'ruebezahl' && G.units.some(u => u.side === side && u.type === 'ruebezahl')) return 'Already in the field.';
   if (st.cd > 0) return 'Ready again in ' + Math.ceil(st.cd) + ' seconds.';
   if (d.kind === 'mine' && !isTrench(targetFor(side))) return 'No enemy-held trench ahead of the selected one.';
   if (d.kind === 'drop' && dropTarget(side) < 0) return 'No enemy or empty trench within ' + DROP_RANGE + ' trenches of your front.';
@@ -75,6 +76,10 @@ export function useSW(side, at) {
     if (nat >= 2) { u.hp *= DOCK_HP; u.max *= DOCK_HP; }
     if (nat >= 3) { u.dmgMul = DOCK_DMG; u.scale = DOCK_SCALE; }
     if (side === 1) toast('The enemy has sent out a Southern Colossus.');
+  } else if (d.kind === 'ruebezahl') {
+    const u = spawn(side, 'ruebezahl', side ? G.ai.F : G.sel);
+    if (nat >= 3) { u.hp *= FOUNDRY_HP; u.max *= FOUNDRY_HP; }
+    if (side === 1) toast('The enemy has sent out Rübezahl.');
   } else if (d.kind === 'drop') {
     const L = at && validDrop(side, at.line) ? at.line : dropTarget(side);
     if (L < 0) return false;
@@ -89,7 +94,7 @@ export function useSW(side, at) {
     for (let i = 0; i < 3; i++) G.shells.push({ x0: own.x, y0: WH / 2, x1: tx + (rng.float() - 0.5) * 16, y1: 50 + i * 100 + (rng.float() - 0.5) * 40, t: -i * 1.3, dur: 3, side, type: 'barrage', dmg: atHQ ? 120 : 180, splash: 70, cov: 0.85, arc: 3, big: true, raze: true, base: atHQ });
     if (side === 1) toast('42 cm shells are falling on ' + lineName(T) + '.');
   }
-  st.cd = d.kind === 'paris' && nat >= 1 ? PARIS_CD : d.kind === 'colossus' && nat >= 1 ? DOCK_CD : d.cd;
+  st.cd = d.kind === 'paris' && nat >= 1 ? PARIS_CD : d.kind === 'colossus' && nat >= 1 ? DOCK_CD : d.kind === 'ruebezahl' && nat >= 2 ? FOUNDRY_CD : d.cd;
   return true;
 }
 
