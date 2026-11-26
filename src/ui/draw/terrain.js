@@ -214,6 +214,10 @@ export function flag(n, x, y) {
     ctx.fillStyle = '#2a4a9a'; ctx.fillRect(x, y, w / 3, h);
     ctx.fillStyle = '#ece7d6'; ctx.fillRect(x + w / 3, y, w / 3, h);
     ctx.fillStyle = '#b3261b'; ctx.fillRect(x + w * 2 / 3, y, w / 3, h);
+  } else if (n === 'sx') {
+    ctx.fillStyle = '#ece7d6'; ctx.fillRect(x, y, w, h / 2);
+    ctx.fillStyle = '#2e6b3a'; ctx.fillRect(x, y + h / 2, w, h / 2);
+    ctx.fillStyle = '#1f2124'; ctx.fillRect(x, y, 6, h);
   } else {
     ctx.fillStyle = '#22336b'; ctx.fillRect(x, y, w, h);
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
