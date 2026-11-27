@@ -451,6 +451,14 @@ describe('saxon dominion art', () => {
           const strut = paths.find(pth => pth.pts.some(([x, y]) => Math.abs(x - lx) < 0.01 && Math.abs(y - hy) < 0.01));
           expect(strut, `${k} has a bracket path visiting its hip (${lx},${hy})`).toBeTruthy();
           expect(inPolygon(strut.x0, strut.y0, hull), `${k} bracket starts inside its own hull at (${strut.x0},${strut.y0})`).toBe(true);
+          // A degenerate, zero-width bracket (a thin line again, the exact defect this
+          // mechanism replaced) would still pass the two checks above, since they only
+          // look at the path's start and the hip it reaches. Require at least one point
+          // to sit meaningfully off the moveTo-to-hip centreline, proving the bracket
+          // actually has width, not just length.
+          const [x0, y0] = [strut.x0, strut.y0], dx = lx - x0, dy = hy - y0, len = Math.hypot(dx, dy) || 1;
+          const maxOffset = Math.max(...strut.pts.map(([x, y]) => Math.abs(dx * (y - y0) - dy * (x - x0)) / len));
+          expect(maxOffset, `${k} bracket has real width, not a degenerate thin line`).toBeGreaterThan(1);
         }
       }
     }
