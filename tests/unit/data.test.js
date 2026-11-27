@@ -253,7 +253,7 @@ it('saxon infantry stay within 15% of base', () => {
 });
 
 it('the rammstosstrupp is a mortar with a ram for its dead zone', () => {
-  expect(STATS.sx.raider).toEqual(expect.objectContaining({ atk: 'mortar', min: 90, shell: 1.1, splash: 28, arc: 1, shield: 0.7, hp: 90, cost: 70 }));
+  expect(STATS.sx.raider).toEqual(expect.objectContaining({ atk: 'mortar', min: 90, shell: 1.1, splash: 28, arc: 1, shield: 0.7, hp: 110, cost: 70 }));
   const T = STATS.sx.raider;
   expect(T.ram).toEqual({ dmg: 24, cd: 1.2, range: 90, acc: 0.8, atk: 'raider', heavy: 2 });
   expect(T.ram.range).toBe(T.min);

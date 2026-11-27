@@ -263,8 +263,8 @@ NU.sx = {
   rifle: { name: 'Grenadier', pl: 'Grenadiers', cost: 22, hp: 46, speed: 40, role: 'Tough, steady rifleman. A little slower than most.' },
   mg: { name: 'Dreyse gunner', pl: 'Dreyse gunners', cost: 64, hp: 51, speed: 28, role: 'Heavy gun crew. Sturdy, but slow to move.' },
   sniper: { name: 'Jäger', pl: 'Jäger', cost: 60, hp: 34, speed: 37, role: 'Long reach. Picks men out of trenches.' },
-  mortar: { name: 'Granatwerfer crew', pl: 'Granatwerfer crews', cost: 98, hp: 40, speed: 27, role: 'Shells trenches up to two lines away. Sturdy crew.' },
-  raider: { name: 'Rammstoßtrupp', pl: 'Rammstoßtrupps', cost: 70, hp: 90, shield: 0.7, speed: 34, atk: 'mortar', dmg: 18, cd: 4.5, range: 400, min: 90, splash: 28, shell: 1.1, arc: 1, sprite: 'ramm',
+  mortar: { name: 'Granatwerfer crew', pl: 'Granatwerfer crews', cost: 98, hp: 40, dmg: 24, speed: 27, role: 'Shells trenches up to two lines away. Sturdy crew.' },
+  raider: { name: 'Rammstoßtrupp', pl: 'Rammstoßtrupps', cost: 70, hp: 110, shield: 0.7, speed: 34, atk: 'mortar', dmg: 18, cd: 4.5, range: 400, min: 90, splash: 28, shell: 1.1, arc: 1, sprite: 'ramm',
     ram: { dmg: 24, cd: 1.2, range: 90, acc: 0.8, atk: 'raider', heavy: 2 },
     role: 'Armoured assault squad. Lobs mortar bombs at range and rams anything that gets inside the mortar’s reach. The ram hits armour and emplacements hard.' }
 };

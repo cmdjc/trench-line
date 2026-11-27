@@ -1,6 +1,6 @@
 # Trench Line
 
-A top-down First World War trench-battle game. Pick one of eight nations, take the enemy's trenches one line at a time, and destroy their HQ before they overrun yours. Troops dug into a trench take a fraction of the damage open ground costs; kills earn you cards that unlock tanks, guns and tricks; and the longer the battle runs, the stronger the enemy grows.
+A top-down First World War trench-battle game. Pick one of nine nations, take the enemy's trenches one line at a time, and destroy their HQ before they overrun yours. Troops dug into a trench take a fraction of the damage open ground costs; kills earn you cards that unlock tanks, guns and tricks; and the longer the battle runs, the stronger the enemy grows.
 
 Play it at https://cmdjc.github.io/trench-line/
 
@@ -8,7 +8,7 @@ Play it at https://cmdjc.github.io/trench-line/
 
 Buy troops with supplies, select a trench line, and send it forward with **Advance**. Men walk to the line, settle into the trench, and hold it. Bring stragglers with **Bring all here**, fall back when a line is lost, and double-tap a trench you hold to fortify it. Emplacements — MG nests and your nation's special defence — hold ground on their own. Once your kills fill the card meter you pick a card: unlocks, income, buffs, one-off boosts.
 
-Every nation plays differently: Britain's wire and mines, Germany's Paris Gun and stormtroopers, France's Char 2C, Russia's Tsar Tank, Austria-Hungary's siege guns, Italy's Caproni bombers, America's airborne drop, and Antarctica's chilling tank shells and absurd Southern Colossus. Superweapons unlock after four minutes and change the battle; the enemy commander has his own.
+Every nation plays differently: Britain's wire and mines, Germany's Paris Gun and stormtroopers, France's Char 2C, Russia's Tsar Tank, Austria-Hungary's siege guns, Italy's Caproni bombers, America's airborne drop, Antarctica's chilling tank shells and absurd Southern Colossus, and the Saxon Dominion's walking mechs and the giant Rübezahl. Superweapons unlock after four minutes and change the battle; the enemy commander has his own.
 
 Four battlefields: open ground, a river crossing with two bridges, a wide plain with double super trenches, and the Long March — 45 trenches with a super trench in the middle.
 

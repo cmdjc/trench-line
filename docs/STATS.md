@@ -14,6 +14,7 @@ Generated from the game data by `npm run stats` (`scripts/gen-stats.mjs`). Numbe
 | United States of Antarctica | 20 | 20 | Bunker (120) | Southern Colossus (2500, 150 s cooldown) |
 | Italy | 40 | 8 | Gun pit (120) | Caproni bombers (420, 80 s cooldown) |
 | Russia | 60 | 10 | Mines (60) | Tsar Tank (900, 60 s cooldown) |
+| Saxon Dominion | 20 | 8 | Repair workshop (110) | Rübezahl (1800, 140 s cooldown) |
 
 ## Infantry
 
@@ -97,6 +98,16 @@ Generated from the game data by `npm run stats` (`scripts/gen-stats.mjs`). Numbe
 | Sniper | 55 | 30 | 45 | 440 | Long reach. Picks men out of trenches. |
 | Mortar team | 90 | 35 | 22 | 480 | Shells trenches up to two lines away. |
 
+**Saxon Dominion**
+
+| Unit | Cost | Health | Damage | Range | Notes |
+|---|---|---|---|---|---|
+| Grenadier | 22 | 46 | 8 | 250 | Tough, steady rifleman. A little slower than most. |
+| Dreyse gunner | 64 | 51 | 5 | 280 | Heavy gun crew. Sturdy, but slow to move. |
+| Rammstoßtrupp | 70 | 110 | 18 | 400 | Armoured assault squad. Lobs mortar bombs at range and rams anything that gets inside the mortar’s reach. The ram hits armour and emplacements hard. |
+| Jäger | 60 | 34 | 45 | 440 | Long reach. Picks men out of trenches. |
+| Granatwerfer crew | 98 | 40 | 24 | 480 | Shells trenches up to two lines away. Sturdy crew. |
+
 ## Armour
 
 Limit use is how much of the nation's armour limit one vehicle takes.
@@ -166,6 +177,15 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 | Vezdekhod | 110 | 200 | 6 | 240 | 38 | 1 | Light tank on one wide track. Quick and cheap, with a machine gun and no cannon. |
 | Mendeleev tank | 360 | 900 | 38 | 240 | 14 | 2 | Slow ironclad with a heavy turret gun. Tough and affordable. |
 
+**Saxon Dominion** (armour limit 8)
+
+| Vehicle | Cost | Health | Damage | Range | Speed | Limit use | Notes |
+|---|---|---|---|---|---|---|---|
+| Kobold | 85 | 160 | 5 | 220 | 44 | 0.5 | Small, quick scout mech on two pairs of legs. Machine gun only, and bullets hurt it. |
+| Krampus | 300 | 650 | 30 | 240 | 19 | 1 | Versatile medium mech with a turret gun and a machine gun. |
+| Erlkönig | 430 | 360 | 60 | 620 | 16 | 1.5 | Walking artillery. Enormous reach, but thin armour and it cannot fire up close or on the move. |
+| Eisenhans | 720 | 2000 | 46 | 260 | 11 | 3 | Walking fortress. Very heavy armour, a big gun and machine guns, but very slow. |
+
 ## Emplacements and special units
 
 | Unit | Cost | Health |
@@ -179,6 +199,8 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 | Char 2C | 1100 | 3200 |
 | Tsar Tank | 900 | 2800 |
 | Southern Colossus | 2500 | 9000 |
+| Repair workshop | 110 | 240 |
+| Rübezahl | 1800 | 6000 |
 
 ## Research tree
 
@@ -243,6 +265,7 @@ Limit use is how much of the nation's armour limit one vehicle takes.
 | United States of Antarctica | Southern Colossus | 2500 | 150 s | A colossal 9,000-health landship with four turrets, machine guns and crushing treads. One at a time. |
 | Italy | Caproni bombers | 420 | 80 s | A bomber flies down the nearest enemy position ahead of the selected trench and drops eight bombs along its length. |
 | Russia | Tsar Tank | 900 | 60 s | A giant on nine-metre wheels that crushes whatever it reaches and rolls over hedgehogs. One at a time. |
+| Saxon Dominion | Rübezahl | 1800 | 140 s | The mountain giant: a 6,000-health walking fortress with heavy guns, machine guns and crushing feet. One at a time. |
 
 ## Maps
 

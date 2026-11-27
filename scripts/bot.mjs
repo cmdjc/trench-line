@@ -46,7 +46,9 @@ bus.on('game:end', d => { end = d; });
 
 const settledAt = L => G.units.filter(u => u.side === 0 && u.line === L).every(u => u.settled);
 const BASE_ROT = ['walls', 'nat', 'depot', 'hosp']; // same rotation as the AI
-const pref = ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
+// BOTPREF: comma list that replaces pref when set, e.g. BOTPREF=tkH,tkM,tank,raider, to force heavier
+// classes into the bot's own buy rotation for anti-goal checks; default behaviour is unchanged.
+const pref = process.env.BOTPREF ? process.env.BOTPREF.split(',') : ['tank', 'mortar', 'sniper', 'mg', 'raider', 'rifle'];
 // rail usage, sampled once a second: a "trip" is a train turning at the HQ for another run.
 // Armoured trains are reported separately (armor/foeArmor), never in trains.bought/trips; their shots and
 // mgShots are kept per train id so a destroyed train's shots still count in the final total.
