@@ -456,7 +456,7 @@ describe('saxon dominion art', () => {
     }
   });
 
-  it('erlkönig stows a short, thick gun and deploys a longer one once settled', () => {
+  it('erlkönig stows a shorter gun and deploys a longer one of the same thickness once settled', () => {
     newGame('sx', 'de', 'open', 3);
     const endOf = settled => {
       const calls = [];
@@ -476,7 +476,8 @@ describe('saxon dominion art', () => {
     };
     const stowed = endOf(false), deployed = endOf(true);
     expect(deployed.x).toBeGreaterThan(stowed.x);
-    expect(deployed.w).toBeLessThan(stowed.w);
+    expect(deployed.w).toBe(stowed.w);
+    expect(deployed.w).toBeGreaterThanOrEqual(6);
   });
 
   it('workshop is not drawn as an MG nest', () => {
