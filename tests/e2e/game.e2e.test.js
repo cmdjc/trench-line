@@ -98,11 +98,11 @@ beforeAll(() => {
 
 afterAll(() => { if (dom) dom.window.close(); });
 
-test('start screen offers the eight nations and credits', () => {
+test('start screen offers the nine nations and credits', () => {
   expect(T).toBeTruthy();
   expect(d.getElementById('startOv').hidden).toBe(false);
   const picks = d.querySelectorAll('#natList button[data-nation]');
-  expect(picks.length).toBe(8);
+  expect(picks.length).toBe(9);
   const credits = d.querySelector('.credits').textContent;
   expect(credits).toContain('M K');
   expect(credits).toContain('Claude and GLM');
@@ -247,7 +247,7 @@ test('full playthrough: picks, battle, mine, victory, save code, replay', () => 
   click('#againBtn');
   expect(d.getElementById('endOv').hidden).toBe(true);
   expect(d.getElementById('startOv').hidden).toBe(false);
-  expect(d.querySelectorAll('#natList button[data-nation]').length).toBe(8);
+  expect(d.querySelectorAll('#natList button[data-nation]').length).toBe(9);
   click('button[data-nation="fr"]');
   click('button[data-nation="ru"]');
   click('button[data-map="river"]');

@@ -12,3 +12,4 @@ export const SW = {
   it: { kind: 'caproni', name: 'Caproni bombers', cost: 420, cd: 80, text: 'A bomber flies down the nearest enemy position ahead of the selected trench and drops eight bombs along its length.' },
   ru: { kind: 'tsar', name: 'Tsar Tank', cost: 900, cd: 60, text: 'A giant on nine-metre wheels that crushes whatever it reaches and rolls over hedgehogs. One at a time.' }
 };
+SW.sx = { kind: 'ruebezahl', name: 'Rübezahl', cost: 1800, cd: 140, text: 'The mountain giant: a 6,000-health walking fortress with heavy guns, machine guns and crushing feet. One at a time.' };

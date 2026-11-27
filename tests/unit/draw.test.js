@@ -14,8 +14,11 @@ import { setCtx } from '../../src/ui/draw/helpers.js';
 import { cam, vw } from '../../src/ui/camera.js';
 import { drawTrack, drawTrains } from '../../src/ui/draw/rail.js';
 import { RAIL_Y, BARRIER_R } from '../../src/data/rail.js';
-import { drawTunnels } from '../../src/ui/draw/terrain.js';
+import { drawTunnels, flag } from '../../src/ui/draw/terrain.js';
 import { tunnelLines } from '../../src/sim/tunnel.js';
+import { emblem, drawTank } from '../../src/ui/draw/tanks.js';
+import { drawSoldier } from '../../src/ui/draw/men.js';
+import { utOf } from '../../src/data/units.js';
 
 const noop = () => {};
 const stubCtx = new Proxy(
@@ -45,7 +48,7 @@ function populate(n) {
   spawn(0, 'rifle', L, true).carry = 'bags';
   spawn(0, 'rifle', L, true).carry = 'gun';
   // emplacements + specials
-  for (const k of ['nest', 'pillbox', 'pit75', 'pit65', 'depot', 'bunker']) {
+  for (const k of ['nest', 'pillbox', 'pit75', 'pit65', 'depot', 'bunker', 'workshop']) {
     const u = spawn(0, k, L, true);
     u.flash = 0.05;
     u.hp = u.max - 1;
@@ -66,7 +69,7 @@ function populate(n) {
     full.aim = -0.2;
   }
   // super weapons in the field
-  for (const k of ['tsar', 'char2c', 'colossus']) spawn(0, k, L, true);
+  for (const k of ['tsar', 'char2c', 'colossus', 'ruebezahl']) spawn(0, k, L, true);
   // enemy-side sprites (flipped drawing)
   for (const k of ['rifle', 'mg', 'mortar']) spawn(1, k, L, true);
   const foe = spawn(1, tkList('de')[0], L, true);
@@ -336,5 +339,65 @@ describe('tunnel trench drawing', () => {
     const m = spawn(0, 'rifle', a + 2, true); m.tunnel = { t: 4, exit: a };
     expect(() => draw()).not.toThrow();
     cam.x = 0; cam.tx = 0;
+  });
+});
+
+describe('saxon dominion art', () => {
+  const styleRecorder = () => {
+    const styles = [];
+    let lineTos = 0;
+    const state = { fillStyle: null };
+    const c = new Proxy(state, {
+      get(t, k) {
+        if (k === 'fillRect' || k === 'fill') return (...a) => { styles.push(t.fillStyle); return a; };
+        if (k === 'lineTo') return (...a) => { lineTos++; return a; };
+        return t[k] !== undefined ? t[k] : noop;
+      },
+      set(t, k, v) { t[k] = v; return true; }
+    });
+    return { ctx: c, styles, lineTos: () => lineTos };
+  };
+
+  it('sx flag is not the union jack', () => {
+    const { ctx, styles } = styleRecorder();
+    setCtx(ctx);
+    flag('sx', 0, 0);
+    expect(styles).toContain('#2e6b3a');
+    expect(styles).not.toContain('#22336b');
+    setCtx(stubCtx);
+  });
+
+  it('sx emblem', () => {
+    const { ctx, styles } = styleRecorder();
+    setCtx(ctx);
+    emblem('sx', 0, 0, 1);
+    expect(styles).toContain('#2e6b3a');
+    expect(styles).not.toContain('#e2b93b');
+    setCtx(stubCtx);
+  });
+
+  it('mechs walk on legs, not treads', () => {
+    newGame('sx', 'de', 'open', 3);
+    for (const k of ['tkL', 'tank', 'tkM', 'tkH', 'ruebezahl']) {
+      const { ctx, styles, lineTos } = styleRecorder();
+      setCtx(ctx);
+      const u = spawn(0, k, 2, true);
+      u.tread = 1.4;
+      drawTank(u);
+      expect(styles, k).not.toContain('#22221a');
+      const draw = utOf(G.nation[0], k).draw;
+      expect(lineTos(), k).toBeGreaterThanOrEqual(2 * draw.legs.length * 2);
+      setCtx(stubCtx);
+    }
+  });
+
+  it('workshop is not drawn as an MG nest', () => {
+    newGame('sx', 'de', 'open', 3);
+    const { ctx, styles } = styleRecorder();
+    setCtx(ctx);
+    const u = spawn(0, 'workshop', 2, true);
+    drawSoldier(u);
+    expect(styles).not.toContain('#3d423a');
+    setCtx(stubCtx);
   });
 });

@@ -72,6 +72,7 @@ export function buildDefAt(L) {
     : d.kind === 'mines' ? 'Mines laid in front of trench ' + L + '. The enemy cannot see them.'
     : d.kind === 'depot' ? 'Sappers are carrying stores to trench ' + L + ' to set up a supply depot.'
     : d.kind === 'bunker' ? 'Sappers are building a bunker at trench ' + L + '.'
+    : d.kind === 'workshop' ? 'Sappers are carrying tools to trench ' + L + ' to set up a repair workshop.'
     : 'A sapper is carrying sandbags to trench ' + L + '. The gun follows.');
   bus.emit('hud'); return true;
 }
@@ -134,6 +135,7 @@ export function fireSuperweapon() {
     : d.kind === 'char2c' ? 'A Char 2C is rolling out of your HQ.'
     : d.kind === 'tsar' ? 'A Tsar Tank is rolling out of your HQ.'
     : d.kind === 'colossus' ? 'The Southern Colossus is rolling out of your HQ.'
+    : d.kind === 'ruebezahl' ? 'Rübezahl is striding out of your HQ.'
     : d.kind === 'caproni' ? 'A Caproni bomber is on its way.'
     : 'The 42 cm battery has fired.');
   bus.emit('hud'); return true;

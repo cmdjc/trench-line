@@ -2,11 +2,13 @@
 // the original (mine placement, bunker slot jitter) use the seeded rng so
 // battles replay identically.
 
-import { SLOTS, SLOTS5, WH, FORT_COST, maxFort, SPECIAL, BUNKER_CAP, BUNKER_MAX } from '../data/units.js';
+import { SLOTS, SLOTS5, WH, FORT_COST, maxFort, SPECIAL, BUNKER_CAP, BUNKER_MAX, WORKSHOP_HEAL } from '../data/units.js';
+import { FOUNDRY_HEAL } from '../data/base.js';
 import { NAT } from '../data/nations.js';
 import { G, isDbl, toast, hidden } from './state.js';
 import { isTrench, spawn, exposed } from './geometry.js';
 import { hurt, boom } from './combat.js';
+import { tier } from './base.js';
 import { rng } from '../core/rng.js';
 import { bus } from '../core/events.js';
 
@@ -53,6 +55,9 @@ export function bunkerCount(side, L) {
   return n;
 }
 
+export const workshopAt = (side, L) => G.units.some(w => w.T.workshop && w.side === side && w.line === L && w.hp > 0);
+export const workshopRate = side => WORKSHOP_HEAL * (G.nation[side] === 'sx' && tier(side, 'nat') >= 1 ? FOUNDRY_HEAL : 1);
+
 /* troops that have settled in a trench walk into its bunkers, up to six each */
 export function stepBunkers() {
   for (const u of G.units) if (u.shelter) {
@@ -76,6 +81,7 @@ export function canDef(side, L) {
   if (d.kind === 'bunker') return freeSlot(L) >= 0 && bunkerCount(side, L) < BUNKER_MAX;
   if (d.kind === 'pit') return freeSlot(L) >= 0;
   if (d.kind === 'depot') return freeSlot(L) >= 0 && !G.units.some(u => u.T.depot && u.line === L) && !G.jobs.some(j => j.make === 'depot' && j.line === L);
+  if (d.kind === 'workshop') return freeSlot(L) >= 0 && !G.units.some(u => u.T.workshop && u.line === L) && !G.jobs.some(j => j.make === 'workshop' && j.line === L);
   return !G.fields.some(f => f.side === side && f.line === L);
 }
 
@@ -84,6 +90,7 @@ export function buildDef(side, L) {
   if (d.kind === 'bunker') return buildNest(side, L, 'bunker');
   if (d.kind === 'pit') return buildNest(side, L, d.make || 'pit75');
   if (d.kind === 'depot') return buildNest(side, L, 'depot');
+  if (d.kind === 'workshop') return buildNest(side, L, 'workshop');
   if (d.kind === 'wire') G.fields.push({ type: 'wire', side, line: L, x: G.LX[L] + dir * 54, w: 46, hp: 140 });
   else {
     const mines = [];

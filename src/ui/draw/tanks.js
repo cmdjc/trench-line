@@ -327,6 +327,10 @@ export function emblem(n, x, y, sc) {
     ctx.fillStyle = '#2e7d4f'; ctx.fillRect(-2.4, -3, 1.6, 6);
     ctx.fillStyle = '#ece7d6'; ctx.fillRect(-0.8, -3, 1.6, 6);
     ctx.fillStyle = '#b3261b'; ctx.fillRect(0.8, -3, 1.6, 6);
+  } else if (n === 'sx') {
+    ctx.fillStyle = '#ece7d6'; circle(0, 0, 3.6);
+    ctx.fillStyle = '#2e6b3a'; circle(0, 0, 2.4);
+    ctx.fillStyle = '#14140e'; circle(0, 0, 1);
   } else {
     ctx.fillStyle = '#16160f'; ctx.fillRect(-3, -2, 6, 2);
     ctx.fillStyle = '#e2b93b'; ctx.fillRect(-3, 0, 6, 2);
@@ -361,6 +365,18 @@ export function drawTankGen(u, N) {
   ctx.lineCap = 'round';
   if (d.base) { ctx.fillStyle = d.base; ctx.fillRect(-L + 2, -W + 2, 2 * L - 4, 2 * W - 4); }
   for (const t of d.tr) { treads(-L, L, -t[1], -t[0], u.tread); treads(-L, L, t[0], t[1], u.tread); }
+  if (d.legs) {
+    const lw = 2.2 * (W / 14);
+    d.legs.forEach(([lx, reach], i) => {
+      const sw = Math.sin(u.tread * 0.3 + i * Math.PI) * reach * 0.5;
+      for (const s of [-1, 1]) {
+        const hx = lx, hy = s * W * 0.8, kx = lx + sw, ky = s * (W + reach * 0.7), fx = lx + sw * 1.6, fy = s * (W + reach);
+        ctx.strokeStyle = '#15150f'; ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        ctx.fillStyle = '#15150f'; circle(fx, fy, lw * 0.8);
+      }
+    });
+  }
   for (const p of d.parts) {
     if (p.t === 'l') { line(p.x1, p.y1, p.x2, p.y2, p.w, p.c || '#15150f'); continue; }
     if (p.t === 'em') { emblem(G.nation[u.side], p.x, p.y, p.s || 1); continue; }

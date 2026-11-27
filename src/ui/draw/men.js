@@ -69,11 +69,34 @@ export function drawBunker(u, N) {
   }
 }
 
+export function drawWorkshop(u, N) {
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(-13, -11, 30, 26);
+  ctx.fillStyle = N.body; ctx.fillRect(-16, -14, 30, 26);
+  ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 0.8; ctx.strokeRect(-16, -14, 30, 26);
+  ctx.fillStyle = N.hat; ctx.fillRect(-16, -14, 30, 6);
+  ctx.lineCap = 'butt';
+  ctx.fillStyle = '#3c4032'; circle(0, 2, 6.5);
+  ctx.strokeStyle = '#6b6f5e'; ctx.lineWidth = 1.4; ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3;
+    ctx.moveTo(Math.cos(a) * 6.5, 2 + Math.sin(a) * 6.5);
+    ctx.lineTo(Math.cos(a) * 9, 2 + Math.sin(a) * 9);
+  }
+  ctx.stroke();
+  ctx.fillStyle = N.body; circle(0, 2, 3);
+  ctx.lineCap = 'round';
+  if (u.hp < u.max) {
+    ctx.fillStyle = 'rgba(20,20,14,.75)'; ctx.fillRect(-12, -22, 24, 4);
+    ctx.fillStyle = u.side ? '#e0583e' : '#9fc05a'; ctx.fillRect(-11, -21, 22 * Math.max(0, u.hp / u.max), 2);
+  }
+}
+
 export function drawNest(u, N) {
   if (u.type === 'bunker') { drawBunker(u, N); return; }
   if (u.type === 'pillbox') { drawPillbox(u); return; }
   if (u.type === 'pit75' || u.type === 'pit65') { drawPit(u, N); return; }
   if (u.type === 'depot') { drawDepot(u); return; }
+  if (u.type === 'workshop') { drawWorkshop(u, N); return; }
   ctx.fillStyle = 'rgba(0,0,0,.25)'; oval(2, 3, 15, 14);
   ctx.fillStyle = TR; circle(0, 0, 10);
   bagArc(0, 0, 11.5, -Math.PI * 0.74, Math.PI * 0.74);
@@ -138,6 +161,10 @@ function drawSoldierBody(u, airborne) {
     ctx.fillStyle = '#15150f'; ctx.fillRect(4, -9, 5.5, 2.6); ctx.fillRect(4, 6.4, 5.5, 2.6);
     line(-7, 0, 5, 0, 2.2, '#2b2b20'); line(5, 0, 20, 0, 2.4, '#15150f');
     ctx.lineCap = 'butt'; line(9, -7, 9, 7, 2.2, '#5f7fa6'); ctx.lineCap = 'round';
+  } else if (sp === 'ramm') {
+    ctx.fillStyle = '#15150f'; ctx.fillRect(-9.5, -2.2, 5, 4.4);   // back-mounted mortar tube
+    line(-7, 0, -11, 0, 2.2, '#15150f');
+    line(1, 0, 9.5, 0, 2.8, '#3c4032');                            // forward ram bar
   } else if (t === 'mg') {
     line(-2, -4, 5, 0, 1, '#15150f'); line(-2, 4, 5, 0, 1, '#15150f'); line(1, 0, 14, 0, 2.6, '#15150f');
   } else if (t === 'sniper') line(1, 2.4, 15, 2.4, 1.1, '#15150f');
@@ -152,7 +179,7 @@ function drawSoldierBody(u, airborne) {
     ctx.fillStyle = '#5a5a48'; circle(8, 0, 1.7);
   } else if (!u.carry) line(1, 2.4, 10.5, 2.4, 1.5, '#15150f');
   ctx.fillStyle = N.body; oval(0, 0, 3.1, 5.3);
-  if (t === 'raider') { ctx.fillStyle = '#b3261b'; ctx.fillRect(-1, -5, 2, 10); }
+  if (t === 'raider' && !sp) { ctx.fillStyle = '#b3261b'; ctx.fillRect(-1, -5, 2, 10); }
   ctx.fillStyle = N.hat;
   if (N.style === 'brodie') {
     circle(0, 0, 3.8);
@@ -191,6 +218,7 @@ function drawSoldierBody(u, airborne) {
   if (u.flash > 0 && (t !== 'mortar' || sp)) {
     ctx.fillStyle = '#fff1b8';
     if (u.T.muzzle) circle(u.T.muzzle + 1.5, 0, sp === 'gun75' ? 3.2 : 2.2);
+    else if (sp === 'ramm') circle(u.mode === 'ram' ? 10.5 : -11.5, 0, 2.2);
     else circle(t === 'mg' ? 15 : t === 'tommy' ? 9.5 : 11.5, t === 'mg' ? 0 : 2.4, 2.2);
   }
 }

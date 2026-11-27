@@ -201,6 +201,38 @@ describe('one-at-a-time supers', () => {
     expect(G.units.some(u => u.type === 'char2c' && u.side === 1 && u.line === G.ai.F)).toBe(true);
     expect(toasts[0]).toBe('The enemy has sent out a Char 2C.');
   });
+
+  it('sx ruebezahl spawns at sel, blocks a second while alive, reports cooldown after death', () => {
+    game('sx', 'gb');
+    const t0 = tanks(0);
+    expect(useSW(0)).toBe(true);
+    const u = G.units.find(x => x.type === 'ruebezahl');
+    expect(u).toBeTruthy();
+    expect(u.side).toBe(0);
+    expect(u.line).toBe(G.sel);
+    expect(tanks(0)).toBe(t0); // sup units skip armour accounting
+    expect(swBlock(0)).toBe('Already in the field.');
+    expect(G.sw[0].cd).toBe(140);
+    u.hp = 0;
+    G.units = G.units.filter(x => x.hp > 0);
+    expect(swBlock(0)).toBe('Ready again in 140 seconds.');
+  });
+
+  it('enemy ruebezahl warns the player', () => {
+    game('gb', 'sx');
+    useSW(1);
+    expect(G.units.some(u => u.type === 'ruebezahl' && u.side === 1 && u.line === G.ai.F)).toBe(true);
+    expect(toasts[0]).toBe('The enemy has sent out Rübezahl.');
+  });
+
+  it('fireSuperweapon charges swCost and toasts the player line for ruebezahl', () => {
+    game('sx', 'gb');
+    G.S.supplies = 5000;
+    const before = G.S.supplies;
+    expect(fireSuperweapon()).toBe(true);
+    expect(G.S.supplies).toBe(before - swCost(0));
+    expect(toasts[0]).toBe('Rübezahl is striding out of your HQ.');
+  });
 });
 
 describe('it Caproni bombers', () => {
@@ -354,6 +386,17 @@ describe('national superweapon upgrades', () => {
     G.S.t = 300; G.shells = [];
     expect(useSW(0, { x: 300, y: 100 })).toBe(true);
     expect(G.sw[0].cd).toBe(65);
+  });
+
+  it('sx T2 Rübezahl cooldown is 100; T3 has 30% more health', () => {
+    game('sx', 'gb'); up(2);
+    expect(useSW(0)).toBe(true);
+    expect(G.sw[0].cd).toBe(100);
+    game('sx', 'gb'); up(3);
+    useSW(0);
+    const u = G.units.find(x => x.type === 'ruebezahl');
+    expect(u.max).toBeCloseTo(6000 * 1.3, 5);
+    expect(u.hp).toBeCloseTo(6000 * 1.3, 5);
   });
 });
 

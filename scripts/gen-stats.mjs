@@ -10,7 +10,7 @@ import { MAPS } from '../src/data/maps.js';
 import { STATS, SPECIAL, tkList } from '../src/data/units.js';
 
 const f = x => Math.round(x * 100) / 100;
-const DEF = { wire: 'Wire', pit: 'Gun pit', mines: 'Mines', depot: 'Supply depot', bunker: 'Bunker' };
+const DEF = { wire: 'Wire', pit: 'Gun pit', mines: 'Mines', depot: 'Supply depot', bunker: 'Bunker', workshop: 'Repair workshop' };
 
 let o = '# Trench Line: stat tables\n\nGenerated from the game data by `npm run stats` (`scripts/gen-stats.mjs`). Numbers are first-pass and need playtesting.\n\n## Nations\n\n| Nation | Infantry cap | Armour cap | Trench defence | Superweapon |\n|---|---|---|---|---|\n';
 for (const n of Object.keys(NAT)) {
@@ -32,7 +32,7 @@ for (const n of Object.keys(NAT)) {
   o += '\n';
 }
 o += '## Emplacements and special units\n\n| Unit | Cost | Health |\n|---|---|---|\n';
-for (const k of ['nest', 'pillbox', 'pit75', 'pit65', 'depot', 'bunker', 'char2c', 'tsar', 'colossus']) { const u = SPECIAL[k]; o += '| ' + u.name + ' | ' + u.cost + ' | ' + u.hp + ' |\n'; }
+for (const k of ['nest', 'pillbox', 'pit75', 'pit65', 'depot', 'bunker', 'char2c', 'tsar', 'colossus', 'workshop', 'ruebezahl']) { const u = SPECIAL[k]; o += '| ' + u.name + ' | ' + u.cost + ' | ' + u.hp + ' |\n'; }
 o += '\n## Research tree\n\n';
 for (const b of TECH) { o += '**' + b.branch + '**\n\n'; b.nodes.forEach((n, i) => o += (i + 1) + '. ' + n.name + ' (' + n.cost + ' points): ' + n.text + '\n'); o += '\n'; }
 o += '## Superweapons\n\n| Nation | Name | Cost | Cooldown | Effect |\n|---|---|---|---|---|\n';

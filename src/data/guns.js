@@ -21,6 +21,8 @@ export const GUNS = {
     shells: rep(1, { dmg: 260, splash: 80, cov: 0.85, spread: 10, dur: 3, arc: 3.5, big: true }) },
   ru: { name: 'Massed battery', range: 5, cost: 80, cd: 25,
     shells: rep(6, { dmg: 70, splash: 35, cov: 0.8, spread: 70, dur: 1.8, arc: 2 }, 0.35) },
+  sx: { name: '15 cm sFH battery', range: 5, cost: 70, cd: 16,
+    shells: rep(2, { dmg: 80, splash: 34, cov: 0.8, spread: 24, dur: 2, arc: 2.5 }, 0.4) },
 };
 
 // Share of the enemy's income diverted to its gun fund once the gun is allowed to fire (t >= 60 s).

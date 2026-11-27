@@ -686,9 +686,9 @@ describe('end screen and start flow', () => {
     expect($('endOv').hidden).toBe(true);
     expect($('startOv').hidden).toBe(false);
     const picks = [...document.querySelectorAll('#natList button[data-nation]')];
-    expect(picks.length).toBe(8);
+    expect(picks.length).toBe(9);
     picks[0].click();                                        // play as first nation
-    expect([...document.querySelectorAll('#natList button[data-nation]')].length).toBe(7);
+    expect([...document.querySelectorAll('#natList button[data-nation]')].length).toBe(8);
     document.querySelectorAll('#natList button[data-nation]')[1].click(); // enemy
     const maps = [...document.querySelectorAll('#natList button[data-map]')];
     expect(maps.length).toBe(4);

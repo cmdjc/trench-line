@@ -48,3 +48,6 @@ export const CARDTXT = {
         u_tank: ['Siege gun: \u0160koda 30.5 cm', 'Unlocks the \u0160koda 30.5 cm mortar: a slow siege gun that reaches three trenches, hits a wide area and can smash fortifications. You can field 2.'] },
   ru: { u_tank: ['Tank unlock: Vezdekhod', 'Unlocks the Vezdekhod: a quick, cheap light tank on one wide track, with a machine gun and no cannon. You can field 10.'] }
 };
+CARDTXT.sx = { u_raider: ['Rammstoßtrupps', 'Unlocks the Rammstoßtrupp: an armoured squad that lobs mortar bombs at range and rams anything that gets inside them. Two arrive now.'],
+  u_mortar: ['Granatwerfer crews', 'Unlocks the Granatwerfer: a trench mortar that shells up to two trench lines away. One arrives now.'],
+  u_tank: ['Mech unlock: Krampus', 'Unlocks the Krampus: a versatile medium mech with a turret gun and a machine gun.'] };
