@@ -391,6 +391,54 @@ describe('saxon dominion art', () => {
     }
   });
 
+  it('leg hip joints sit on the hull, bridging body to leg', () => {
+    newGame('sx', 'de', 'open', 3);
+    for (const k of ['tkL', 'tank', 'tkM', 'tkH', 'ruebezahl']) {
+      const arcs = [];
+      const c = new Proxy({}, {
+        get(t, p) {
+          if (p === 'arc') return (x, y, r) => arcs.push({ x, y, r });
+          return t[p] !== undefined ? t[p] : noop;
+        },
+        set(t, p, v) { t[p] = v; return true; }
+      });
+      setCtx(c);
+      const u = spawn(0, k, 2, true);
+      drawTank(u);
+      setCtx(stubCtx);
+      const draw = utOf(G.nation[0], k).draw;
+      for (const [lx] of draw.legs) {
+        for (const s of [-1, 1]) {
+          const hy = s * draw.W * 0.72;
+          expect(arcs.some(a => Math.abs(a.x - lx) < 0.01 && Math.abs(a.y - hy) < 0.01), `${k} hip at ${lx},${hy}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('erlkönig stows a short, thick gun and deploys a longer one once settled', () => {
+    newGame('sx', 'de', 'open', 3);
+    const endOf = settled => {
+      const calls = [];
+      const c = new Proxy({ lineWidth: 0 }, {
+        get(t, p) {
+          if (p === 'lineTo') return (x, y) => calls.push({ x, y, w: t.lineWidth });
+          return t[p] !== undefined ? t[p] : noop;
+        },
+        set(t, p, v) { t[p] = v; return true; }
+      });
+      setCtx(c);
+      const u = spawn(0, 'tkM', 2, true);
+      u.aim = 0; u.settled = settled;
+      drawTank(u);
+      setCtx(stubCtx);
+      return calls[calls.length - 1];
+    };
+    const stowed = endOf(false), deployed = endOf(true);
+    expect(deployed.x).toBeGreaterThan(stowed.x);
+    expect(deployed.w).toBeLessThan(stowed.w);
+  });
+
   it('workshop is not drawn as an MG nest', () => {
     newGame('sx', 'de', 'open', 3);
     const { ctx, styles } = styleRecorder();

@@ -370,7 +370,7 @@ export function drawTankGen(u, N) {
     d.legs.forEach(([lx, reach], i) => {
       const sw = Math.sin(u.tread * 0.3 + i * Math.PI) * reach * 0.5;
       for (const s of [-1, 1]) {
-        const hx = lx, hy = s * W * 0.8, kx = lx + sw, ky = s * (W + reach * 0.7), fx = lx + sw * 1.6, fy = s * (W + reach);
+        const hx = lx, hy = s * W * 0.72, kx = lx + sw, ky = s * (W + reach * 0.7), fx = lx + sw * 1.6, fy = s * (W + reach);
         ctx.strokeStyle = '#15150f'; ctx.lineWidth = lw;
         ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
         ctx.fillStyle = '#15150f'; circle(fx, fy, lw * 0.8);
@@ -395,11 +395,25 @@ export function drawTankGen(u, N) {
       else ctx.stroke();
     }
   }
+  if (d.legs) {
+    const lw = 2.2 * (W / 14);
+    d.legs.forEach(([lx]) => {
+      for (const s of [-1, 1]) {
+        const hx = lx, hy = s * W * 0.72;
+        ctx.fillStyle = ch; circle(hx, hy, lw * 1.3);
+        ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.arc(hx, hy, lw * 1.3, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(0,0,0,.35)'; circle(hx, hy, lw * 0.5);
+      }
+    });
+  }
   tankDamage(u, L / 23);
   for (const p of d.tur || []) {
     ctx.save(); ctx.translate(p.x, 0); ctx.rotate(u.aim);
+    const stowed = p.stowLen !== undefined && !u.settled;
+    const len = stowed ? p.stowLen : p.len, gt = stowed ? (p.stowGt || (p.gt || 3) * 1.8) : (p.gt || 3);
     const gs = p.guns > 1 ? [-p.gw, p.gw] : [0];
-    for (const gy of gs) line(p.r * 0.4, gy, p.len, gy, p.gt || 3, '#15150f');
+    for (const gy of gs) line(p.r * 0.4, gy, len, gy, gt, '#15150f');
     ctx.fillStyle = ch; circle(0, 0, p.r);
     ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 0.8;
     ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.stroke();
@@ -407,8 +421,8 @@ export function drawTankGen(u, N) {
     ctx.fillStyle = cb; circle(-p.r * 0.25, 0, p.r * 0.28);
     if (u.flash > 0 && p === d.tur[0]) {
       ctx.fillStyle = '#fff1b8';
-      for (const gy of gs) circle(p.len + 2.5, gy, Math.max(1.6, p.r * 0.3));
-      ctx.fillStyle = 'rgba(255,200,90,.6)'; circle(p.len + 5.5, gs[0], Math.max(1.2, p.r * 0.2));
+      for (const gy of gs) circle(len + 2.5, gy, Math.max(1.6, p.r * 0.3));
+      ctx.fillStyle = 'rgba(255,200,90,.6)'; circle(len + 5.5, gs[0], Math.max(1.2, p.r * 0.2));
     }
     ctx.restore();
   }
