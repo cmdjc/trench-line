@@ -430,11 +430,11 @@ describe('saxon dominion art', () => {
   it('a leg strut bridges from inside the hull out to the hip, even when the leg mounts wider than the body', () => {
     newGame('sx', 'de', 'open', 3);
     for (const k of ['tkL', 'tank', 'tkM', 'tkH', 'ruebezahl']) {
-      const strokes = [];
-      const c = new Proxy({ strokeStyle: null, lineWidth: 0 }, {
+      const paths = [];
+      const c = new Proxy({}, {
         get(t, p) {
-          if (p === 'moveTo') return (x, y) => { strokes.push({ x0: x, y0: y, style: t.strokeStyle, w: t.lineWidth }); };
-          if (p === 'lineTo') return (x, y) => { const s = strokes[strokes.length - 1]; if (s && s.x1 === undefined) { s.x1 = x; s.y1 = y; } };
+          if (p === 'moveTo') return (x, y) => { paths.push({ x0: x, y0: y, pts: [] }); };
+          if (p === 'lineTo') return (x, y) => { const cur = paths[paths.length - 1]; if (cur) cur.pts.push([x, y]); };
           return t[p] !== undefined ? t[p] : noop;
         },
         set(t, p, v) { t[p] = v; return true; }
@@ -448,9 +448,17 @@ describe('saxon dominion art', () => {
       for (const [lx] of draw.legs) {
         for (const s of [-1, 1]) {
           const hy = s * draw.W * 0.72;
-          const strut = strokes.find(st => st.x1 !== undefined && Math.abs(st.x1 - lx) < 0.01 && Math.abs(st.y1 - hy) < 0.01);
-          expect(strut, `${k} has a strut ending at its hip (${lx},${hy})`).toBeTruthy();
-          expect(inPolygon(strut.x0, strut.y0, hull), `${k} strut starts inside its own hull at (${strut.x0},${strut.y0})`).toBe(true);
+          const strut = paths.find(pth => pth.pts.some(([x, y]) => Math.abs(x - lx) < 0.01 && Math.abs(y - hy) < 0.01));
+          expect(strut, `${k} has a bracket path visiting its hip (${lx},${hy})`).toBeTruthy();
+          expect(inPolygon(strut.x0, strut.y0, hull), `${k} bracket starts inside its own hull at (${strut.x0},${strut.y0})`).toBe(true);
+          // A degenerate, zero-width bracket (a thin line again, the exact defect this
+          // mechanism replaced) would still pass the two checks above, since they only
+          // look at the path's start and the hip it reaches. Require at least one point
+          // to sit meaningfully off the moveTo-to-hip centreline, proving the bracket
+          // actually has width, not just length.
+          const [x0, y0] = [strut.x0, strut.y0], dx = lx - x0, dy = hy - y0, len = Math.hypot(dx, dy) || 1;
+          const maxOffset = Math.max(...strut.pts.map(([x, y]) => Math.abs(dx * (y - y0) - dy * (x - x0)) / len));
+          expect(maxOffset, `${k} bracket has real width, not a degenerate thin line`).toBeGreaterThan(1);
         }
       }
     }
