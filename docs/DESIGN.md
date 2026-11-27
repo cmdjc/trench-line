@@ -470,8 +470,7 @@ Erebus, Pole) are detuned from their earlier extremes. Intent: `docs/superpowers
 
 Chosen by you: a ninth playable nation, tough and slow rather than numerous, with a dual-weapon raider
 squad, a four-tier walking-mech line named for German folklore, a Repair Workshop defence, and a Rübezahl
-superweapon. Intent: `docs/superpowers/sdd/2026-11-25-saxon-dominion/` (design, implementation plan and
-this task's brief).
+superweapon. Intent: `docs/superpowers/specs/2026-11-25-saxon-dominion-design.md`.
 
 - **The nation**: `NAT.sx`, ninth in `NATS`, cap 20 infantry / 8 armour, `style: 'stahl'` (Germany's helmet,
   a darker palette), national defence `workshop`. Four of the five base infantry types stay unchanged in
@@ -483,28 +482,33 @@ this task's brief).
   not two numbers that could drift apart. A unit with `T.ram` searches with no minimum range (`seekR = 0`);
   if the nearest target is inside `T.min`, it fires the ram instead of the mortar. One cooldown, one fire
   branch per frame — a Rammstoßtrupp can never loose both weapons in the same tick.
-- **The Repair Workshop**: not a new spatial-radius system. It extends the one-line passive in-trench heal
-  every nation already has (a settled, unexposed unit holding a trench slowly heals) so that check also
-  covers a settled mech (`T.armor`) holding that same trench, wherever a Workshop stands there
+- **The Repair Workshop**: not a new spatial-radius system, and not an extension of a universal baseline
+  heal — there is no such baseline. The passive in-trench heal rate (`m.heal`) is 0 by default for every
+  nation and only ever becomes nonzero from specific buildings or cards (Field Hospital, Aid posts,
+  Stretcher bearers); the pre-existing heal check itself already applied equally to mechs and infantry, with
+  no armour exclusion. What the Workshop adds is a separate, mech-only heal rate (`wh`, from
+  `workshopRate()`) added on top of whatever `m.heal` already is, applied only to a settled mech (`T.armor`)
+  that is holding a trench, unexposed, where a live Workshop is owned by that mech's current side
   (`workshopAt(side, L)`). The corrected fact from the design pass: it only ever heals a mech that is dug
   in and holding the trench, never one merely passing through or retreating past it — the same condition
   that already gates infantry healing, not a reusable drive-through healing oasis. Rate is `WORKSHOP_HEAL`
   (6 hp/s per mech, unchanged by this task — see the balance section below), `FOUNDRY_HEAL` (×1.5 at
   Foundry tier 1) on top. **Capture**: a workshop is a nest, so the existing capture loop flips it to
   whichever side takes the trench, exactly like a captured depot, and it then heals the captor's mechs —
-  the plan's chosen precedent over nation-locking it to Saxon mechs only, pinned by the Task 4 test
+  the plan's chosen precedent over nation-locking it to Saxon mechs only, pinned by the dedicated test
   `captured workshop serves its captor`.
-- **Rübezahl and the Ore Mountain Foundry**: `SW.sx` is built with `tkv()` exactly like `SW.aq`'s Southern
-  Colossus — a 6,000-health walking fortress (`SPECIAL.ruebezahl`), deliberately sized between the Tsar
-  Tank (2,800 hp) and the Southern Colossus (9,000 hp), cost 1,800, 140 s cooldown. `BASE.sx` ("Ore Mountain
-  Foundry") is the national base-upgrade track: tier 1 speeds up workshop healing (`FOUNDRY_HEAL`, ×1.5),
-  tier 2 shortens Rübezahl's cooldown (`FOUNDRY_CD`, 100 s instead of 140 s), tier 3 gives Rübezahl more
-  health (`FOUNDRY_HP`, ×1.3). One accepted, zero-cross-nation-risk quirk from Task 5's review: `swBlock`'s
+- **Rübezahl and the Ore Mountain Foundry**: `SPECIAL.ruebezahl` (the unit stats) is built with `tkv()`
+  exactly like `SPECIAL.colossus` — a 6,000-health walking fortress, deliberately sized between the Tsar
+  Tank (2,800 hp) and the Southern Colossus (9,000 hp), cost 1,800, 140 s cooldown. `SW.sx` itself is the
+  plain data wrapper (kind/name/metadata) in the same shape as every other nation's `SW.<nation>` entry.
+  `BASE.sx` ("Ore Mountain Foundry") is the national base-upgrade track: tier 1 speeds up workshop healing
+  (`FOUNDRY_HEAL`, ×1.5), tier 2 shortens Rübezahl's cooldown (`FOUNDRY_CD`, 100 s instead of 140 s), tier 3
+  gives Rübezahl more health (`FOUNDRY_HP`, ×1.3). One accepted, zero-cross-nation-risk quirk: `swBlock`'s
   field-presence/cooldown gate order for `ruebezahl` differs slightly from the other three superweapons
-  (`char2c`/`colossus`/`tsar`) — required by the plan's own spec, and it cannot affect any other nation's
-  superweapon path.
+  (`char2c`/`colossus`/`tsar`) — already reviewed and accepted as fine, and it cannot affect any other
+  nation's superweapon path.
 
-**Final stats** (after the balance pass below; no further changes from Tasks 2–6 except where noted):
+**Final stats** (after the balance pass below; no further changes from earlier in the build except where noted):
 
 | Unit | Cost | Hp | Dmg | Cd | Range | Splash | Speed | Notes |
 |---|---|---|---|---|---|---|---|---|
@@ -519,10 +523,11 @@ this task's brief).
 | Eisenhans (`tkH`) | 720 | 2000 | 46 | 1.6 | 260 | 26 | 11 | fortress, turret + mg |
 | Rübezahl (superweapon) | 1800 | 6000 | 95 | 2.0 | 360 | 42 | 9 | one at a time |
 
-Of these, only Granatwerfer `dmg` (22 → 24, within the spec's ±15% band on `UT.mortar.dmg`) and
-Rammstoßtrupp `hp` (90 → 110) moved from Tasks 2–6's numbers; everything else above is unchanged.
+Of these, only Granatwerfer `dmg` (22 → 24, within the spec's ±15% band on `UT.mortar.dmg` — the band runs
+up to 22 × 1.15 ≈ 25.3, so 24 still has some headroom left, not the top of the band) and
+Rammstoßtrupp `hp` (90 → 110) moved from the earlier build's numbers; everything else above is unchanged.
 
-- **Balance check** (the brief's exact matrix): `MAXS=900`, baseline on `main` (Germany stands in for
+- **Balance check** (the full balance matrix): `MAXS=900`, baseline on `main` (Germany stands in for
   Saxony, which `main` does not have) against this branch. `R`: each of the eight nations against Germany
   (Germany against Britain), open map, seeds 1–10 — the control, re-run on the branch and diffed byte-for-
   byte against the baseline JSON lines: **identical**, confirming no non-`sx` path moved. `A`: `sx` against
@@ -582,7 +587,8 @@ Rammstoßtrupp `hp` (90 → 110) moved from Tasks 2–6's numbers; everything el
   **Rammstoßtrupp `hp` 90 → 110** (cost and `ram.dmg` tried and reverted — raising `ram.dmg` alone moved
   nothing favourably and made several `B` rows worse, since the enemy AI uses the same stats and benefits
   from raw power more efficiently than the headless bot's blunter unit handling does) and **Granatwerfer
-  (`mortar`) `dmg` 22 → 24**, the top of its allowed ±15% band on `UT.mortar.dmg`. Both changes are
+  (`mortar`) `dmg` 22 → 24**, within its allowed ±15% band on `UT.mortar.dmg` (band ceiling ≈ 25.3), with
+  some headroom still available. Both changes are
   reflected in `data.test.js`'s pins. Infantry buffs beyond this (tried up to the full ±15% band on every
   field) and `NAT.sx.inf` at 24 (the top of its allowed 20–24 range) were both tried and reverted: pushing
   infantry further did get Russia and Italy's `B` rows into band, but at the cost of breaking France's and
@@ -602,19 +608,36 @@ Rammstoßtrupp `hp` (90 → 110) moved from Tasks 2–6's numbers; everything el
   mortar-and-ram raider plus workshop-mended mechs) disproportionately punishes bots that were already
   playing from behind — the same pattern Antarctica's own win rate shows against the field in `R` (30%,
   the single lowest row).
-- **Anti-goal check** (`BOTPREF=tkH,tkM,tank,raider` vs the default `pref`, `sx` v `de` and `sx` v `gb`,
-  plain and march, seeds 1–3): no row's win rate moved by more than the bar (all four stayed at 0% either
-  way — neither configuration ever wins on these maps at this budget). Three of four rows kept forced-heavy
-  losses at or above half the default rows' (`sx v de` plain 37.33 vs 42.33; `sx v gb` plain 45.67 vs 34.67;
-  `sx v gb` march 55.00 vs 56.33). One row reads as a literal violation — `sx v de` march: forced-heavy
-  losses 27.00 against 34.5 (half of the default row's 69.00) — but the underlying battles show the
-  opposite of what the check exists to catch. All three *default*-row seeds on `sx v de` march end in a
-  total defeat (`won: false`, own HQ driven to 0 health, the bot routed outright, losses 59–81); all three
-  *forced-heavy* seeds instead run the full 900 s undefeated (`hq: "3000/3000"` both sides, `sel` 23–34).
-  The lower loss count comes from heavy mechs keeping Saxony from being overrun at all, not from mechs
-  doing the fighting while infantry and trenches become irrelevant — the opposite failure mode from the one
-  the anti-goal check is guarding against. Documented here rather than tuned around, per the brief's
-  instruction to report a genuine wall honestly rather than silently loosen the bar.
+- **Anti-goal check — not actually exercised for the heaviest units**: the intent was to verify that
+  Saxony's heaviest units (Eisenhans the heavy mech, Rübezahl the superweapon, and to a lesser extent
+  Erlkönig the artillery mech) don't trivialize trench-holding when fielded, using a dedicated
+  `BOTPREF=tkH,tkM,tank,raider` channel (`sx` v `de` and `sx` v `gb`, plain and march, seeds 1–3) to force
+  heavy-unit preference even though normal play rarely reaches these units. Instrumented spawn counts across
+  all 12 of these `BOTPREF` battles found **zero** Eisenhans spawns, **zero** Rübezahl spawns, and only
+  **2 of 12** Erlkönig spawns — Saxony's unlock chain (`tkPrev('sx','tkH') === 'tkM'`) is longer than other
+  nations' under the same forced-preference setting, so the bot's preference logic never got far enough to
+  unlock the heavy tier before the battle ended. The same gap holds across the full balance matrix: in all
+  160 battles run for this feature's balance pass, Saxony fielded none of Eisenhans, Rübezahl, or Erlkönig,
+  on either side, player or enemy. **The anti-goal check this task set out to run for exactly the units it
+  was most worried about was never actually exercised anywhere in this build** — this is an open,
+  documented gap, not a verified-safe conclusion. A real test would need either a bot override that unlocks
+  the tank chain directly (bypassing normal card-purchase gating) for a forced-heavy run, or acceptance as
+  an item for future verification.
+
+  Win rates themselves stayed uninformative regardless: no row's win rate moved by more than the bar (all
+  four stayed at 0% either way — neither configuration ever wins on these maps at this budget). Three of
+  four rows kept forced-heavy losses at or above half the default rows' (`sx v de` plain 37.33 vs 42.33;
+  `sx v gb` plain 45.67 vs 34.67; `sx v gb` march 55.00 vs 56.33). One row reads as a literal violation —
+  `sx v de` march: forced-heavy losses 27.00 against 34.5 (half of the default row's 69.00) — but the
+  underlying battles show something other than what the check exists to catch, and not the heavy-mech story
+  first assumed: all three *default*-row seeds on `sx v de` march end in a total defeat (`won: false`, own
+  HQ driven to 0 health, the bot routed outright, losses 59–81); all three *forced-heavy* seeds instead run
+  the full 900 s undefeated (`hq: "3000/3000"` both sides, `sel` 23–34). Tracing those forced-heavy battles
+  shows the only mech actually fielded was Krampus, the medium tier — not a heavy unit. The lower loss count
+  in that row comes from Krampus keeping Saxony from being overrun, not from Eisenhans, Rübezahl, or
+  Erlkönig doing anything, and not from heavy mechs taking over the fight while infantry and trenches become
+  irrelevant (the failure mode the anti-goal check exists to guard against). Documented here honestly as an
+  untested gap rather than tuned around or silently credited to units that were never on the field.
 
 ## Known quirks
 
