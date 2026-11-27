@@ -416,6 +416,46 @@ describe('saxon dominion art', () => {
     }
   });
 
+  // Ray-casting point-in-polygon test, used to prove the leg strut's inner anchor
+  // genuinely lands inside each mech's hull, not just close to it on paper.
+  function inPolygon(x, y, pts) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+
+  it('a leg strut bridges from inside the hull out to the hip, even when the leg mounts wider than the body', () => {
+    newGame('sx', 'de', 'open', 3);
+    for (const k of ['tkL', 'tank', 'tkM', 'tkH', 'ruebezahl']) {
+      const strokes = [];
+      const c = new Proxy({ strokeStyle: null, lineWidth: 0 }, {
+        get(t, p) {
+          if (p === 'moveTo') return (x, y) => { strokes.push({ x0: x, y0: y, style: t.strokeStyle, w: t.lineWidth }); };
+          if (p === 'lineTo') return (x, y) => { const s = strokes[strokes.length - 1]; if (s && s.x1 === undefined) { s.x1 = x; s.y1 = y; } };
+          return t[p] !== undefined ? t[p] : noop;
+        },
+        set(t, p, v) { t[p] = v; return true; }
+      });
+      setCtx(c);
+      const u = spawn(0, k, 2, true);
+      drawTank(u);
+      setCtx(stubCtx);
+      const draw = utOf(G.nation[0], k).draw;
+      const hull = draw.parts[0].pts;
+      for (const [lx] of draw.legs) {
+        for (const s of [-1, 1]) {
+          const hy = s * draw.W * 0.72;
+          const strut = strokes.find(st => st.x1 !== undefined && Math.abs(st.x1 - lx) < 0.01 && Math.abs(st.y1 - hy) < 0.01);
+          expect(strut, `${k} has a strut ending at its hip (${lx},${hy})`).toBeTruthy();
+          expect(inPolygon(strut.x0, strut.y0, hull), `${k} strut starts inside its own hull at (${strut.x0},${strut.y0})`).toBe(true);
+        }
+      }
+    }
+  });
+
   it('erlkönig stows a short, thick gun and deploys a longer one once settled', () => {
     newGame('sx', 'de', 'open', 3);
     const endOf = settled => {

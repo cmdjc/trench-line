@@ -396,10 +396,17 @@ export function drawTankGen(u, N) {
     }
   }
   if (d.legs) {
+    // Legs often mount wider than the hull itself (a splayed spider/crab stance), so the
+    // hip can sit well outside the hull polygon. mx/my is a point safely inside every
+    // Saxon hull's own bounds (checked against each one's parts[0].pts); a strut bridges
+    // from there out to the true hip, so the leg always reads as attached to the body.
     const lw = 2.2 * (W / 14);
     d.legs.forEach(([lx]) => {
+      const mx = lx * 0.45;
       for (const s of [-1, 1]) {
-        const hx = lx, hy = s * W * 0.72;
+        const hx = lx, hy = s * W * 0.72, my = s * W * 0.45;
+        ctx.strokeStyle = ch; ctx.lineWidth = lw * 1.7; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(hx, hy); ctx.stroke();
         ctx.fillStyle = ch; circle(hx, hy, lw * 1.3);
         ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 0.6;
         ctx.beginPath(); ctx.arc(hx, hy, lw * 1.3, 0, Math.PI * 2); ctx.stroke();
